@@ -21,6 +21,5 @@ apps/pwa/test-results/
 SECURITY.md
 SECURITY_AUDIT.md
 
-# Prevent known monorepo directory pollution (specific paths only).
-# Add new paths here as they appear, do not use broad wildcards.
-packages/exercise-library/src/generated/
+# packages/exercise-library/src/generated/ is deliberately committed: it is the compiled
+# form of src/data/*.yaml (npm run generate) and the only thing the browser bundle reads.

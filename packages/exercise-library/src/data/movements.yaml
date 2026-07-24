@@ -1,0 +1,72 @@
+# Movement families keyed by id. `pattern` is MovementPattern from @ferrum/domain.
+# A family groups exercises that train the same joint action, so a substitution
+# inside one family is a like-for-like swap even though the loads never compare.
+horizontal_press:
+  name: Horizontal Press
+  pattern: horizontal_push
+incline_press:
+  name: Incline Press
+  pattern: horizontal_push
+chest_fly:
+  name: Chest Fly
+  pattern: horizontal_push
+overhead_press:
+  name: Overhead Press
+  pattern: vertical_push
+lateral_raise:
+  name: Lateral Raise
+  pattern: shoulder_abduction
+rear_delt_fly:
+  name: Rear Delt Fly
+  pattern: horizontal_pull
+face_pull:
+  name: Face Pull
+  pattern: horizontal_pull
+vertical_pull:
+  name: Vertical Pull
+  pattern: vertical_pull
+straight_arm_pulldown:
+  name: Straight Arm Pulldown
+  pattern: vertical_pull
+horizontal_row:
+  name: Horizontal Row
+  pattern: horizontal_pull
+squat:
+  name: Squat
+  pattern: squat
+lunge:
+  name: Lunge
+  pattern: lunge
+hinge:
+  name: Hip Hinge
+  pattern: hinge
+hip_thrust:
+  name: Hip Thrust
+  pattern: hinge
+back_extension:
+  name: Back Extension
+  pattern: hinge
+knee_extension:
+  name: Knee Extension
+  pattern: knee_extension
+knee_flexion:
+  name: Knee Flexion
+  pattern: knee_flexion
+calf_raise:
+  name: Calf Raise
+  pattern: ankle_plantarflexion
+hip_abduction:
+  name: Hip Abduction
+  pattern: hip_abduction
+elbow_flexion:
+  name: Elbow Flexion
+  pattern: elbow_flexion
+elbow_extension:
+  name: Elbow Extension
+  pattern: elbow_extension
+trunk_flexion:
+  name: Trunk Flexion
+  pattern: trunk_flexion
+anti_extension:
+  name: Anti-Extension
+  pattern: trunk_antiextension

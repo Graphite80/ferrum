@@ -1,0 +1,23 @@
+{
+  "name": "Ferrum",
+  "short_name": "Ferrum",
+  "id": "/?app=ferrum",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0b0c",
+  "theme_color": "#0b0b0c",
+  "lang": "en",
+  "categories": ["fitness", "health", "productivity"],
+  "icons": [
+    { "src": "/icons/ferrum-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/ferrum-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icons/ferrum-icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

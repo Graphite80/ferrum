@@ -1,0 +1,31 @@
+# Anatomical vocabulary referenced by exercises.yaml muscleRoles.
+# Deliberately coarse: one entry per muscle a lifter can meaningfully target or
+# feel. Heads are split only where they take different work (deltoid, trapezius).
+pectoralis_major: Pectoralis Major
+serratus_anterior: Serratus Anterior
+anterior_deltoid: Anterior Deltoid
+lateral_deltoid: Lateral Deltoid
+posterior_deltoid: Posterior Deltoid
+rotator_cuff: Rotator Cuff
+triceps_brachii: Triceps Brachii
+biceps_brachii: Biceps Brachii
+brachialis: Brachialis
+brachioradialis: Brachioradialis
+forearm_flexors: Forearm Flexors
+latissimus_dorsi: Latissimus Dorsi
+teres_major: Teres Major
+rhomboids: Rhomboids
+trapezius_upper: Upper Trapezius
+trapezius_middle: Middle Trapezius
+trapezius_lower: Lower Trapezius
+erector_spinae: Erector Spinae
+rectus_abdominis: Rectus Abdominis
+obliques: Obliques
+hip_flexors: Hip Flexors
+gluteus_maximus: Gluteus Maximus
+gluteus_medius: Gluteus Medius
+quadriceps: Quadriceps
+hamstrings: Hamstrings
+adductors: Hip Adductors
+gastrocnemius: Gastrocnemius
+soleus: Soleus

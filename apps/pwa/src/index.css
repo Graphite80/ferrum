@@ -1,0 +1,45 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink: #0b0b0c;
+  --color-surface: #16171a;
+  --color-surface-raised: #1f2126;
+  --color-edge: #2c2f36;
+  --color-accent: #d8703f;
+  --color-done: #2f6f4e;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink);
+  color: #f2f3f5;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
+/* Every interactive control in a workout is hit with sweaty hands, sometimes in
+   gloves, while out of breath. 56px is the floor for the primary path. */
+.tap-target {
+  min-height: 56px;
+  min-width: 56px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -47,7 +47,8 @@ repos:
     hooks:
       - id: codespell
         args:
-          - --ignore-words-list=afterall,beforeall,aftereach,beforeeach,ser,nd,rir,rpe,mai
+          # delt = deltoid, hevy/strong = competitor product names, ist = German
+          - --ignore-words-list=afterall,beforeall,aftereach,beforeeach,ser,nd,rir,rpe,mai,delt,delts,hevy,ist
           - --skip=package-lock.json,node_modules,dist,fixtures
 
   - repo: https://github.com/adrienverge/yamllint
