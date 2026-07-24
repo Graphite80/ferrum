@@ -62,15 +62,16 @@ export interface ImportAmbiguity {
   readonly choices: readonly string[];
 }
 
-export interface SetProvenance {
+// Where a set came from now rides inside the SetLogged payload as the domain's own
+// SetProvenance, so it survives replay and sync. What the import DECIDED about a row is
+// a different fact: it is derived, reviewable and undoable, so it stays in the report
+// rather than being welded into the immutable event.
+export interface SetTypeReclassification {
   readonly setId: WorkoutSetId;
-  readonly source: ImportSourceId;
   readonly sourceRecordId: string;
-  readonly importBatchId: string;
-  readonly originalPayload: unknown;
-  readonly setTypeReclassified: boolean;
-  readonly setTypeReclassificationReason: string | null;
-  readonly canonicalLoadWithheld: boolean;
+  readonly from: SetType | null;
+  readonly to: SetType;
+  readonly reason: string;
 }
 
 export interface SourceExtraction {

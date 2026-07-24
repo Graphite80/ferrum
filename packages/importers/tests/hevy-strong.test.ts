@@ -7,6 +7,7 @@ import {
   detectStrongFormat,
   extractHevy,
   extractStrong,
+  importedRecordKeysOf,
   looksLikeHevyExport,
   readHeader,
   runImport,
@@ -15,6 +16,7 @@ import {
   type ImportResult,
   type SourceExtraction,
 } from '../src/index.ts';
+import { projectAll } from './support/projection.ts';
 import { InMemoryExerciseResolver } from './support/resolver.ts';
 
 const FIXTURES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -164,6 +166,23 @@ describe('Hevy imports', () => {
     );
   });
 
+  it('carries the raw CSV line as provenance on every projected set', () => {
+    const result = importAll(extractHevy(read('hevy-kg.csv')));
+    const sets = projectAll(result);
+    expect(sets).toHaveLength(result.report.setsImported);
+
+    for (const set of sets) {
+      expect(set.provenance?.source).toBe('hevy');
+      expect(set.provenance?.importBatchId).toBe('batch-hevy:workouts-csv-v1');
+      expect(set.provenance?.originalPayload).toMatchObject({
+        fields: { exercise_title: expect.any(String) as unknown as string },
+      });
+    }
+
+    const first = sets[0]?.provenance?.originalPayload as { cells: string[] };
+    expect(first.cells[4]).toBe('Bench Press (Barbell)');
+  });
+
   it('surfaces a set_type it has never seen instead of quietly calling it a working set', () => {
     const header = read('hevy-kg.csv').split('\n')[0] ?? '';
     const text = [
@@ -287,12 +306,7 @@ describe('Strong imports', () => {
       userId: 'user-csv' as UserId,
       deviceId: 'import' as DeviceId,
       resolver,
-      existing: {
-        importedRecordKeys: new Set(
-          first.provenance.map(item => `${item.source}::${item.sourceRecordId}`)
-        ),
-        sessions: [],
-      },
+      existing: { importedRecordKeys: importedRecordKeysOf(first), sessions: [] },
     });
     expect(second.events).toHaveLength(0);
     expect(second.report.duplicateRowsSkipped).toBe(first.report.setsImported);

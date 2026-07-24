@@ -5,11 +5,12 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { projectSession, type DeviceId, type SessionId, type UserId } from '@ferrum/domain';
 import {
   extractLifeAsCode,
-  importRecordKey,
+  importedRecordKeysOf,
   runImport,
   type ImportResult,
   type LifeAsCodeSetRow,
 } from '../src/index.ts';
+import { eventsBySession, projectAll } from './support/projection.ts';
 import { InMemoryExerciseResolver } from './support/resolver.ts';
 
 const FIXTURE = path.resolve(
@@ -35,14 +36,7 @@ function importFixture(existing?: ImportResult): ImportResult {
     resolver,
     ...(existing == null
       ? {}
-      : {
-          existing: {
-            importedRecordKeys: new Set(
-              existing.provenance.map(item => importRecordKey(item.source, item.sourceRecordId))
-            ),
-            sessions: [],
-          },
-        }),
+      : { existing: { importedRecordKeys: importedRecordKeysOf(existing), sessions: [] } }),
   });
 }
 
@@ -65,17 +59,33 @@ describe('importing the real life-as-code history', () => {
     expect(result.unresolved).toHaveLength(0);
   });
 
-  it('emits one provenance record per set, carrying source, record id, batch and payload', () => {
-    expect(result.provenance).toHaveLength(result.report.setsImported);
-    const ids = new Set(result.provenance.map(item => item.sourceRecordId));
-    expect(ids.size).toBe(121);
-    for (const item of result.provenance) {
-      expect(item.source).toBe('life-as-code');
-      expect(item.importBatchId).toBe('batch-2026-07-25');
-      expect(item.originalPayload).not.toBeNull();
+  it('carries provenance on every set that survives replay, not beside the events', () => {
+    const sets = projectAll(result);
+    expect(sets).toHaveLength(result.report.setsImported);
+
+    const recordIds = new Set<string>();
+    for (const set of sets) {
+      const provenance = set.provenance;
+      expect(provenance).not.toBeNull();
+      expect(provenance?.source).toBe('life-as-code');
+      expect(provenance?.importBatchId).toBe('batch-2026-07-25');
+      recordIds.add(provenance?.sourceRecordId ?? '');
+
+      const original = provenance?.originalPayload as LifeAsCodeSetRow;
+      expect(String(original.id)).toBe(provenance?.sourceRecordId);
+      expect(original.exercise).not.toBe('');
     }
-    const original = result.provenance[0]?.originalPayload as LifeAsCodeSetRow;
-    expect(String(original.id)).toBe(result.provenance[0]?.sourceRecordId);
+    expect(recordIds.size).toBe(121);
+  });
+
+  it('hands back the untouched source row, not a reshaped copy of it', () => {
+    const sets = projectAll(result);
+    const byRecordId = new Map(sourceRows.map(row => [String(row.id), row]));
+    for (const set of sets) {
+      const provenance = set.provenance;
+      const original = byRecordId.get(provenance?.sourceRecordId ?? '');
+      expect(provenance?.originalPayload).toStrictEqual(original);
+    }
   });
 
   it('groups the flat set list into one session per calendar day', () => {
@@ -101,12 +111,7 @@ describe('importing the real life-as-code history', () => {
   });
 
   it('replays into projections whose set count matches the report', () => {
-    const bySession = new Map<SessionId, typeof result.events>();
-    for (const event of result.events) {
-      const bucket = bySession.get(event.aggregateId) ?? [];
-      bucket.push(event);
-      bySession.set(event.aggregateId, bucket);
-    }
+    const bySession = eventsBySession(result.events);
 
     let projected = 0;
     for (const [sessionId, events] of bySession) {
@@ -134,14 +139,11 @@ describe('importing the real life-as-code history', () => {
     const byRecordId = new Map(sourceRows.map(row => [String(row.id), row]));
     let withRpe = 0;
 
-    for (const event of result.events) {
-      if (event.eventType !== 'SetLogged') continue;
-      const provenance = result.provenance.find(item => item.setId === event.payload.setId);
-      expect(provenance).toBeDefined();
-      const original = byRecordId.get(provenance?.sourceRecordId ?? '');
+    for (const set of projectAll(result)) {
+      const original = byRecordId.get(set.provenance?.sourceRecordId ?? '');
       expect(original).toBeDefined();
 
-      const measurements = event.payload.measurements;
+      const measurements = set.measurements;
       if (original?.rpe == null) {
         expect(measurements.rpeEntered).toBeNull();
         expect(measurements.rirEntered).toBeNull();
@@ -157,9 +159,8 @@ describe('importing the real life-as-code history', () => {
   });
 
   it('records no rest time, because the source never captured one', () => {
-    for (const event of result.events) {
-      if (event.eventType !== 'SetLogged') continue;
-      expect(event.payload.measurements.actualRestSeconds).toBeNull();
+    for (const set of projectAll(result)) {
+      expect(set.measurements.actualRestSeconds).toBeNull();
     }
   });
 
@@ -167,20 +168,12 @@ describe('importing the real life-as-code history', () => {
     const zeroRow = sourceRows.find(row => row.weight_kg === 0);
     expect(zeroRow).toBeDefined();
 
-    const provenance = result.provenance.find(
-      item => item.sourceRecordId === String(zeroRow?.id ?? '')
+    const set = projectAll(result).find(
+      candidate => candidate.provenance?.sourceRecordId === String(zeroRow?.id ?? '')
     );
-    expect(provenance?.canonicalLoadWithheld).toBe(true);
-
-    const logged = result.events.find(
-      event => event.eventType === 'SetLogged' && event.payload.setId === provenance?.setId
-    );
-    expect(logged?.eventType).toBe('SetLogged');
-    if (logged?.eventType === 'SetLogged') {
-      expect(logged.payload.measurements.enteredLoad).toBe(0);
-      expect(logged.payload.measurements.canonicalExternalLoadKg).toBeNull();
-      expect(logged.payload.measurements.reps).toBe(15);
-    }
+    expect(set?.measurements.enteredLoad).toBe(0);
+    expect(set?.measurements.canonicalExternalLoadKg).toBeNull();
+    expect(set?.measurements.reps).toBe(15);
 
     const ambiguity = result.report.ambiguities.find(item => item.kind === 'entered_load_is_zero');
     expect(ambiguity?.sourceRecordIds).toContain(String(zeroRow?.id ?? ''));
@@ -193,12 +186,18 @@ describe('importing the real life-as-code history', () => {
     expect(result.report.warmupDetection).toBe('heuristic');
   });
 
-  it('flags every heuristic warmup so the user can undo it', () => {
-    const reclassified = result.provenance.filter(item => item.setTypeReclassified);
+  it('reports every heuristic warmup with the set it moved and the reason, so it can be undone', () => {
+    const reclassified = result.report.reclassifications;
     expect(reclassified.length).toBe(result.report.setsReclassifiedAsWarmup);
+
+    const byId = new Map(projectAll(result).map(set => [set.id, set]));
     for (const item of reclassified) {
-      expect(item.setTypeReclassificationReason).not.toBeNull();
+      expect(item.reason).not.toBe('');
+      expect(item.from).toBeNull();
+      expect(item.to).toBe('warmup');
+      expect(byId.get(item.setId)?.setType).toBe('warmup');
     }
+
     const flagged = result.report.ambiguities.filter(item => item.kind === 'set_type_inferred');
     const flaggedIds = new Set(flagged.flatMap(item => item.sourceRecordIds));
     for (const item of reclassified) expect(flaggedIds.has(item.sourceRecordId)).toBe(true);
@@ -208,9 +207,7 @@ describe('importing the real life-as-code history', () => {
 describe('the warmup heuristic on the real fixture', () => {
   const result = importFixture();
 
-  const warmupRecordIds = new Set(
-    result.provenance.filter(item => item.setTypeReclassified).map(item => item.sourceRecordId)
-  );
+  const warmupRecordIds = new Set(result.report.reclassifications.map(item => item.sourceRecordId));
 
   const groups = new Map<string, LifeAsCodeSetRow[]>();
   for (const row of sourceRows) {

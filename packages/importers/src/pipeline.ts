@@ -16,6 +16,7 @@ import {
   type Kilograms,
   type SessionExerciseId,
   type SessionId,
+  type SetProvenance,
   type SetType,
   type SupersetGroupId,
   type UserId,
@@ -35,7 +36,7 @@ import type {
   ImportAmbiguity,
   ImportSourceId,
   NormalizedSetRow,
-  SetProvenance,
+  SetTypeReclassification,
   SourceExtraction,
   UnresolvedRow,
 } from './model.ts';
@@ -80,6 +81,7 @@ export interface ImportReport {
   readonly duplicateRowsSkipped: number;
   readonly unitConversionsPerformed: number;
   readonly setsReclassifiedAsWarmup: number;
+  readonly reclassifications: readonly SetTypeReclassification[];
   readonly warmupDetection: SourceExtraction['warmupDetection'];
   readonly assumptions: readonly string[];
   readonly ambiguities: readonly ImportAmbiguity[];
@@ -90,7 +92,6 @@ export interface ImportResult {
   readonly events: DomainEvent[];
   readonly report: ImportReport;
   readonly unresolved: UnresolvedRow[];
-  readonly provenance: SetProvenance[];
   readonly sessions: readonly IncomingSessionSummary[];
 }
 
@@ -186,7 +187,7 @@ export function runImport(extraction: SourceExtraction, options: ImportOptions):
     formatId: extraction.formatId,
     rowsSeen: extraction.rows.length + extraction.rejected.length,
     workoutsImported: emitted.sessions.length,
-    setsImported: emitted.provenance.length,
+    setsImported: emitted.setsLogged,
     exercisesMatchedExactly: countMatches(matches, 'exact'),
     exercisesMatchedByAlias: countMatches(matches, 'alias'),
     exercisesUnmatched: countMatches(matches, 'unmatched'),
@@ -197,20 +198,15 @@ export function runImport(extraction: SourceExtraction, options: ImportOptions):
     unitConversionsPerformed: prepared.filter(
       item => item.row.enteredUnit === 'lb' && item.canonicalLoadKg != null
     ).length,
-    setsReclassifiedAsWarmup: emitted.provenance.filter(item => item.setTypeReclassified).length,
+    setsReclassifiedAsWarmup: emitted.reclassifications.length,
+    reclassifications: emitted.reclassifications,
     warmupDetection: extraction.warmupDetection,
     assumptions: [...assumptions],
     ambiguities,
     likelyDuplicateSessions,
   };
 
-  return {
-    events: emitted.events,
-    report,
-    unresolved,
-    provenance: emitted.provenance,
-    sessions: emitted.sessions,
-  };
+  return { events: emitted.events, report, unresolved, sessions: emitted.sessions };
 }
 
 function describeInvalidRow(row: NormalizedSetRow): string | null {
@@ -383,8 +379,9 @@ function buildSignature(
 
 interface EmissionOutcome {
   readonly events: DomainEvent[];
-  readonly provenance: SetProvenance[];
   readonly sessions: IncomingSessionSummary[];
+  readonly reclassifications: SetTypeReclassification[];
+  readonly setsLogged: number;
 }
 
 function emitSessions(
@@ -402,8 +399,9 @@ function emitSessions(
   });
 
   const events: DomainEvent[] = [];
-  const provenance: SetProvenance[] = [];
   const sessions: IncomingSessionSummary[] = [];
+  const reclassifications: SetTypeReclassification[] = [];
+  let setsLogged = 0;
 
   for (const sessionKey of sessionKeys) {
     const rows = bySession.get(sessionKey) ?? [];
@@ -480,7 +478,7 @@ function emitSessions(
     }
 
     const signatures: ComparisonSignature[] = [];
-    const reclassifiedHere: SetProvenance[] = [];
+    const reclassifiedHere: SetTypeReclassification[] = [];
     let setOrderIndex = 0;
 
     for (const [rawName, exerciseRows] of byExercise) {
@@ -493,6 +491,12 @@ function emitSessions(
         const decision = decisions.get(item.row.sourceRecordId);
         const setType: SetType = decision?.setType ?? item.row.declaredSetType ?? 'working';
         const setId = stableId('set', extraction.source, item.row.sourceRecordId) as WorkoutSetId;
+        const provenance: SetProvenance = {
+          source: extraction.source,
+          sourceRecordId: item.row.sourceRecordId,
+          importBatchId: context.options.importBatchId,
+          originalPayload: item.row.originalPayload,
+        };
 
         push('SetLogged', `set:${item.row.sourceRecordId}`, {
           setId,
@@ -524,25 +528,26 @@ function emitSessions(
           prescriptionSnapshot: null,
           exerciseRevisionSnapshot: 1,
           comparisonSignature: item.signature,
+          provenance,
           performedAt: item.row.startedAt,
           localDate: item.row.localDate,
           tzOffsetMinutes,
         });
 
-        provenance.push({
-          setId,
-          source: extraction.source,
-          sourceRecordId: item.row.sourceRecordId,
-          importBatchId: context.options.importBatchId,
-          originalPayload: item.row.originalPayload,
-          setTypeReclassified: decision?.reclassified ?? false,
-          setTypeReclassificationReason: decision?.reason ?? null,
-          canonicalLoadWithheld: item.canonicalLoadKg == null && item.row.enteredLoad != null,
-        });
+        if (decision?.reclassified === true) {
+          const reclassification: SetTypeReclassification = {
+            setId,
+            sourceRecordId: item.row.sourceRecordId,
+            from: item.row.declaredSetType,
+            to: setType,
+            reason: decision.reason ?? '',
+          };
+          reclassifications.push(reclassification);
+          reclassifiedHere.push(reclassification);
+        }
 
-        const record = provenance[provenance.length - 1];
-        if (record !== undefined && record.setTypeReclassified) reclassifiedHere.push(record);
         signatures.push(item.signature);
+        setsLogged += 1;
         setOrderIndex += 1;
       }
     }
@@ -570,7 +575,7 @@ function emitSessions(
     sessions.push({ sessionKey, localDate, signatures });
   }
 
-  return { events, provenance, sessions };
+  return { events, sessions, reclassifications, setsLogged };
 }
 
 function classifySetTypes(
@@ -678,5 +683,12 @@ function groupBy<T>(items: readonly T[], key: (item: T) => string): Map<string, 
 }
 
 export function importedRecordKeysOf(result: ImportResult): Set<string> {
-  return new Set(result.provenance.map(item => importRecordKey(item.source, item.sourceRecordId)));
+  const keys = new Set<string>();
+  for (const event of result.events) {
+    if (event.eventType !== 'SetLogged') continue;
+    const provenance = event.payload.provenance;
+    if (provenance == null) continue;
+    keys.add(importRecordKey(provenance.source as ImportSourceId, provenance.sourceRecordId));
+  }
+  return keys;
 }

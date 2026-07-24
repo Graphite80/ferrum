@@ -7,7 +7,7 @@ import {
   DUPLICATE_OVERLAP_THRESHOLD,
   extractLifeAsCode,
   findLikelyDuplicateSessions,
-  importRecordKey,
+  importedRecordKeysOf,
   runImport,
   type ExistingSessionSummary,
   type ImportResult,
@@ -52,9 +52,7 @@ describe('re-importing the same history under fresh record ids', () => {
   const reexported = document.sets.map(row => ({ ...row, id: Number(row.id) + 1_000_000 }));
 
   const second = importDocument(reexported, {
-    importedRecordKeys: new Set(
-      original.provenance.map(item => importRecordKey(item.source, item.sourceRecordId))
-    ),
+    importedRecordKeys: importedRecordKeysOf(original),
     sessions: asExistingSessions(original),
   });
 
