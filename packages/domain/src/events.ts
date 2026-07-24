@@ -9,6 +9,7 @@ import {
   type SessionExerciseId,
   type SessionId,
   type SetMeasurements,
+  type SetProvenance,
   type SetQualifiers,
   type SupersetGroupId,
   type SupersetRestMode,
@@ -84,6 +85,7 @@ export interface SetLoggedPayload {
   readonly prescriptionSnapshot: SetPrescriptionSnapshot | null;
   readonly exerciseRevisionSnapshot: number;
   readonly comparisonSignature: ComparisonSignature;
+  readonly provenance: SetProvenance | null;
   readonly performedAt: Instant | null;
   readonly localDate: LocalDate;
   readonly tzOffsetMinutes: number;

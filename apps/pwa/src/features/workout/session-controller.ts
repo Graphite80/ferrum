@@ -120,6 +120,7 @@ export async function logSet(input: LoggedSetInput, nowMillis: number): Promise<
           },
           exerciseRevisionSnapshot: 1,
           comparisonSignature: input.slot.comparisonSignature,
+          provenance: null,
           performedAt: instant(nowMillis),
           localDate: toLocalDate({ instant: instant(nowMillis), tzOffsetMinutes: offset }),
           tzOffsetMinutes: offset,

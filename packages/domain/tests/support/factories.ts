@@ -230,6 +230,7 @@ function buildSession(
             prescriptionSnapshot: null,
             exerciseRevisionSnapshot: 1,
             comparisonSignature: signature(exerciseId),
+            provenance: null,
             performedAt: instant(wall),
             localDate: LOCAL_DATE,
             tzOffsetMinutes: 120,

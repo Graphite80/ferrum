@@ -1,0 +1,14 @@
+node_modules
+dist
+coverage
+package-lock.json
+
+# Captured verbatim from the source system. Reformatting would churn the file the
+# domain model is derived from and make diffs against a fresh capture meaningless.
+fixtures
+
+# Real-shaped exports under test: their quoting, delimiters, BOM and line endings
+# are the fixture.
+packages/importers/tests/fixtures
+
+packages/exercise-library/src/generated

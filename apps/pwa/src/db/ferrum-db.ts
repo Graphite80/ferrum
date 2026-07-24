@@ -1,4 +1,4 @@
-import Dexie, { type EntityTable } from 'dexie';
+import { Dexie, type EntityTable } from 'dexie';
 import { type DomainEvent } from '@ferrum/domain';
 
 export interface StoredEvent {
@@ -38,7 +38,11 @@ export class FerrumDb extends Dexie {
   restTimers!: EntityTable<RestTimerRecord, 'sessionId'>;
 
   constructor(name = 'ferrum') {
-    super(name);
+    // Relaxed durability lets the browser acknowledge a transaction before it
+    // reaches disk, trading a power-loss window for 3-30x throughput. A workout
+    // writes roughly forty small events, so strict costs milliseconds we have and
+    // removes one of the few loss modes that server sync cannot repair.
+    super(name, { chromeTransactionDurability: 'strict' });
     this.version(1).stores({
       events: '&eventId, aggregateId, orderKey, acknowledged, [aggregateId+orderKey]',
       snapshots: '&sessionId, updatedAtMillis',
@@ -49,3 +53,27 @@ export class FerrumDb extends Dexie {
 }
 
 export const db = new FerrumDb();
+
+// On iOS a hard IndexedDB failure is a when, not an if: WebKit throws UnknownError
+// on wake-from-background and DatabaseClosedError after the connection is dropped.
+// Treating either as fatal would strand an in-progress workout, so the database is
+// reopened and the caller retried once.
+export async function withDatabaseRecovery<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isRecoverableDatabaseError(error)) throw error;
+    db.close();
+    await db.open();
+    return await operation();
+  }
+}
+
+function isRecoverableDatabaseError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.name === 'DatabaseClosedError' ||
+    error.name === 'UnknownError' ||
+    error.name === 'InvalidStateError'
+  );
+}

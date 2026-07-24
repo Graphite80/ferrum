@@ -28,6 +28,16 @@ export interface SetMeasurements {
   readonly actualRestSeconds: number | null;
 }
 
+// Imported sets must carry where they came from as part of the immutable record,
+// not in a lookup table beside it: a sidecar keyed by set id is a second source of
+// truth that does not survive sync and drifts the first time a row is amended.
+export interface SetProvenance {
+  readonly source: string;
+  readonly sourceRecordId: string;
+  readonly importBatchId: string;
+  readonly originalPayload: unknown;
+}
+
 export interface SetQualifiers {
   readonly tempo: string | null;
   readonly rangeOfMotionNote: string | null;
@@ -54,6 +64,7 @@ export interface WorkoutSet {
   readonly prescriptionSnapshot: SetPrescriptionSnapshot | null;
   readonly exerciseRevisionSnapshot: number;
   readonly comparisonSignature: ComparisonSignature;
+  readonly provenance: SetProvenance | null;
 
   readonly performedAt: Instant | null;
   readonly recordedAt: Instant;

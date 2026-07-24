@@ -277,6 +277,7 @@ function apply(state: MutableState, event: DomainEvent): void {
         prescriptionSnapshot: payload.prescriptionSnapshot,
         exerciseRevisionSnapshot: payload.exerciseRevisionSnapshot,
         comparisonSignature: payload.comparisonSignature,
+        provenance: payload.provenance,
         performedAt: payload.performedAt,
         recordedAt: event.clientCreatedAt,
         localDate: payload.localDate,
