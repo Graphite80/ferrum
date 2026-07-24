@@ -2,11 +2,17 @@ const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const RANDOM_LENGTH = 16;
 const TIME_LENGTH = 10;
 
+function symbolAt(index: number): string {
+  const symbol = CROCKFORD[index];
+  if (symbol === undefined) throw new RangeError(`Crockford index ${String(index)} out of range`);
+  return symbol;
+}
+
 function encodeTime(millis: number): string {
   let remaining = millis;
   let out = '';
   for (let i = 0; i < TIME_LENGTH; i += 1) {
-    out = CROCKFORD[remaining % 32] + out;
+    out = symbolAt(remaining % 32) + out;
     remaining = Math.floor(remaining / 32);
   }
   return out;
@@ -14,7 +20,7 @@ function encodeTime(millis: number): string {
 
 function randomChars(bytes: Uint8Array): string {
   let out = '';
-  for (const byte of bytes) out += CROCKFORD[byte % 32];
+  for (const byte of bytes) out += symbolAt(byte % 32);
   return out;
 }
 
@@ -40,18 +46,15 @@ export class UlidFactory {
 }
 
 function incrementCrockford(value: string): string {
-  const chars = [...value];
-  for (let i = chars.length - 1; i >= 0; i -= 1) {
-    const char = chars[i];
-    if (char === undefined) break;
-    const index = CROCKFORD.indexOf(char);
+  let out = value;
+  for (let i = out.length - 1; i >= 0; i -= 1) {
+    const index = CROCKFORD.indexOf(out.charAt(i));
     if (index < CROCKFORD.length - 1) {
-      chars[i] = CROCKFORD[index + 1] as string;
-      return chars.join('');
+      return out.slice(0, i) + symbolAt(index + 1) + out.slice(i + 1);
     }
-    chars[i] = CROCKFORD[0] as string;
+    out = out.slice(0, i) + symbolAt(0) + out.slice(i + 1);
   }
-  return chars.join('');
+  return out;
 }
 
 export const ulidFactory = new UlidFactory(length =>

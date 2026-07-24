@@ -22,6 +22,17 @@ interface StorageReport {
 
 const TIMER_TARGET_SECONDS = 6 * 60;
 
+// The DOM lib declares these as always present. This page exists precisely to find
+// out what an unfamiliar iOS build actually does, so it treats them as optional and
+// reports their absence rather than throwing on a device we have not seen.
+interface MaybeStorageManager {
+  persisted?: () => Promise<boolean>;
+  persist?: () => Promise<boolean>;
+  estimate?: () => Promise<{ quota?: number; usage?: number }>;
+}
+
+const storageApi: MaybeStorageManager = navigator.storage;
+
 // Spike A from the plan's phase 0. The gate is specific: a 45 minute workout must
 // survive three backgroundings, one force quit and one service worker update
 // without losing a set; the wake lock must hold or re-acquire; and the rest timer
@@ -86,8 +97,8 @@ export function SpikeA() {
   }, [controller, record]);
 
   const inspectStorage = useCallback(async () => {
-    const persisted = (await navigator.storage.persisted?.()) ?? false;
-    const estimate = (await navigator.storage.estimate?.()) ?? {};
+    const persisted = (await storageApi.persisted?.()) ?? false;
+    const estimate = (await storageApi.estimate?.()) ?? {};
     setStorage({
       persisted,
       persistRequested: null,
@@ -149,7 +160,7 @@ export function SpikeA() {
           className="tap-target mt-2 w-full rounded-lg border border-edge"
           onClick={() => {
             void (async () => {
-              const granted = (await navigator.storage.persist?.()) ?? false;
+              const granted = (await storageApi.persist?.()) ?? false;
               record('storage.persist', `granted=${String(granted)}`);
               await inspectStorage();
             })();

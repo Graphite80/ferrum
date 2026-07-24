@@ -406,7 +406,7 @@ function mergeDefined<T extends object>(
     defined[key] = value;
     changedFields.push(`${prefix}.${key}`);
   }
-  return { ...base, ...defined } as T;
+  return { ...base, ...defined };
 }
 
 function markAmendedIfFinished(state: MutableState): void {
