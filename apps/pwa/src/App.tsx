@@ -20,10 +20,19 @@ import {
 import { SEED_ROUTINE, type RoutineSlot } from './features/workout/routine.ts';
 import { SetRow } from './features/workout/SetRow.tsx';
 import { WakeLockController, type WakeLockState } from './platform/wake-lock.ts';
+import { SpikeA } from './features/spike/SpikeA.tsx';
 
 type Screen = { name: 'home' } | { name: 'workout'; sessionId: SessionId } | { name: 'history' };
 
+// Reached at /#spike on the device under test; it is diagnostics, not a feature,
+// so it deliberately has no entry point in the normal navigation. Split at the top
+// so the two trees never share a hook order.
 export function App() {
+  if (window.location.hash === '#spike') return <SpikeA />;
+  return <WorkoutApp />;
+}
+
+function WorkoutApp() {
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
   const [booted, setBooted] = useState(false);
 
