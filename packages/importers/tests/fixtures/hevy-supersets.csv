@@ -1,0 +1,6 @@
+title,start_time,end_time,description,exercise_title,superset_id,exercise_notes,set_index,set_type,weight_kg,reps,distance_km,duration_seconds,rpe
+Superset Day,"5 Dec 2025, 07:00","5 Dec 2025, 07:45",,Bicep Curl (Barbell),1,,0,normal,30,12,,,7
+Superset Day,"5 Dec 2025, 07:00","5 Dec 2025, 07:45",,Bicep Curl (Barbell),1,,1,normal,30,12,,,8
+Superset Day,"5 Dec 2025, 07:00","5 Dec 2025, 07:45",,Triceps Pushdown,1,,0,normal,25,15,,,7
+Superset Day,"5 Dec 2025, 07:00","5 Dec 2025, 07:45",,Triceps Pushdown,1,,1,normal,25,15,,,8
+Superset Day,"5 Dec 2025, 07:00","5 Dec 2025, 07:45",,Lat Pulldown (Cable),,,0,normal,60,10,,,8

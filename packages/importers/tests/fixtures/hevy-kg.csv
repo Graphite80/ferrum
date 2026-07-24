@@ -1,0 +1,6 @@
+﻿title,start_time,end_time,description,exercise_title,superset_id,exercise_notes,set_index,set_type,weight_kg,reps,distance_km,duration_seconds,rpe
+Evening Workout,"5 Dec 2025, 11:37","5 Dec 2025, 12:41",Felt strong,Bench Press (Barbell),,,0,warmup,40,10,,,
+Evening Workout,"5 Dec 2025, 11:37","5 Dec 2025, 12:41",Felt strong,Bench Press (Barbell),,"Paused reps, top set",1,normal,80,8,,,8
+Evening Workout,"5 Dec 2025, 11:37","5 Dec 2025, 12:41",Felt strong,Bench Press (Barbell),,,2,failure,80,6,,,10
+Evening Workout,"5 Dec 2025, 11:37","5 Dec 2025, 12:41",Felt strong,Push Up,,,0,normal,,15,,,
+Evening Workout,"5 Dec 2025, 11:37","5 Dec 2025, 12:41",Felt strong,Plank,,,0,normal,,,,60,

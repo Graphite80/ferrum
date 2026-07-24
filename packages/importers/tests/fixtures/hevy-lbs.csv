@@ -1,0 +1,4 @@
+title,start_time,end_time,description,exercise_title,superset_id,exercise_notes,set_index,set_type,weight_lbs,reps,distance_miles,duration_seconds,rpe
+Morning Lift,"Jun 3, 2026, 4:13 PM","Jun 3, 2026, 5:02 PM",,Squat (Barbell),,,0,warmup,135,5,,,
+Morning Lift,"Jun 3, 2026, 4:13 PM","Jun 3, 2026, 5:02 PM",,Squat (Barbell),,,1,normal,225,5,,,8
+Morning Lift,"Jun 3, 2026, 4:13 PM","Jun 3, 2026, 5:02 PM",,Treadmill,,,0,normal,,,1.5,900,
