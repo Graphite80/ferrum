@@ -206,6 +206,28 @@ cannot quietly go vacuous again.
 
 ---
 
+### 8a. One clock per device, not per tab
+
+The device id and the HLC's `(wallMillis, counter)` live in IndexedDB, and `appendEvents` reads
+them, advances them and writes the new events inside a **single read-write transaction**.
+
+This is load-bearing, not incidental. The common failure in browser HLC implementations is giving
+each tab its own node id: two tabs then produce concurrent events that never order against each
+other, and the devices believe they are synced while holding different data — silent divergence
+behind a green indicator. Sharing the id through IndexedDB and bumping the clock inside the same
+transaction that appends the events makes the browser serialise it for us.
+
+Consequences to preserve:
+
+- never derive a node id per tab, per page load, or from anything in memory
+- never read the clock outside the transaction that will use it
+- the node id must stay free of the separator used by `encodeHlc` (`:`)
+
+**Enforced by** `apps/pwa/src/db/event-store.ts` and asserted by
+`apps/pwa/tests/e2e/multi-tab.spec.ts`, which drives two real tabs against one IndexedDB and
+checks that both see the same log, that every event id and order key is unique, that exactly one
+device id appears, and that the order keys are strictly increasing.
+
 ## 9. Prescription snapshots
 
 A `SetPrescriptionSnapshot` is taken when the session starts and is immutable thereafter. It
