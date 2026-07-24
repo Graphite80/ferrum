@@ -1,0 +1,98 @@
+minimum_pre_commit_version: '3.7.0'
+default_stages: [pre-commit]
+default_language_version:
+  node: 22.22.0
+fail_fast: false
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: check-json
+      - id: check-yaml
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: 'Prettier (code formatter)'
+        entry: npx --no-install prettier --write --ignore-unknown
+        language: system
+        types_or: [javascript, jsx, ts, tsx, css, markdown, yaml, json]
+        exclude: ^(package-lock\.json|fixtures/)
+
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.48.0
+    hooks:
+      - id: markdownlint
+        args: [--fix, --config, .markdownlint.yaml]
+        exclude: '^(CORRECTNESS|LEVERAGE|RESILIENCE|TESTS|UX|QA)\.md$'
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.2
+    hooks:
+      - id: codespell
+        args:
+          - --ignore-words-list=afterall,beforeall,aftereach,beforeeach,ser,nd,rir,rpe,mai
+          - --skip=package-lock.json,node_modules,dist,fixtures
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        args:
+          - -d
+          - >-
+            {extends: default,
+            rules: {line-length: {max: 120},
+            document-start: disable,
+            indentation: disable,
+            comments: disable}}
+
+  - repo: local
+    hooks:
+      - id: tsc
+        name: 'TypeScript type check'
+        entry: npm run type-check
+        language: system
+        files: ^(packages|apps)/.*\.(ts|tsx)$
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: eslint
+        name: 'ESLint'
+        entry: npx --no-install eslint --fix --no-warn-ignored
+        language: system
+        files: ^(packages|apps)/.*\.(ts|tsx)$
+        exclude: (tests/|\.test\.|\.spec\.|\.config\.)
+        pass_filenames: true
+        stages: [pre-push]
+
+      - id: vitest
+        name: 'Domain tests (incl. replay determinism)'
+        entry: npm run test
+        language: system
+        files: ^packages/.*\.(ts)$
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: commitlint
+        name: 'Commitlint (conventional commits)'
+        entry: npx --no-install commitlint --edit
+        language: system
+        stages: [commit-msg]
+        always_run: true

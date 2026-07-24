@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node", "vite/client"],
+    "paths": {
+      "@ferrum/domain": ["./packages/domain/src/index.ts"],
+      "@ferrum/domain/*": ["./packages/domain/src/*"],
+      "@ferrum/exercise-library": ["./packages/exercise-library/src/index.ts"],
+      "@ferrum/importers": ["./packages/importers/src/index.ts"],
+      "@ferrum/progression-engine": ["./packages/progression-engine/src/index.ts"],
+      "@/*": ["./apps/pwa/src/*"]
+    }
+  },
+  "include": ["packages/*/src/**/*", "packages/*/tests/**/*", "apps/pwa/src/**/*"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules"]
+}

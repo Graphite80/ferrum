@@ -1,0 +1,45 @@
+{
+  "name": "ferrum",
+  "version": "0.0.0-placeholder",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "cd apps/pwa && npm run dev",
+    "build": "npm run type-check && cd apps/pwa && npm run build",
+    "type-check": "tsc --noEmit -p tsconfig.json",
+    "lint": "prettier --check .",
+    "lint:js": "eslint packages apps",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "cd apps/pwa && npm run test:e2e",
+    "pre-commit": "pre-commit run --all-files",
+    "prepare": "command -v pre-commit >/dev/null 2>&1 && (pre-commit install && pre-commit install --hook-type commit-msg) || true"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.1.0",
+    "@commitlint/config-conventional": "^21.0.2",
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^26.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.62.0",
+    "@typescript-eslint/parser": "^8.62.0",
+    "@vitest/coverage-v8": "^4.1.2",
+    "eslint": "^9.39.4",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-boundaries": "^6.0.2",
+    "eslint-plugin-import": "^2.32.0",
+    "fast-check": "^4.7.0",
+    "globals": "^17.7.0",
+    "prettier": "^3.8.5",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9",
+    "yaml": "^2.9.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

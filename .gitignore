@@ -1,0 +1,26 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+.DS_Store
+.vscode/
+.idea/
+
+apps/pwa/dev-dist/
+apps/pwa/playwright-report/
+apps/pwa/test-results/
+
+.claude/settings.local.json
+
+# Machine-generated review findings (see workspace CLAUDE.md review-* skills)
+SECURITY.md
+SECURITY_AUDIT.md
+
+# Prevent known monorepo directory pollution (specific paths only).
+# Add new paths here as they appear, do not use broad wildcards.
+packages/exercise-library/src/generated/
