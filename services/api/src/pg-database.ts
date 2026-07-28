@@ -29,12 +29,18 @@ export function pgDatabase(pool: Pool): Database {
         await client.query('begin');
         const result = await fn(runnerFor(client));
         await client.query('commit');
+        client.release();
         return result;
       } catch (error) {
-        await client.query('rollback');
+        try {
+          await client.query('rollback');
+          client.release();
+        } catch {
+          // The connection is in an unknown state; destroy it instead of
+          // recycling a session PgBouncer still considers mid-transaction.
+          client.release(error instanceof Error ? error : new Error(String(error)));
+        }
         throw error;
-      } finally {
-        client.release();
       }
     },
   };

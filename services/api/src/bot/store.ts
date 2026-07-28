@@ -51,6 +51,25 @@ export async function upsertChat(db: Database, tgChatId: number, userId: string)
   );
 }
 
+export async function chatTzOffsetMinutes(db: Database, tgChatId: number): Promise<number> {
+  const result = await db.query(
+    'select tz_offset_minutes from telegram_chats where tg_chat_id = $1',
+    [tgChatId]
+  );
+  return Number(result.rows[0]?.tz_offset_minutes ?? 0);
+}
+
+export async function setChatTzOffsetMinutes(
+  db: Database,
+  tgChatId: number,
+  offsetMinutes: number
+): Promise<void> {
+  await db.query('update telegram_chats set tz_offset_minutes = $2 where tg_chat_id = $1', [
+    tgChatId,
+    offsetMinutes,
+  ]);
+}
+
 export async function userForChat(db: Database, tgChatId: number): Promise<string | null> {
   const found = await db.query('select user_id from telegram_chats where tg_chat_id = $1', [
     tgChatId,

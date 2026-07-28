@@ -1,5 +1,6 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { Hono, type MiddlewareHandler } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import { webhookCallback, type Bot } from 'grammy';
 import {
@@ -22,23 +23,61 @@ export interface TelegramMount {
 export interface AppOptions {
   readonly db: Database;
   readonly enableDevRoutes: boolean;
+  readonly bootstrapKey?: string;
   readonly telegram?: TelegramMount;
+}
+
+// Bearer tokens are stored hashed: a read of the auth_tokens table must not be
+// a read of every user's credential.
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
 }
 
 type AppEnv = { Variables: { userId: string } };
 
-export function createApp({ db, enableDevRoutes, telegram }: AppOptions): Hono<AppEnv> {
+export function createApp({
+  db,
+  enableDevRoutes,
+  bootstrapKey,
+  telegram,
+}: AppOptions): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
   app.get('/health', c => c.json({ ok: true }));
 
+  app.get('/ready', async c => {
+    try {
+      await db.query('select 1');
+      return c.json({ ready: true });
+    } catch {
+      return c.json({ ready: false }, 503);
+    }
+  });
+
+  const mintToken = async (): Promise<{ userId: string; token: string }> => {
+    const created = await db.query('insert into users default values returning id');
+    const userId = String(created.rows[0]?.id);
+    const token = randomUUID();
+    await db.query('insert into auth_tokens (token_hash, user_id) values ($1, $2)', [
+      hashToken(token),
+      userId,
+    ]);
+    return { userId, token };
+  };
+
   if (enableDevRoutes) {
-    app.post('/dev/token', async c => {
-      const created = await db.query('insert into users default values returning id');
-      const userId = String(created.rows[0]?.id);
-      const token = randomUUID();
-      await db.query('insert into auth_tokens (token, user_id) values ($1, $2)', [token, userId]);
-      return c.json({ userId, token });
+    app.post('/dev/token', async c => c.json(await mintToken()));
+  }
+
+  if (bootstrapKey !== undefined) {
+    app.post('/auth/bootstrap', async c => {
+      const presented = c.req.header('x-bootstrap-key') ?? '';
+      const expected = Buffer.from(bootstrapKey);
+      const actual = Buffer.from(presented);
+      if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+        return c.json({ error: 'unauthorized' }, 401);
+      }
+      return c.json(await mintToken());
     });
   }
 
@@ -49,7 +88,9 @@ export function createApp({ db, enableDevRoutes, telegram }: AppOptions): Hono<A
     }
     const token = header.slice('bearer '.length).trim();
     if (token.length === 0) return c.json({ error: 'unauthorized' }, 401);
-    const found = await db.query('select user_id from auth_tokens where token = $1', [token]);
+    const found = await db.query('select user_id from auth_tokens where token_hash = $1', [
+      hashToken(token),
+    ]);
     const row = found.rows[0];
     if (row === undefined) return c.json({ error: 'unauthorized' }, 401);
     c.set('userId', String(row.user_id));
@@ -62,6 +103,7 @@ export function createApp({ db, enableDevRoutes, telegram }: AppOptions): Hono<A
   app.use('/sync/*', cors());
   app.use('/sync/*', requireAuth);
   app.use('/link/*', requireAuth);
+  app.use('/sync/push', bodyLimit({ maxSize: 5 * 1024 * 1024 }));
 
   app.post('/sync/push', async c => {
     let body: unknown;
@@ -111,6 +153,11 @@ export function createApp({ db, enableDevRoutes, telegram }: AppOptions): Hono<A
   if (telegram !== undefined) {
     const handleUpdate = webhookCallback(telegram.bot, 'hono', {
       secretToken: telegram.webhookSecret,
+      // 'return' instead of the default 'throw': a slow import must not become
+      // a 500 that makes Telegram redeliver the same update while the first
+      // attempt is still running.
+      timeoutMilliseconds: 55_000,
+      onTimeout: 'return',
     });
     app.post('/telegram/webhook', c => handleUpdate(c));
   }

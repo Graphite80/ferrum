@@ -106,6 +106,10 @@ export class FerrumDb extends Dexie {
       settings: '&key',
       meta: '&key',
     });
+    this.version(3).stores({
+      events:
+        '&eventId, aggregateId, orderKey, acknowledged, [aggregateId+orderKey], [acknowledged+orderKey]',
+    });
   }
 }
 

@@ -8,6 +8,7 @@ import {
 } from '@ferrum/domain';
 import {
   PULL_MAX_LIMIT,
+  PUSH_MAX_EVENTS,
   type PullRequest,
   type PullResponse,
   type PushRequest,
@@ -255,6 +256,13 @@ export function parsePushRequest(json: unknown): PushRequest | ProtocolError {
 
   if (!Array.isArray(record.events)) {
     return protocolError('invalid_field', 'pushRequest.events', 'Expected an array of events');
+  }
+  if (record.events.length > PUSH_MAX_EVENTS) {
+    return protocolError(
+      'invalid_field',
+      'pushRequest.events',
+      `A push carries at most ${String(PUSH_MAX_EVENTS)} events`
+    );
   }
 
   const events: DomainEvent[] = [];

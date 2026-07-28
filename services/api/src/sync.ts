@@ -35,6 +35,10 @@ export async function pushBatch(
   nowMillis: number
 ): Promise<PushResponse> {
   const nodeId = serverNodeId(userId);
+  // SET LOCAL scopes to this transaction, so it survives PgBouncer transaction
+  // pooling; a wedged push must not hold the device_clocks lock forever.
+  await tx.exec("set local statement_timeout = '30s'");
+  await tx.exec("set local idle_in_transaction_session_timeout = '60s'");
   await tx.query(
     `insert into device_clocks (user_id, device_id, wall_millis, counter)
      values ($1, $2, 0, 0)
@@ -106,9 +110,19 @@ export async function pushBatch(
   return { accepted, duplicates, cursor: Number(cursorResult.rows[0]?.cursor) };
 }
 
+export const USER_EVENTS_HARD_CAP = 100_000;
+
+export class EventLogTooLargeError extends Error {
+  constructor(readonly cap: number) {
+    super(`Event log exceeds ${String(cap)} events`);
+    this.name = 'EventLogTooLargeError';
+  }
+}
+
 export async function loadUserEvents(
   db: QueryRunner,
-  userId: string
+  userId: string,
+  cap: number = USER_EVENTS_HARD_CAP
 ): Promise<readonly DomainEvent[]> {
   const result = await db.query(
     `select event_id, aggregate_id, user_id, device_id, event_type, schema_version, hlc, payload,
@@ -117,9 +131,13 @@ export async function loadUserEvents(
             server_sequence
      from events
      where user_id = $1
-     order by server_sequence`,
-    [userId]
+     order by server_sequence
+     limit $2`,
+    [userId, cap + 1]
   );
+  if (result.rows.length > cap) {
+    throw new EventLogTooLargeError(cap);
+  }
   return result.rows.map(rowToEvent);
 }
 

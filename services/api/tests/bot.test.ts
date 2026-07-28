@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
@@ -225,9 +226,10 @@ async function chatUser(tgChatId: number): Promise<string> {
 
 async function authTokenFor(userId: string): Promise<string> {
   const token = `test-token-${userId}`;
+  const tokenHash = createHash('sha256').update(token).digest('hex');
   await db.query(
-    'insert into auth_tokens (token, user_id) values ($1, $2) on conflict (token) do nothing',
-    [token, userId]
+    'insert into auth_tokens (token_hash, user_id) values ($1, $2) on conflict (token_hash) do nothing',
+    [tokenHash, userId]
   );
   return token;
 }

@@ -160,7 +160,12 @@ async function pushAll(config: { serverUrl: string; syncToken: string }): Promis
       method: 'POST',
       body: JSON.stringify(request),
     });
-    if (response.status === 409) throw new ClockDriftSyncError(batch.length);
+    if (response.status === 409) {
+      const body = (await response.json().catch(() => null)) as {
+        driftedEventIds?: readonly string[];
+      } | null;
+      throw new ClockDriftSyncError(body?.driftedEventIds?.length ?? batch.length);
+    }
     if (!response.ok) throw new Error(`push failed with status ${response.status}`);
     const parsed = parsePushResponse((await response.json()) as unknown);
     if (isProtocolError(parsed)) throw new Error(parsed.message);
@@ -184,11 +189,13 @@ async function pullAll(config: { serverUrl: string; syncToken: string }): Promis
     if (!response.ok) throw new Error(`pull failed with status ${response.status}`);
     const parsed = parsePullResponse((await response.json()) as unknown);
     if (isProtocolError(parsed)) throw new Error(parsed.message);
-    await withDatabaseRecovery(() => importRemoteEvents(parsed.events));
-    cursor = parsed.cursor;
+    await withDatabaseRecovery(() => importRemoteEvents(parsed.events, Date.now()));
+    // A server restored from backup (or a wrong URL) can hand back a smaller
+    // cursor; regressing ours would re-pull the same pages forever.
+    cursor = Math.max(cursor, parsed.cursor);
     await saveSyncState({ cursor });
     publish({ cursor });
-    if (!parsed.hasMore) return;
+    if (!parsed.hasMore || parsed.events.length === 0) return;
   }
 }
 
@@ -201,14 +208,14 @@ function scheduleRetry(delayMillis: number): void {
 }
 
 async function runCycle(): Promise<void> {
-  const config = await loadSyncConfig();
-  if (config.serverUrl === null || config.syncToken === null) {
-    publish({ configured: false, syncing: false });
-    return;
-  }
-  const target = { serverUrl: config.serverUrl, syncToken: config.syncToken };
-  publish({ configured: true, syncing: true });
   try {
+    const config = await withDatabaseRecovery(() => loadSyncConfig());
+    if (config.serverUrl === null || config.syncToken === null) {
+      publish({ configured: false, syncing: false });
+      return;
+    }
+    const target = { serverUrl: config.serverUrl, syncToken: config.syncToken };
+    publish({ configured: true, syncing: true });
     await pushAll(target);
     await pullAll(target);
     failureCount = 0;
@@ -222,7 +229,10 @@ async function runCycle(): Promise<void> {
       pendingCount: await unacknowledgedCount(),
     });
   } catch (error) {
-    const pendingCount = await unacknowledgedCount().catch(() => status.pendingCount);
+    const pendingCount = await unacknowledgedCount().catch((countError: unknown) => {
+      console.error('pending count read failed', countError);
+      return status.pendingCount;
+    });
     if (error instanceof ClockDriftSyncError) {
       lastDriftAtMillis = Date.now();
       await saveSyncState({ driftMessage: error.message });
@@ -233,7 +243,10 @@ async function runCycle(): Promise<void> {
     failureCount += 1;
     const message = error instanceof Error ? error.message : String(error);
     publish({ syncing: false, lastError: message, pendingCount });
-    scheduleRetry(Math.min(BACKOFF_BASE_MILLIS * 2 ** (failureCount - 1), BACKOFF_CAP_MILLIS));
+    // Jitter keeps a fleet of devices that failed together from retrying in
+    // lockstep against a single replica the moment it recovers.
+    const backoff = Math.min(BACKOFF_BASE_MILLIS * 2 ** (failureCount - 1), BACKOFF_CAP_MILLIS);
+    scheduleRetry(backoff * (0.5 + Math.random() * 0.5));
   }
 }
 
@@ -253,6 +266,10 @@ export function requestSync(trigger: SyncTrigger): void {
     retryTimer = null;
     failureCount = 0;
   }
+  // An armed backoff owns the schedule: ambient triggers (visibility, online,
+  // append) must not turn every app switch into an immediate hammer while the
+  // server is down. Manual and the retry timer itself still pass.
+  if (retryTimer !== null && trigger !== 'manual' && trigger !== 'retry') return;
   cycleInFlight = true;
   void runCycle().finally(() => {
     cycleInFlight = false;

@@ -20,7 +20,7 @@ import {
 } from '@ferrum/importers';
 import { toWireEvent } from '@ferrum/sync-protocol';
 import { type Database } from '../db.ts';
-import { loadUserEvents } from '../sync.ts';
+import { EventLogTooLargeError, loadUserEvents } from '../sync.ts';
 import { latestFinishedSession } from './history.ts';
 import { importForUser, type BotImportOutcome } from './imports.ts';
 import { nextForExercise } from './next.ts';
@@ -34,9 +34,11 @@ import {
 import { parseShorthand } from './shorthand.ts';
 import {
   bindTelegramIdentity,
+  chatTzOffsetMinutes,
   consumeLinkToken,
   deletePending,
   findOrCreateTelegramUser,
+  setChatTzOffsetMinutes,
   loadPending,
   savePending,
   upsertChat,
@@ -58,6 +60,7 @@ const WELCOME = [
   '/summary — your last finished workout',
   '/next <exercise> — what to do next for that exercise',
   '/export — your full event log as a JSON file',
+  '/tz +3 — set your UTC offset so sets land on your local day',
   'Send a Hevy or Strong CSV export to import your history.',
   'Type sets like "bench press 100x5 @2" (one per line) to log them.',
 ].join('\n');
@@ -74,10 +77,22 @@ export function createTelegramBot(options: TelegramBotOptions): Bot {
     options.botInfo === undefined ? undefined : { botInfo: options.botInfo }
   );
   bot.api.config.use(autoRetry());
+  // Without a catch-all, a handler error becomes a webhook 500 and Telegram
+  // redelivers the update — a retry storm against whatever just failed.
+  bot.catch(error => {
+    if (error.error instanceof EventLogTooLargeError) {
+      void error.ctx.reply('This history is too large to process over chat; use the app for it.');
+      return;
+    }
+    console.error('telegram handler error', error);
+  });
 
+  // Everything is private-chat only: in a group, commands and callback taps
+  // arrive from ANY member, and authorizing on chat id would let one member
+  // read or write another member's training log.
   async function requireUser(ctx: Context): Promise<string | null> {
-    const chatId = ctx.chat?.id;
-    if (chatId == null) return null;
+    if (ctx.chat?.type !== 'private') return null;
+    const chatId = ctx.chat.id;
     const userId = await userForChat(db, chatId);
     if (userId == null) await ctx.reply('Send /start first, then try again.');
     return userId;
@@ -87,6 +102,10 @@ export function createTelegramBot(options: TelegramBotOptions): Bot {
     const from = ctx.from;
     const chatId = ctx.chat.id;
     if (from === undefined) return;
+    if (ctx.chat.type !== 'private') {
+      await ctx.reply('Ferrum works in a private chat only. Message me directly.');
+      return;
+    }
     const payload = ctx.match.trim();
     if (payload.length > 0) {
       const linkedUserId = await consumeLinkToken(db, payload);
@@ -104,6 +123,20 @@ export function createTelegramBot(options: TelegramBotOptions): Bot {
     const userId = await findOrCreateTelegramUser(db, String(from.id));
     await upsertChat(db, chatId, userId);
     await ctx.reply(WELCOME);
+  });
+
+  bot.command('tz', async ctx => {
+    const userId = await requireUser(ctx);
+    if (userId == null) return;
+    const offset = parseTzOffset(ctx.match.trim());
+    if (offset == null) {
+      await ctx.reply('Usage: /tz <UTC offset>, e.g. /tz +3, /tz -4, /tz +5:30');
+      return;
+    }
+    await setChatTzOffsetMinutes(db, ctx.chat.id, offset);
+    await ctx.reply(
+      `Timezone set to UTC${formatTzOffset(offset)}. Logged sets now land on your local day.`
+    );
   });
 
   bot.command('summary', async ctx => {
@@ -187,10 +220,25 @@ export function createTelegramBot(options: TelegramBotOptions): Bot {
       await ctx.reply('Telegram returned no download path for that file; please resend it.');
       return;
     }
-    const response = await fetch(`${fileApiRoot}/file/bot${token}/${filePath}`);
+    if (file.file_size != null && file.file_size > MAX_IMPORT_FILE_BYTES) {
+      await ctx.reply(
+        'That file is larger than 10 MB, which no workout CSV export is. Refusing to download it.'
+      );
+      return;
+    }
+    const response = await fetch(`${fileApiRoot}/file/bot${token}/${filePath}`, {
+      signal: AbortSignal.timeout(15_000),
+    });
     if (!response.ok) {
       await ctx.reply(
         `Downloading the file failed with status ${response.status}; please resend it.`
+      );
+      return;
+    }
+    const contentLength = Number(response.headers.get('content-length') ?? '0');
+    if (contentLength > MAX_IMPORT_FILE_BYTES) {
+      await ctx.reply(
+        'That file is larger than 10 MB, which no workout CSV export is. Refusing to download it.'
       );
       return;
     }
@@ -234,12 +282,13 @@ export function createTelegramBot(options: TelegramBotOptions): Bot {
       return;
     }
 
+    const tzOffsetMinutes = await chatTzOffsetMinutes(db, ctx.chat.id);
     const pending: PendingShorthand = {
       kind: 'shorthand',
       messageId: ctx.message.message_id,
       chatId: ctx.chat.id,
-      date: utcDayOf(ctx.message.date),
-      tzOffsetMinutes: 0,
+      date: localDayOf(ctx.message.date, tzOffsetMinutes),
+      tzOffsetMinutes,
       lines: parsed.lines,
       overrides: {},
     };
@@ -249,7 +298,7 @@ export function createTelegramBot(options: TelegramBotOptions): Bot {
   bot.on('callback_query:data', async ctx => {
     const [verb, pendingId, ...rest] = ctx.callbackQuery.data.split(':');
     const chatId = ctx.chatId;
-    if (verb == null || pendingId == null || chatId == null) {
+    if (verb == null || pendingId == null || chatId == null || ctx.chat?.type !== 'private') {
       await ctx.answerCallbackQuery();
       return;
     }
@@ -346,9 +395,12 @@ export function createTelegramBot(options: TelegramBotOptions): Bot {
       lines: pending.lines,
     });
     const outcome = await importForUser(db, userId, extraction, pendingResolver(pending.overrides));
-    await deletePending(db, pendingId);
-    await ctx.editMessageText(importReply(outcome), { parse_mode: 'HTML' });
+    // Ack first — the button must stop spinning even if the edit below fails
+    // (message too old, already edited); delete the pending row only after the
+    // edit lands so a redelivered callback can still resolve it.
     await ctx.answerCallbackQuery({ text: 'Logged.' });
+    await ctx.editMessageText(importReply(outcome), { parse_mode: 'HTML' });
+    await deletePending(db, pendingId);
   }
 
   function pendingResolver(overrides: Readonly<Record<string, string>>): ExerciseResolver {
@@ -399,7 +451,8 @@ function detectAndExtract(text: string): SourceExtraction | null {
   let header: readonly string[];
   try {
     header = readHeader(text, sniffDelimiter(text));
-  } catch {
+  } catch (error) {
+    console.error('import header sniff failed', error);
     return null;
   }
   if (looksLikeHevyExport(header)) return extractHevy(text);
@@ -432,6 +485,24 @@ function assumingLine(assuming: string | null): string {
   return assuming == null ? '' : `Assuming you mean ${assuming}.\n`;
 }
 
-function utcDayOf(unixSeconds: number): string {
-  return new Date(unixSeconds * 1000).toISOString().slice(0, 10);
+function localDayOf(unixSeconds: number, tzOffsetMinutes: number): string {
+  return new Date((unixSeconds + tzOffsetMinutes * 60) * 1000).toISOString().slice(0, 10);
+}
+
+function parseTzOffset(raw: string): number | null {
+  const match = /^([+-]?)(\d{1,2})(?::(\d{2}))?$/.exec(raw);
+  if (match == null) return null;
+  const hours = Number(match[2]);
+  const minutes = Number(match[3] ?? '0');
+  if (hours > 14 || minutes > 59) return null;
+  const total = hours * 60 + minutes;
+  return match[1] === '-' ? -total : total;
+}
+
+function formatTzOffset(offsetMinutes: number): string {
+  const sign = offsetMinutes < 0 ? '-' : '+';
+  const absolute = Math.abs(offsetMinutes);
+  const hours = String(Math.floor(absolute / 60));
+  const minutes = absolute % 60;
+  return minutes === 0 ? `${sign}${hours}` : `${sign}${hours}:${String(minutes).padStart(2, '0')}`;
 }

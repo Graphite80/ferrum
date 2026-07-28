@@ -1,4 +1,5 @@
 import {
+  ClockDriftError,
   type DomainEvent,
   type DomainEventPayloadMap,
   type DomainEventType,
@@ -8,6 +9,7 @@ import {
   eventOrderKey,
   instant,
   projectSession,
+  receive,
   tick,
 } from '@ferrum/domain';
 import { db, type StoredEvent } from './ferrum-db.ts';
@@ -105,9 +107,11 @@ export async function appendEvents(
 }
 
 export async function unacknowledgedBatch(limit: number): Promise<StoredEvent[]> {
-  const rows = await db.events.where('acknowledged').equals(0).toArray();
-  rows.sort((a, b) => (a.orderKey < b.orderKey ? -1 : a.orderKey > b.orderKey ? 1 : 0));
-  return rows.slice(0, limit);
+  return db.events
+    .where('[acknowledged+orderKey]')
+    .between([0, ''], [1, ''], true, false)
+    .limit(limit)
+    .toArray();
 }
 
 export async function markAcknowledged(eventIds: readonly string[]): Promise<void> {
@@ -119,10 +123,16 @@ export async function markAcknowledged(eventIds: readonly string[]): Promise<voi
 
 // Foreign events already carry their envelopes — HLC, device id, event id — and
 // re-stamping any of it would fork the total order between replicas. They land
-// acknowledged: the server is where they came from.
-export async function importRemoteEvents(envelopes: readonly DomainEvent[]): Promise<number> {
+// acknowledged: the server is where they came from. The local clock must fold
+// in every imported HLC: an edit stamped by a device whose clock trails a
+// remote event would otherwise sort before the set it amends — on every
+// replica, permanently.
+export async function importRemoteEvents(
+  envelopes: readonly DomainEvent[],
+  nowMillis: number
+): Promise<number> {
   if (envelopes.length === 0) return 0;
-  const fresh = await db.transaction('rw', db.events, async () => {
+  const fresh = await db.transaction('rw', db.events, db.device, async () => {
     const existing = await db.events.bulkGet(envelopes.map(envelope => envelope.eventId));
     const unseen = envelopes.filter((_, index) => existing[index] === undefined);
     await db.events.bulkAdd(
@@ -134,6 +144,34 @@ export async function importRemoteEvents(envelopes: readonly DomainEvent[]): Pro
         envelope,
       }))
     );
+
+    if (unseen.length > 0) {
+      const record = (await db.device.get('device')) ?? {
+        key: 'device' as const,
+        deviceId: newDeviceId(),
+        hlcWallMillis: 0,
+        hlcCounter: 0,
+      };
+      let clock = {
+        wallMillis: record.hlcWallMillis,
+        counter: record.hlcCounter,
+        nodeId: record.deviceId,
+      };
+      for (const envelope of unseen) {
+        try {
+          clock = receive(clock, envelope.hlc, nowMillis);
+        } catch (error) {
+          if (!(error instanceof ClockDriftError)) throw error;
+          console.error('remote event clock too far ahead, not folding', envelope.eventId, error);
+        }
+      }
+      await db.device.put({
+        key: 'device',
+        deviceId: record.deviceId,
+        hlcWallMillis: clock.wallMillis,
+        hlcCounter: clock.counter,
+      });
+    }
     return unseen;
   });
   const aggregateIds = new Set(fresh.map(envelope => envelope.aggregateId));

@@ -17,6 +17,10 @@ export async function migrate(db: Database): Promise<void> {
     }
     const sql = await readFile(path.join(migrationsDir, name), 'utf8');
     await db.transaction(async tx => {
+      // Transaction-scoped advisory lock: two pods booting together must not
+      // race the same file. The _xact_ variant releases at commit, which keeps
+      // it safe under PgBouncer transaction pooling.
+      await tx.query('select pg_advisory_xact_lock($1)', [872364]);
       const applied = await tx.query('select version from schema_migrations where version = $1', [
         version,
       ]);

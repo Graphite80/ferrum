@@ -1,6 +1,7 @@
 import { dedupeEvents, sortEvents, type DomainEvent } from '@ferrum/domain';
 
 export const PULL_DEFAULT_LIMIT = 500;
+export const PUSH_MAX_EVENTS = 1000;
 export const PULL_MAX_LIMIT = 1000;
 
 export interface PushRequest {

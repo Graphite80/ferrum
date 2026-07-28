@@ -77,6 +77,7 @@ export function HomeScreen({
                     {slot.sets} × {slot.targetRepMin}–{slot.targetRepMax}
                     {slot.targetLoadKg != null &&
                       ` @ ${formatLoad(kilograms(slot.targetLoadKg), unit)}`}
+                    {` · RIR ${String(slot.targetRirMin)}–${String(slot.targetRirMax)}`}
                   </span>
                 </li>
               ))}

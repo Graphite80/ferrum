@@ -24,4 +24,5 @@ COPY --from=builder /app/apps/pwa/dist ./public
 ENV STATIC_DIR=./public
 ENV PORT=3000
 EXPOSE 3000
-CMD ["npx", "tsx", "services/api/src/main.ts"]
+USER node
+CMD ["node_modules/.bin/tsx", "services/api/src/main.ts"]
