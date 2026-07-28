@@ -13,7 +13,7 @@ import { loadSession, subscribe } from '../../db/event-store.ts';
 import { type RestTimerRecord, type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 import { type LastPerformance, lastPerformances } from '../../db/history.ts';
 import { WakeLockController, type WakeLockState } from '../../platform/wake-lock.ts';
-import { loadSessionPlan } from '../routines/routine-store.ts';
+import { loadSessionPlan } from '../../data/routine-store.ts';
 import { planExercise } from './exercise-plan.ts';
 import { ExerciseSearchPanel } from './ExerciseSearchPanel.tsx';
 import { ExerciseSection } from './ExerciseSection.tsx';
@@ -23,7 +23,7 @@ import {
   loadRestTimer,
   startRestTimer,
   viewTimer,
-} from './rest-timer.ts';
+} from '../../data/rest-timer.ts';
 import {
   addExercise,
   amendSet,
@@ -32,7 +32,7 @@ import {
   logSet,
   removeExercise,
   restoreSet,
-} from './session-controller.ts';
+} from '../../data/session-controller.ts';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_QUIET, CARD, EYEBROW, MONO } from '../../ui.ts';
 
 export function WorkoutScreen({

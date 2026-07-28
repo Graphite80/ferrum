@@ -8,7 +8,7 @@ import {
 } from '@ferrum/domain';
 import { loadSession } from '../../db/event-store.ts';
 import { type RoutineSlotRecord } from '../../db/ferrum-db.ts';
-import { loadSessionPlan } from '../routines/routine-store.ts';
+import { loadSessionPlan } from '../../data/routine-store.ts';
 import { exerciseDisplayName, formatDuration, setsForExercise } from './session-view.ts';
 import { BTN_QUIET, CARD, EYEBROW, MONO } from '../../ui.ts';
 

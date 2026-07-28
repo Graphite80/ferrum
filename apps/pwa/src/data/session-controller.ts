@@ -12,10 +12,10 @@ import {
   toKilograms,
   toLocalDate,
 } from '@ferrum/domain';
-import { appendEvents, type AppendInput } from '../../db/event-store.ts';
-import { type RoutineRecord } from '../../db/ferrum-db.ts';
-import { saveSessionPlan } from '../routines/routine-store.ts';
-import { ulidFactory } from '../../platform/ids.ts';
+import { appendEvents, type AppendInput } from '../db/event-store.ts';
+import { type RoutineRecord } from '../db/ferrum-db.ts';
+import { saveSessionPlan } from './routine-store.ts';
+import { ulidFactory } from '../platform/ids.ts';
 
 export interface LoggedSetInput {
   readonly sessionId: SessionId;

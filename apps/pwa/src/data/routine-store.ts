@@ -4,8 +4,8 @@ import {
   type RoutineRecord,
   type RoutineSlotRecord,
   type SessionPlanRecord,
-} from '../../db/ferrum-db.ts';
-import { ulidFactory } from '../../platform/ids.ts';
+} from '../db/ferrum-db.ts';
+import { ulidFactory } from '../platform/ids.ts';
 
 function seedSlot(
   id: string,

@@ -3,14 +3,14 @@ import { type WeightUnit, fromKilograms, kilograms, toKilograms } from '@ferrum/
 import { type RoutineRecord, type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 import { ExerciseSearchPanel } from '../workout/ExerciseSearchPanel.tsx';
 import { Stepper } from '../workout/SetRow.tsx';
-import { displayStep } from '../settings/settings-store.ts';
+import { displayStep } from '../../data/settings-store.ts';
 import {
   deleteRoutine,
   getRoutine,
   newRoutine,
   putRoutine,
   slotFromDefinition,
-} from './routine-store.ts';
+} from '../../data/routine-store.ts';
 import { BTN_PRIMARY, BTN_QUIET, BTN_SECONDARY, CARD, EYEBROW } from '../../ui.ts';
 
 export function RoutineBuilderScreen({

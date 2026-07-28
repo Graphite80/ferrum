@@ -1,5 +1,5 @@
 import { type Kilograms, type WeightUnit, displayLoad } from '@ferrum/domain';
-import { db } from '../../db/ferrum-db.ts';
+import { db } from '../db/ferrum-db.ts';
 
 export async function loadUnit(): Promise<WeightUnit> {
   const record = await db.settings.get('settings');

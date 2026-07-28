@@ -1,4 +1,4 @@
-import { db, type RestTimerRecord } from '../../db/ferrum-db.ts';
+import { db, type RestTimerRecord } from '../db/ferrum-db.ts';
 
 export interface RestTimerView {
   readonly durationSeconds: number;

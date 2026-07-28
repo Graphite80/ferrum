@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { type WeightUnit } from '@ferrum/domain';
-import { saveUnit } from './settings-store.ts';
+import { saveUnit } from '../../data/settings-store.ts';
 import { subscribe, unacknowledgedCount } from '../../db/event-store.ts';
 import {
   getSyncStatus,

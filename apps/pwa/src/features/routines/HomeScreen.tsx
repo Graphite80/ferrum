@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { type SessionId, type WeightUnit, formatLoad, kilograms } from '@ferrum/domain';
 import { type RoutineRecord } from '../../db/ferrum-db.ts';
-import { startEmptySession, startSession } from '../workout/session-controller.ts';
-import { listRoutines } from './routine-store.ts';
+import { startEmptySession, startSession } from '../../data/session-controller.ts';
+import { listRoutines } from '../../data/routine-store.ts';
 import { BTN_PRIMARY, BTN_QUIET, BTN_SECONDARY, CARD, EYEBROW, MONO } from '../../ui.ts';
 
 export function HomeScreen({

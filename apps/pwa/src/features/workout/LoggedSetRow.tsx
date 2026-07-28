@@ -6,8 +6,8 @@ import {
   formatLoad,
   kilograms,
 } from '@ferrum/domain';
-import { displayStep } from '../settings/settings-store.ts';
-import { type SetPatch } from './session-controller.ts';
+import { displayStep } from '../../data/settings-store.ts';
+import { type SetPatch } from '../../data/session-controller.ts';
 import { Stepper } from './SetRow.tsx';
 import { BTN_QUIET, EYEBROW, MONO } from '../../ui.ts';
 

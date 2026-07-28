@@ -10,11 +10,11 @@ import {
   kilograms,
 } from '@ferrum/domain';
 import { type LastPerformance } from '../../db/history.ts';
-import { displayStep } from '../settings/settings-store.ts';
+import { displayStep } from '../../data/settings-store.ts';
 import { type ExercisePlan } from './exercise-plan.ts';
 import { LoggedSetRow } from './LoggedSetRow.tsx';
 import { PlateSleeve } from './PlateSleeve.tsx';
-import { type SetPatch } from './session-controller.ts';
+import { type SetPatch } from '../../data/session-controller.ts';
 import { SetRow } from './SetRow.tsx';
 import { BTN_QUIET, MONO } from '../../ui.ts';
 

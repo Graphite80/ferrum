@@ -11,7 +11,7 @@ import {
 import { loadSession } from '../../db/event-store.ts';
 import { type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 import { type TopSet, bestPriorSets, topWorkingSet } from '../../db/history.ts';
-import { loadSessionPlan } from '../routines/routine-store.ts';
+import { loadSessionPlan } from '../../data/routine-store.ts';
 import { exerciseDisplayName, formatDuration } from './session-view.ts';
 import { BTN_PRIMARY, CARD, EYEBROW, MONO } from '../../ui.ts';
 
