@@ -128,7 +128,6 @@ cluster, not a new instance.
 
 - `packages/importers` — Hevy and Strong adapters against verified headers; Strong has five
   distinct headers split by platform, not by date.
-- `packages/progression-engine` — the three policies and the historical replay harness.
 - e1RM with uncertainty; the muscle credit policy; the sync protocol.
 - Spike A on a real iPhone. Nothing in this repo has run on iOS yet, and the wake-lock and
   storage-eviction behaviour is the one thing that cannot be verified from a desktop.

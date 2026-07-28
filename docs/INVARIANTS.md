@@ -335,6 +335,51 @@ must stay on our own origin.
 
 ---
 
+## 15. Progression
+
+The progression engine turns comparable history into one explainable recommendation. Four
+commitments hold across every policy (`double_progression`, `linear_load`, `top_set_backoff`),
+and each is a behaviour, not an aspiration.
+
+**A single bad session never reduces load or sets.** Every reduction path requires at least two
+failing sessions in a row: `linear_load` raises a rule's own `failuresBeforeBackoff: 1` to the
+engine floor of two, and `double_progression` demands three at the same load unless total reps
+also collapsed. One bad day produces `repeat` or `hold`, never `reduce_*`. The replay harness
+recounts failing runs from the rule itself, so the number in its report is not produced by the
+code it checks.
+
+**Enforced by** the "one bad session never reduces anything" property in
+`packages/progression-engine/tests/properties.test.ts` and by
+`reductionsAfterSingleBadSession === 0` over the real fixture in
+`packages/progression-engine/tests/replay-harness.test.ts`.
+
+**Missing effort never reads as compliance.** A session logged without RPE or RIR gets
+`effortVerdict === 'unknown'`, which forces confidence to `low` and blocks `increase_load` in
+every policy. Silence about effort is missing evidence, not proof of easy work.
+
+**Enforced by** the "missing effort never reads as compliance" property in
+`packages/progression-engine/tests/properties.test.ts`.
+
+**Back-off loads anchor to the load actually lifted, never the load prescribed.** A top set
+taken 5 kg under the plan makes every prescribed back-off percentage wrong by the same 5 kg, so
+`top_set_backoff` computes back-off sets from the performed top set.
+
+**Enforced by** "anchors the back-off to the performed top set, not the prescribed target" in
+`packages/progression-engine/tests/top-set-backoff.test.ts`.
+
+**`insufficient_data` instead of guessed loads.** When no comparable set survives exclusion —
+nothing logged, all warmups, pain-flagged work, or an indeterminate load such as a per-side bar
+with no configured bar mass — every policy returns `insufficient_data` with no proposed
+prescription. Guessing a load from no comparable set is the one thing the engine will not do.
+
+**Enforced by** the insufficient-data cases in
+`packages/progression-engine/tests/double-progression.test.ts`,
+`packages/progression-engine/tests/linear-load.test.ts` and
+`packages/progression-engine/tests/top-set-backoff.test.ts`, and by the pendulum-squat case in
+`packages/progression-engine/tests/replay-harness.test.ts`.
+
+---
+
 ## Open items
 
 - §11 is an intention, not an enforced invariant.
