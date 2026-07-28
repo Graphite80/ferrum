@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BTN_PRIMARY, EYEBROW, MONO } from '../../ui.ts';
 
 export interface SetRowProps {
   readonly index: number;
@@ -18,41 +19,44 @@ export function SetRow(props: SetRowProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <li className="rounded-xl border border-edge bg-surface p-3">
-      <div className="mb-2 flex items-baseline justify-between text-xs text-neutral-400">
-        <span>Set {props.index + 1}</span>
-        <span data-testid="previous-label">{props.previousLabel}</span>
+    <li className="rounded-md border border-seam bg-forged p-3">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <span className={EYEBROW}>Set {props.index + 1}</span>
+        <span className="text-xs text-ash" data-testid="previous-label">
+          {props.previousLabel}
+        </span>
       </div>
       {props.targetLabel != null && (
-        <div className="mb-3 text-xs text-neutral-400" data-testid="target-label">
-          Target: {props.targetLabel}
+        <div className="mb-3 flex items-baseline gap-2" data-testid="target-label">
+          <span className={EYEBROW}>Target: </span>
+          <span className={`${MONO} text-xs font-medium text-chalk`}>{props.targetLabel}</span>
         </div>
       )}
 
       <div className="flex items-stretch gap-2">
         <button
           type="button"
-          className="tap-target flex-1 rounded-lg border border-edge bg-surface-raised px-2 text-lg font-semibold"
+          className={`${MONO} tap-target flex-1 rounded-md border border-seam bg-ingot px-2 text-lg font-medium whitespace-nowrap text-chalk`}
           onClick={() => {
             setExpanded(true);
           }}
           data-testid={`set-${String(props.index)}-load`}
         >
-          {loadKg} kg
+          {loadKg} <span className="text-xs text-ash">kg</span>
         </button>
         <button
           type="button"
-          className="tap-target flex-1 rounded-lg border border-edge bg-surface-raised px-2 text-lg font-semibold"
+          className={`${MONO} tap-target flex-1 rounded-md border border-seam bg-ingot px-2 text-lg font-medium whitespace-nowrap text-chalk`}
           onClick={() => {
             setExpanded(true);
           }}
           data-testid={`set-${String(props.index)}-reps`}
         >
-          {reps} reps
+          {reps} <span className="text-xs text-ash">reps</span>
         </button>
         <button
           type="button"
-          className="tap-target w-16 rounded-lg border border-edge bg-surface-raised text-lg font-semibold"
+          className={`${MONO} tap-target w-16 rounded-md border border-seam bg-ingot text-lg font-medium text-chalk`}
           onClick={() => {
             setExpanded(true);
           }}
@@ -62,7 +66,7 @@ export function SetRow(props: SetRowProps) {
         </button>
         <button
           type="button"
-          className="tap-target flex-[1.4] rounded-lg bg-accent px-3 text-base font-bold text-black"
+          className={`${BTN_PRIMARY} flex-[1.4] px-3 font-semibold`}
           onClick={() => {
             props.onComplete({ loadKg, reps, rir });
           }}
@@ -115,14 +119,12 @@ export interface StepperProps {
 // workout-loss drill, not by looking at a desktop viewport.
 export function Stepper(props: StepperProps) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-edge p-2">
-      <span className="w-12 shrink-0 text-[11px] uppercase tracking-wide text-neutral-400">
-        {props.label}
-      </span>
+    <div className="flex items-center gap-2 rounded-md border border-seam p-2">
+      <span className={`${EYEBROW} w-12 shrink-0`}>{props.label}</span>
       <button
         type="button"
         aria-label={`Decrease ${props.label}`}
-        className="tap-target shrink-0 rounded bg-surface-raised px-4 text-xl"
+        className="tap-target shrink-0 rounded border border-seam bg-ingot px-4 text-xl text-chalk"
         onClick={() => {
           props.onChange(Math.max(0, roundStep(props.value - props.step, props.step)));
         }}
@@ -133,7 +135,7 @@ export function Stepper(props: StepperProps) {
       <input
         type="number"
         inputMode="decimal"
-        className="tap-target min-w-16 flex-1 rounded bg-surface-raised text-center text-xl font-semibold outline-none"
+        className={`${MONO} tap-target min-w-16 flex-1 rounded border border-seam bg-ingot text-center text-xl font-medium text-chalk outline-none`}
         value={props.value}
         onChange={event => {
           const next = Number.parseFloat(event.target.value);
@@ -145,7 +147,7 @@ export function Stepper(props: StepperProps) {
       <button
         type="button"
         aria-label={`Increase ${props.label}`}
-        className="tap-target shrink-0 rounded bg-surface-raised px-4 text-xl"
+        className="tap-target shrink-0 rounded border border-seam bg-ingot px-4 text-xl text-chalk"
         onClick={() => {
           props.onChange(roundStep(props.value + props.step, props.step));
         }}

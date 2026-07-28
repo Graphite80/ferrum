@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { type ExerciseDefinition } from '@ferrum/domain';
 import { loadExerciseLibrary } from '@ferrum/exercise-library';
+import { BTN_QUIET, CARD } from '../../ui.ts';
 
 export interface ExerciseSearchPanelProps {
   readonly onPick: (definition: ExerciseDefinition) => void;
@@ -16,14 +17,16 @@ export function ExerciseSearchPanel(props: ExerciseSearchPanelProps) {
 
   return (
     <div
-      className="fixed inset-0 z-20 mx-auto flex max-w-md flex-col gap-3 bg-ink p-4"
+      className="fixed inset-0 z-20 mx-auto flex max-w-md flex-col gap-3 bg-ingot p-4"
       data-testid="exercise-search"
     >
-      <header className="flex items-center justify-between">
-        <h2 className="text-lg font-bold">Add exercise</h2>
+      <header className="flex items-center justify-between border-b border-seam pb-3">
+        <h2 className="font-display text-2xl font-bold tracking-[0.04em] uppercase">
+          Add exercise
+        </h2>
         <button
           type="button"
-          className="tap-target rounded-lg border border-edge px-4 text-sm"
+          className={`${BTN_QUIET} px-4`}
           data-testid="close-exercise-search"
           onClick={props.onClose}
         >
@@ -34,7 +37,7 @@ export function ExerciseSearchPanel(props: ExerciseSearchPanelProps) {
       <input
         autoFocus
         type="search"
-        className="tap-target rounded-xl border border-edge bg-surface px-4 text-base outline-none"
+        className={`${CARD} tap-target px-4 text-base text-chalk outline-none placeholder:text-ash`}
         placeholder="Search exercises"
         value={query}
         onChange={event => {
@@ -45,7 +48,7 @@ export function ExerciseSearchPanel(props: ExerciseSearchPanelProps) {
 
       <ul className="flex flex-col gap-2 overflow-y-auto" data-testid="exercise-search-results">
         {query.trim().length > 0 && results.length === 0 && (
-          <li className="p-3 text-sm text-neutral-400" data-testid="exercise-search-empty">
+          <li className="p-3 text-sm text-ash" data-testid="exercise-search-empty">
             Nothing matches.
           </li>
         )}
@@ -53,14 +56,14 @@ export function ExerciseSearchPanel(props: ExerciseSearchPanelProps) {
           <li key={definition.id}>
             <button
               type="button"
-              className="tap-target w-full rounded-xl border border-edge bg-surface px-4 text-left"
+              className={`${CARD} tap-target w-full px-4 py-2 text-left`}
               data-testid="exercise-search-result"
               onClick={() => {
                 props.onPick(definition);
               }}
             >
-              <span className="block text-sm font-semibold">{definition.name}</span>
-              <span className="block text-xs text-neutral-500">
+              <span className="block text-sm font-medium text-chalk">{definition.name}</span>
+              <span className="block text-xs text-ash">
                 {definition.equipmentType.replaceAll('_', ' ')}
               </span>
             </button>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { type WorkoutSet } from '@ferrum/domain';
 import { type SetPatch } from './session-controller.ts';
 import { Stepper } from './SetRow.tsx';
+import { BTN_QUIET, EYEBROW, MONO } from '../../ui.ts';
 
 export interface LoggedSetRowProps {
   readonly position: number;
@@ -35,7 +36,10 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
   };
 
   return (
-    <li className="rounded-xl border border-edge bg-surface" data-testid="logged-set">
+    <li
+      className="rounded-md border border-seam border-l-2 border-l-plate-green bg-forged"
+      data-testid="logged-set"
+    >
       <button
         type="button"
         className="tap-target flex w-full items-center justify-between gap-2 px-3 text-sm"
@@ -45,20 +49,20 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
           else openEditor();
         }}
       >
-        <span className="text-neutral-400">Set {props.position}</span>
+        <span className={EYEBROW}>Set {props.position}</span>
         {props.set.setType === 'warmup' && (
           <span
-            className="rounded bg-surface-raised px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-amber-300"
+            className={`${EYEBROW} rounded-[2px] border border-seam px-1.5 py-0.5`}
             data-testid="warmup-marker"
           >
             Warmup
           </span>
         )}
-        <span className="font-semibold" data-testid="logged-set-values">
+        <span className={`${MONO} font-medium text-chalk`} data-testid="logged-set-values">
           {measurements.enteredLoad == null ? '—' : `${String(measurements.enteredLoad)} kg`} ×{' '}
           {measurements.reps ?? '—'}
         </span>
-        <span className="text-neutral-400">
+        <span className={`${MONO} text-xs font-medium text-ash`}>
           RIR {measurements.rirEntered == null ? '—' : String(measurements.rirEntered)}
         </span>
       </button>
@@ -77,7 +81,7 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
           <div className="flex items-stretch gap-2">
             <button
               type="button"
-              className="tap-target flex-1 rounded-lg border border-edge text-sm text-red-300"
+              className={`${BTN_QUIET} flex-1`}
               data-testid="delete-set"
               onClick={() => {
                 setEditing(false);
@@ -88,7 +92,7 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
             </button>
             <button
               type="button"
-              className="tap-target flex-[1.4] rounded-lg bg-accent text-base font-bold text-black"
+              className="tap-target flex-[1.4] rounded-md bg-chalk text-base font-semibold text-ingot active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.25)]"
               data-testid="save-set-edit"
               onClick={save}
             >

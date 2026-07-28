@@ -30,6 +30,7 @@ import {
   removeExercise,
   restoreSet,
 } from './session-controller.ts';
+import { BTN_PRIMARY, BTN_SECONDARY, BTN_QUIET, CARD, EYEBROW, MONO } from '../../ui.ts';
 
 export function WorkoutScreen({
   sessionId,
@@ -112,7 +113,7 @@ export function WorkoutScreen({
 
   if (projection?.session == null) {
     return (
-      <main className="p-6 text-neutral-400" data-testid="loading-workout">
+      <main className="p-6 text-ash" data-testid="loading-workout">
         Loading workout…
       </main>
     );
@@ -141,11 +142,14 @@ export function WorkoutScreen({
 
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-4 p-4 pb-32">
-      <header className="flex items-baseline justify-between">
-        <h1 className="text-xl font-bold" data-testid="session-title">
+      <header className="flex items-baseline justify-between border-b border-seam pb-3">
+        <h1
+          className="font-display text-2xl font-bold tracking-[0.04em] uppercase"
+          data-testid="session-title"
+        >
           {projection.session.title ?? 'Workout'}
         </h1>
-        <span className="text-xs text-neutral-500" data-testid="set-count">
+        <span className={`${MONO} text-xs font-medium text-ash`} data-testid="set-count">
           {projection.sets.length} sets
         </span>
       </header>
@@ -201,7 +205,7 @@ export function WorkoutScreen({
 
       <button
         type="button"
-        className="tap-target rounded-xl border border-edge text-base"
+        className={BTN_SECONDARY}
         data-testid="add-exercise"
         onClick={() => {
           setSearchOpen(true);
@@ -212,7 +216,7 @@ export function WorkoutScreen({
 
       <button
         type="button"
-        className="tap-target rounded-xl border border-edge text-base"
+        className={`${BTN_PRIMARY} w-full`}
         data-testid="finish-session"
         onClick={() => {
           void (async () => {
@@ -228,7 +232,7 @@ export function WorkoutScreen({
       {undoTarget != null && (
         <button
           type="button"
-          className="tap-target rounded-xl border border-edge text-sm text-neutral-300"
+          className={BTN_QUIET}
           data-testid="undo-last-set"
           onClick={() => {
             void deleteSet(sessionId, undoTarget.id, Date.now());
@@ -241,7 +245,7 @@ export function WorkoutScreen({
       {projection.deletedSets.length > 0 && (
         <button
           type="button"
-          className="tap-target rounded-xl border border-edge text-sm text-neutral-300"
+          className={BTN_QUIET}
           data-testid="restore-deleted-set"
           onClick={() => {
             void (async () => {
@@ -265,21 +269,29 @@ export function WorkoutScreen({
 
       {timerView != null && (
         <div
-          className="fixed inset-x-0 bottom-0 mx-auto max-w-md border-t border-edge bg-surface-raised p-4"
+          className="fixed inset-x-0 bottom-0 mx-auto max-w-md border-t border-seam bg-forged p-4"
           data-testid="rest-timer"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-neutral-400">
-              {timerView.finished ? 'Rest finished' : 'Resting'}
-            </span>
-            <span className="text-2xl font-bold" data-testid="rest-timer-value">
-              {timerView.finished
-                ? `+${formatClock(timerView.overdueSeconds)}`
-                : formatClock(timerView.remainingSeconds)}
+          <div className="flex items-center justify-between gap-3">
+            <span className={EYEBROW}>{timerView.finished ? 'Rest finished' : 'Resting'}</span>
+            <span
+              className={`${MONO} text-[44px] leading-none font-bold ${
+                timerView.finished ? 'text-chalk' : 'text-plate-red'
+              }`}
+              data-testid="rest-timer-value"
+            >
+              {timerView.finished ? (
+                <>
+                  <span className="text-plate-red">+</span>
+                  {formatClock(timerView.overdueSeconds)}
+                </>
+              ) : (
+                formatClock(timerView.remainingSeconds)
+              )}
             </span>
             <button
               type="button"
-              className="tap-target rounded-lg border border-edge px-4"
+              className="tap-target rounded-md px-4 text-sm text-ash"
               data-testid="dismiss-timer"
               onClick={() => {
                 void (async () => {
@@ -318,10 +330,7 @@ function WakeLockBanner({
 
   if (state.support.kind === 'silently_broken') {
     return (
-      <p
-        className="rounded-xl border border-edge bg-surface p-3 text-xs text-amber-300"
-        data-testid="wake-lock-broken"
-      >
+      <p className={`${CARD} p-3 text-xs text-chalk`} data-testid="wake-lock-broken">
         iOS {state.support.iosVersion} accepts a screen lock request in an installed web app and
         ignores it. Set Settings &rarr; Display &amp; Brightness &rarr; Auto-Lock to Never for this
         workout, or update to iOS 18.4.
@@ -331,10 +340,7 @@ function WakeLockBanner({
 
   if (state.support.kind === 'absent') {
     return (
-      <p
-        className="rounded-xl border border-edge bg-surface p-3 text-xs text-neutral-400"
-        data-testid="wake-lock-absent"
-      >
+      <p className={`${CARD} p-3 text-xs text-ash`} data-testid="wake-lock-absent">
         This browser cannot keep the screen awake.
       </p>
     );
@@ -343,12 +349,12 @@ function WakeLockBanner({
   return (
     <button
       type="button"
-      className="tap-target rounded-xl border border-edge bg-surface p-3 text-left text-xs"
+      className={`${CARD} tap-target p-3 text-left text-xs text-ash`}
       data-testid="wake-lock-toggle"
       onClick={onEnable}
     >
-      Screen stays on: <strong>{state.held ? 'on' : 'tap to enable'}</strong>
-      {state.lastError != null && <span className="block text-amber-400">{state.lastError}</span>}
+      Screen stays on: <strong className="text-chalk">{state.held ? 'on' : 'tap to enable'}</strong>
+      {state.lastError != null && <span className="block text-chalk">{state.lastError}</span>}
     </button>
   );
 }

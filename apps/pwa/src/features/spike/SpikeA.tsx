@@ -119,45 +119,45 @@ export function SpikeA() {
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-4 p-4 pb-24 text-sm">
       <h1 className="text-xl font-bold">Spike A — device evidence</h1>
 
-      <section className="rounded-xl border border-edge bg-surface p-3">
+      <section className="rounded-md border border-seam bg-forged p-3">
         <h2 className="mb-2 font-semibold">Environment</h2>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-          <dt className="text-neutral-400">Device id</dt>
+          <dt className="text-ash">Device id</dt>
           <dd data-testid="spike-device-id">{deviceId}</dd>
-          <dt className="text-neutral-400">Standalone</dt>
+          <dt className="text-ash">Standalone</dt>
           <dd>{String(window.matchMedia('(display-mode: standalone)').matches)}</dd>
-          <dt className="text-neutral-400">Wake lock verdict</dt>
+          <dt className="text-ash">Wake lock verdict</dt>
           <dd data-testid="spike-wake-verdict">
             {support.kind === 'silently_broken'
               ? `broken on iOS ${support.iosVersion} (accepts and ignores)`
               : support.kind}
           </dd>
-          <dt className="text-neutral-400">Wake lock held</dt>
+          <dt className="text-ash">Wake lock held</dt>
           <dd>{String(wakeLock?.held ?? false)}</dd>
-          <dt className="text-neutral-400">Unsynced events</dt>
+          <dt className="text-ash">Unsynced events</dt>
           <dd>{eventCount}</dd>
-          <dt className="text-neutral-400">User agent</dt>
-          <dd className="break-all text-[10px] text-neutral-400">{navigator.userAgent}</dd>
+          <dt className="text-ash">User agent</dt>
+          <dd className="break-all text-[10px] text-ash">{navigator.userAgent}</dd>
         </dl>
       </section>
 
-      <section className="rounded-xl border border-edge bg-surface p-3">
+      <section className="rounded-md border border-seam bg-forged p-3">
         <h2 className="mb-2 font-semibold">Storage</h2>
         {storage == null ? (
-          <p className="text-neutral-400">measuring…</p>
+          <p className="text-ash">measuring…</p>
         ) : (
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-            <dt className="text-neutral-400">Persisted</dt>
+            <dt className="text-ash">Persisted</dt>
             <dd data-testid="spike-persisted">{String(storage.persisted)}</dd>
-            <dt className="text-neutral-400">Quota</dt>
+            <dt className="text-ash">Quota</dt>
             <dd>{formatBytes(storage.quotaBytes)}</dd>
-            <dt className="text-neutral-400">Usage</dt>
+            <dt className="text-ash">Usage</dt>
             <dd>{formatBytes(storage.usageBytes)}</dd>
           </dl>
         )}
         <button
           type="button"
-          className="tap-target mt-2 w-full rounded-lg border border-edge"
+          className="tap-target mt-2 w-full rounded-md border border-seam"
           onClick={() => {
             void (async () => {
               const granted = (await storageApi.persist?.()) ?? false;
@@ -170,9 +170,9 @@ export function SpikeA() {
         </button>
       </section>
 
-      <section className="rounded-xl border border-edge bg-surface p-3">
+      <section className="rounded-md border border-seam bg-forged p-3">
         <h2 className="mb-2 font-semibold">Six-minute background timer</h2>
-        <p className="mb-2 text-xs text-neutral-400">
+        <p className="mb-2 text-xs text-ash">
           Start it, lock the phone or switch apps for six minutes, then come back. Drift is measured
           against the stored end time, which is the only number that survives a suspended tab.
         </p>
@@ -180,13 +180,13 @@ export function SpikeA() {
           {remainingSeconds == null ? '—' : `${String(remainingSeconds)}s remaining`}
         </p>
         {remainingSeconds != null && (
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-ash">
             elapsed {String(TIMER_TARGET_SECONDS - remainingSeconds)}s of {TIMER_TARGET_SECONDS}s
           </p>
         )}
         <button
           type="button"
-          className="tap-target mt-2 w-full rounded-lg bg-accent font-bold text-black"
+          className="tap-target mt-2 w-full rounded-md bg-plate-red font-medium text-white"
           onClick={() => {
             const ends = Date.now() + TIMER_TARGET_SECONDS * 1000;
             setTimerEndsAt(ends);
@@ -198,11 +198,11 @@ export function SpikeA() {
         </button>
       </section>
 
-      <section className="rounded-xl border border-edge bg-surface p-3">
+      <section className="rounded-md border border-seam bg-forged p-3">
         <h2 className="mb-2 font-semibold">Write durability</h2>
         <button
           type="button"
-          className="tap-target w-full rounded-lg border border-edge"
+          className="tap-target w-full rounded-md border border-seam"
           onClick={() => {
             void (async () => {
               const started = performance.now();
@@ -222,16 +222,16 @@ export function SpikeA() {
         </button>
       </section>
 
-      <section className="rounded-xl border border-edge bg-surface p-3">
+      <section className="rounded-md border border-seam bg-forged p-3">
         <h2 className="mb-2 font-semibold">Observations ({observations.length})</h2>
         <ul className="flex flex-col gap-1 text-[11px]" data-testid="spike-observations">
           {observations.map(observation => (
             <li key={`${String(observation.at)}-${observation.kind}`} className="flex gap-2">
-              <span className="text-neutral-500">
+              <span className="text-ash">
                 {new Date(observation.at).toISOString().slice(11, 19)}
               </span>
-              <span className="text-neutral-300">{observation.kind}</span>
-              <span className="text-neutral-400">{observation.detail}</span>
+              <span className="text-chalk">{observation.kind}</span>
+              <span className="text-ash">{observation.detail}</span>
             </li>
           ))}
         </ul>

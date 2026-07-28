@@ -5,6 +5,7 @@ import { startEmptySession, startSession } from './features/workout/session-cont
 import { SEED_ROUTINE } from './features/workout/routine.ts';
 import { WorkoutScreen } from './features/workout/WorkoutScreen.tsx';
 import { SpikeA } from './features/spike/SpikeA.tsx';
+import { BTN_PRIMARY, BTN_QUIET, BTN_SECONDARY, CARD, EYEBROW, MONO } from './ui.ts';
 
 type Screen = { name: 'home' } | { name: 'workout'; sessionId: SessionId } | { name: 'history' };
 
@@ -37,7 +38,7 @@ function WorkoutApp() {
 
   if (!booted) {
     return (
-      <main className="p-6 text-neutral-400" data-testid="booting">
+      <main className="p-6 text-ash" data-testid="booting">
         Restoring…
       </main>
     );
@@ -65,19 +66,27 @@ function HomeScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
 
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-4 p-4">
-      <h1 className="text-2xl font-bold">Ferrum</h1>
-      <p className="text-sm text-neutral-400">{SEED_ROUTINE.name}</p>
-      <ul className="text-sm text-neutral-300">
-        {SEED_ROUTINE.slots.map(slot => (
-          <li key={slot.exerciseDefinitionId} className="py-1">
-            {slot.name} — {slot.sets} × {slot.targetRepMin}–{slot.targetRepMax}
-          </li>
-        ))}
-      </ul>
+      <h1 className="border-b border-seam pb-3 font-display text-4xl font-bold tracking-[0.04em] uppercase">
+        Ferrum
+      </h1>
+      <div className={`${CARD} p-4`}>
+        <p className={EYEBROW}>Routine</p>
+        <p className="mt-1 font-display text-xl font-semibold uppercase">{SEED_ROUTINE.name}</p>
+        <ul className="mt-3 flex flex-col gap-2 border-t border-seam pt-3 text-sm">
+          {SEED_ROUTINE.slots.map(slot => (
+            <li key={slot.exerciseDefinitionId} className="flex items-baseline justify-between">
+              <span>{slot.name}</span>
+              <span className={`${MONO} text-sm font-medium text-ash`}>
+                {slot.sets} × {slot.targetRepMin}–{slot.targetRepMax}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
       <button
         type="button"
         disabled={starting}
-        className="tap-target rounded-xl bg-accent text-lg font-bold text-black disabled:opacity-50"
+        className={`${BTN_PRIMARY} w-full text-lg`}
         data-testid="start-routine"
         onClick={() => {
           setStarting(true);
@@ -92,7 +101,7 @@ function HomeScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
       <button
         type="button"
         disabled={starting}
-        className="tap-target rounded-xl border border-edge text-base disabled:opacity-50"
+        className="tap-target rounded-md border border-chalk/35 text-base text-chalk disabled:opacity-50"
         data-testid="start-empty-workout"
         onClick={() => {
           setStarting(true);
@@ -106,7 +115,7 @@ function HomeScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
       </button>
       <button
         type="button"
-        className="tap-target rounded-xl border border-edge text-base"
+        className={BTN_SECONDARY}
         data-testid="open-history"
         onClick={() => {
           onNavigate({ name: 'history' });
@@ -132,11 +141,11 @@ function HistoryScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
 
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">History</h1>
+      <header className="flex items-center justify-between border-b border-seam pb-3">
+        <h1 className="font-display text-2xl font-bold tracking-[0.04em] uppercase">History</h1>
         <button
           type="button"
-          className="tap-target rounded-lg border border-edge px-4 text-sm"
+          className={`${BTN_QUIET} px-4`}
           data-testid="back-home"
           onClick={() => {
             onNavigate({ name: 'home' });
@@ -146,29 +155,29 @@ function HistoryScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
         </button>
       </header>
 
-      <p className="text-xs text-neutral-500" data-testid="pending-events">
-        {pending} events not yet synced
+      <p className="text-xs text-ash" data-testid="pending-events">
+        <span className={`${MONO} font-medium`}>{pending}</span> events not yet synced
       </p>
 
       {sessions == null ? (
-        <p className="text-neutral-400">Loading…</p>
+        <p className="text-ash">Loading…</p>
       ) : sessions.length === 0 ? (
-        <p className="text-neutral-400" data-testid="history-empty">
+        <p className="text-ash" data-testid="history-empty">
           No sessions yet.
         </p>
       ) : (
         <ul className="flex flex-col gap-2" data-testid="history-list">
           {sessions.map(projection => (
-            <li
-              key={projection.sessionId}
-              className="rounded-xl border border-edge bg-surface p-3"
-              data-testid="history-item"
-            >
-              <div className="flex justify-between text-sm">
-                <span>{projection.session?.title ?? 'Workout'}</span>
-                <span className="text-neutral-400">{projection.session?.localDate}</span>
+            <li key={projection.sessionId} className={`${CARD} p-3`} data-testid="history-item">
+              <div className="flex items-baseline justify-between text-sm">
+                <span className="font-display text-base font-semibold uppercase">
+                  {projection.session?.title ?? 'Workout'}
+                </span>
+                <span className={`${MONO} text-xs font-medium text-ash`}>
+                  {projection.session?.localDate}
+                </span>
               </div>
-              <div className="mt-1 text-xs text-neutral-500">
+              <div className={`${MONO} mt-1 text-xs font-medium text-ash`}>
                 {projection.sets.length} sets · {projection.session?.status}
                 {projection.session?.amendedAfterFinish === true && ' · edited after finish'}
                 {projection.deletedSets.length > 0 &&

@@ -1,12 +1,23 @@
 @import 'tailwindcss';
+@import '@fontsource/saira-condensed/600.css';
+@import '@fontsource/saira-condensed/700.css';
+@import '@fontsource/saira/400.css';
+@import '@fontsource/saira/500.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/700.css';
 
 @theme {
-  --color-ink: #0b0b0c;
-  --color-surface: #16171a;
-  --color-surface-raised: #1f2126;
-  --color-edge: #2c2f36;
-  --color-accent: #d8703f;
-  --color-done: #2f6f4e;
+  --color-ingot: #101317;
+  --color-forged: #1a2027;
+  --color-seam: #2b333e;
+  --color-chalk: #e9e7e1;
+  --color-ash: #8c939d;
+  --color-plate-red: #d22c2c;
+  --color-plate-red-pressed: #b02525;
+  --color-plate-green: #3f8a46;
+  --font-display: 'Saira Condensed', 'Arial Narrow', sans-serif;
+  --font-sans: 'Saira', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 }
 
 html,
@@ -17,14 +28,9 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-ink);
-  color: #f2f3f5;
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
+  background: var(--color-ingot);
+  color: var(--color-chalk);
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior-y: none;
@@ -37,7 +43,30 @@ body {
   min-width: 56px;
 }
 
+:focus-visible {
+  outline: 2px solid var(--color-chalk);
+  outline-offset: 2px;
+}
+
+@keyframes plate-in {
+  from {
+    transform: translateX(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.plate-in {
+  animation: plate-in 180ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .plate-in {
+    animation: none;
+  }
   * {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;

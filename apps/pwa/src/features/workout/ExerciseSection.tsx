@@ -8,8 +8,10 @@ import {
 import { type LastPerformance } from '../../db/history.ts';
 import { type ExercisePlan } from './exercise-plan.ts';
 import { LoggedSetRow } from './LoggedSetRow.tsx';
+import { PlateSleeve } from './PlateSleeve.tsx';
 import { type SetPatch } from './session-controller.ts';
 import { SetRow } from './SetRow.tsx';
+import { BTN_QUIET, MONO } from '../../ui.ts';
 
 export interface ExerciseSectionProps {
   readonly exercise: SessionExercise;
@@ -51,34 +53,40 @@ export function ExerciseSection(props: ExerciseSectionProps) {
 
   return (
     <section className="flex flex-col gap-2" data-testid="exercise-section">
-      <header className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-semibold" data-testid="exercise-title">
-          {plan.name}{' '}
-          <span className="text-xs font-normal text-neutral-500" data-testid="exercise-set-count">
+      <header className="flex items-center justify-between gap-3">
+        <h2
+          className="min-w-0 font-display text-lg leading-tight font-semibold uppercase"
+          data-testid="exercise-title"
+        >
+          {plan.name}
+        </h2>
+        <div className="flex shrink-0 items-center gap-2">
+          <PlateSleeve completed={liveSets.length} target={plan.targetSets} />
+          <span className={`${MONO} text-xs font-medium text-ash`} data-testid="exercise-set-count">
             {plan.targetSets == null
               ? `${String(liveSets.length)} sets`
               : `${String(liveSets.length)}/${String(plan.targetSets)}`}
           </span>
-        </h2>
-        {liveSets.length === 0 && (
-          <button
-            type="button"
-            className="tap-target rounded-lg border border-edge px-4 text-lg text-neutral-400"
-            aria-label={`Options for ${plan.name}`}
-            data-testid="exercise-menu"
-            onClick={() => {
-              setMenuOpen(open => !open);
-            }}
-          >
-            &#8943;
-          </button>
-        )}
+          {liveSets.length === 0 && (
+            <button
+              type="button"
+              className="tap-target rounded-md px-3 text-lg text-ash"
+              aria-label={`Options for ${plan.name}`}
+              data-testid="exercise-menu"
+              onClick={() => {
+                setMenuOpen(open => !open);
+              }}
+            >
+              &#8943;
+            </button>
+          )}
+        </div>
       </header>
 
       {menuOpen && liveSets.length === 0 && (
         <button
           type="button"
-          className="tap-target rounded-xl border border-edge text-sm text-red-300"
+          className={BTN_QUIET}
           data-testid="remove-exercise"
           onClick={() => {
             setMenuOpen(false);
@@ -121,12 +129,12 @@ export function ExerciseSection(props: ExerciseSectionProps) {
 
       {lastTimeResolved && done && !extraOpen && (
         <>
-          <p className="rounded-xl border border-done bg-done/20 p-3 text-sm">
+          <p className="rounded-md border border-plate-green bg-plate-green/15 p-3 text-sm text-chalk">
             All {plan.targetSets} sets logged
           </p>
           <button
             type="button"
-            className="tap-target rounded-xl border border-edge text-sm text-neutral-300"
+            className={BTN_QUIET}
             data-testid="add-set"
             onClick={() => {
               setExtraOpen(true);
