@@ -2,10 +2,14 @@ import { useState } from 'react';
 import {
   type SessionExercise,
   type SetPrescriptionSnapshot,
+  type WeightUnit,
   type WorkoutSet,
   type WorkoutSetId,
+  formatLoad,
+  kilograms,
 } from '@ferrum/domain';
 import { type LastPerformance } from '../../db/history.ts';
+import { displayLoad, displayStep } from '../settings/settings-store.ts';
 import { type ExercisePlan } from './exercise-plan.ts';
 import { LoggedSetRow } from './LoggedSetRow.tsx';
 import { PlateSleeve } from './PlateSleeve.tsx';
@@ -16,17 +20,18 @@ import { BTN_QUIET, MONO } from '../../ui.ts';
 export interface ExerciseSectionProps {
   readonly exercise: SessionExercise;
   readonly plan: ExercisePlan;
+  readonly unit: WeightUnit;
   readonly liveSets: readonly WorkoutSet[];
   // undefined = history lookup still running; null = looked up, nothing found
   readonly lastTime: LastPerformance | null | undefined;
-  readonly onLog: (values: { loadKg: number; reps: number; rir: number }) => void;
+  readonly onLog: (values: { load: number; reps: number; rir: number }) => void;
   readonly onAmend: (setId: WorkoutSetId, patch: SetPatch) => void;
   readonly onDelete: (setId: WorkoutSetId) => void;
   readonly onRemove: () => void;
 }
 
 export function ExerciseSection(props: ExerciseSectionProps) {
-  const { plan, liveSets, lastTime } = props;
+  const { plan, unit, liveSets, lastTime } = props;
   const [menuOpen, setMenuOpen] = useState(false);
   const [extraOpen, setExtraOpen] = useState(false);
 
@@ -36,7 +41,7 @@ export function ExerciseSection(props: ExerciseSectionProps) {
   const showEntry = lastTimeResolved && (!done || extraOpen);
 
   const defaultLoadKg =
-    lastLogged?.measurements.enteredLoad ??
+    lastLogged?.measurements.canonicalExternalLoadKg ??
     lastTime?.loadKg ??
     plan.prescription?.targetLoadKg ??
     20;
@@ -46,9 +51,9 @@ export function ExerciseSection(props: ExerciseSectionProps) {
 
   const previousLabel =
     lastLogged != null
-      ? `Previous: ${String(lastLogged.measurements.enteredLoad ?? 0)} kg × ${String(lastLogged.measurements.reps ?? 0)}`
+      ? `Previous: ${loadLabel(lastLogged.measurements.canonicalExternalLoadKg, unit)} × ${String(lastLogged.measurements.reps ?? 0)}`
       : lastTime?.loadKg != null
-        ? `Last time: ${String(lastTime.loadKg)} kg × ${String(lastTime.reps ?? 0)}`
+        ? `Last time: ${loadLabel(lastTime.loadKg, unit)} × ${String(lastTime.reps ?? 0)}`
         : 'no previous set';
 
   return (
@@ -103,6 +108,7 @@ export function ExerciseSection(props: ExerciseSectionProps) {
             key={set.id}
             position={index + 1}
             set={set}
+            unit={unit}
             incrementKg={plan.incrementKg}
             onAmend={patch => {
               props.onAmend(set.id, patch);
@@ -116,12 +122,13 @@ export function ExerciseSection(props: ExerciseSectionProps) {
           <SetRow
             key={`entry-${String(liveSets.length)}-${lastTime == null ? 'none' : 'seen'}`}
             index={liveSets.length}
+            unit={unit}
             previousLabel={previousLabel}
-            targetLabel={targetLabel(plan.prescription)}
-            defaultLoadKg={defaultLoadKg}
+            targetLabel={targetLabel(plan.prescription, unit)}
+            defaultLoad={displayLoad(defaultLoadKg, unit)}
             defaultReps={defaultReps}
             defaultRir={defaultRir}
-            incrementKg={plan.incrementKg}
+            incrementStep={displayStep(plan.incrementKg, unit)}
             onComplete={props.onLog}
           />
         )}
@@ -148,10 +155,17 @@ export function ExerciseSection(props: ExerciseSectionProps) {
   );
 }
 
-function targetLabel(prescription: SetPrescriptionSnapshot | null): string | null {
+function loadLabel(loadKg: number | null, unit: WeightUnit): string {
+  return loadKg == null ? '—' : formatLoad(kilograms(loadKg), unit);
+}
+
+function targetLabel(
+  prescription: SetPrescriptionSnapshot | null,
+  unit: WeightUnit
+): string | null {
   if (prescription == null) return null;
   const parts: string[] = [];
-  if (prescription.targetLoadKg != null) parts.push(`${String(prescription.targetLoadKg)} kg`);
+  if (prescription.targetLoadKg != null) parts.push(formatLoad(prescription.targetLoadKg, unit));
   if (prescription.targetRepMin != null && prescription.targetRepMax != null) {
     parts.push(`${String(prescription.targetRepMin)}–${String(prescription.targetRepMax)}`);
   }

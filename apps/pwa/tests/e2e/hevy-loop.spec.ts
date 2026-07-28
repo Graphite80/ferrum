@@ -137,6 +137,9 @@ test.describe('the mid-workout logging loop', () => {
     await expect(page.getByTestId('set-count')).toContainText('2 sets');
 
     await page.getByTestId('finish-session').click();
+    await expect(page.getByTestId('workout-summary')).toBeVisible();
+    await page.getByTestId('summary-home').click();
+    await page.getByTestId('open-history').click();
     await expect(page.getByTestId('history-item')).toHaveCount(1);
   });
 
@@ -162,9 +165,9 @@ test.describe('the mid-workout logging loop', () => {
     await page.getByTestId('set-0-done').first().click();
     await expect(page.getByTestId('set-count')).toContainText('1 sets');
     await page.getByTestId('finish-session').click();
-    await expect(page.getByTestId('history-item')).toHaveCount(1);
+    await expect(page.getByTestId('workout-summary')).toBeVisible();
 
-    await page.getByTestId('back-home').click();
+    await page.getByTestId('summary-home').click();
     await page.getByTestId('start-routine').click();
     await expect(page.getByTestId('session-title')).toBeVisible();
 

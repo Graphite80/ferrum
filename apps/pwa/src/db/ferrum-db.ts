@@ -1,5 +1,5 @@
 import { Dexie, type EntityTable } from 'dexie';
-import { type DomainEvent } from '@ferrum/domain';
+import { type DomainEvent, type WeightUnit } from '@ferrum/domain';
 
 export interface StoredEvent {
   eventId: string;
@@ -31,11 +31,57 @@ export interface RestTimerRecord {
   status: 'running' | 'dismissed';
 }
 
+export interface RoutineSlotRecord {
+  exerciseDefinitionId: string;
+  name: string;
+  comparisonSignature: string;
+  sets: number;
+  targetLoadKg: number | null;
+  targetRepMin: number;
+  targetRepMax: number;
+  targetRirMin: number;
+  targetRirMax: number;
+  incrementKg: number;
+  restSeconds: number;
+}
+
+export interface RoutineRecord {
+  id: string;
+  name: string;
+  slots: RoutineSlotRecord[];
+  createdAtMillis: number;
+  updatedAtMillis: number;
+}
+
+// The routine as it was when the session started. Editing a routine later must
+// never change what an already-running or past session was asked to do, so the
+// workout screen reads this snapshot, mirroring the prescription-snapshot rule.
+export interface SessionPlanRecord {
+  sessionId: string;
+  routineId: string;
+  routineName: string;
+  slots: RoutineSlotRecord[];
+}
+
+export interface SettingsRecord {
+  key: 'settings';
+  unit: WeightUnit;
+}
+
+export interface MetaRecord {
+  key: 'seeded';
+  atMillis: number;
+}
+
 export class FerrumDb extends Dexie {
   events!: EntityTable<StoredEvent, 'eventId'>;
   snapshots!: EntityTable<SessionSnapshot, 'sessionId'>;
   device!: EntityTable<DeviceRecord, 'key'>;
   restTimers!: EntityTable<RestTimerRecord, 'sessionId'>;
+  routines!: EntityTable<RoutineRecord, 'id'>;
+  sessionPlans!: EntityTable<SessionPlanRecord, 'sessionId'>;
+  settings!: EntityTable<SettingsRecord, 'key'>;
+  meta!: EntityTable<MetaRecord, 'key'>;
 
   constructor(name = 'ferrum') {
     // Relaxed durability lets the browser acknowledge a transaction before it
@@ -48,6 +94,12 @@ export class FerrumDb extends Dexie {
       snapshots: '&sessionId, updatedAtMillis',
       device: '&key',
       restTimers: '&sessionId',
+    });
+    this.version(2).stores({
+      routines: '&id, createdAtMillis',
+      sessionPlans: '&sessionId',
+      settings: '&key',
+      meta: '&key',
     });
   }
 }

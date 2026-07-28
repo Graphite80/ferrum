@@ -6,20 +6,23 @@ import {
   type SetMeasurements,
   type SetPrescriptionSnapshot,
   type SetQualifiers,
+  type WeightUnit,
   type WorkoutSetId,
   instant,
-  kilograms,
+  toKilograms,
   toLocalDate,
 } from '@ferrum/domain';
 import { appendEvents, type AppendInput } from '../../db/event-store.ts';
+import { type RoutineRecord } from '../../db/ferrum-db.ts';
+import { saveSessionPlan } from '../routines/routine-store.ts';
 import { ulidFactory } from '../../platform/ids.ts';
-import { type Routine, type RoutineSlot } from './routine.ts';
 
 export interface LoggedSetInput {
   readonly sessionId: SessionId;
   readonly sessionExerciseId: SessionExerciseId;
   readonly orderIndex: number;
-  readonly loadKg: number;
+  readonly enteredLoad: number;
+  readonly unit: WeightUnit;
   readonly reps: number;
   readonly rir: number;
   readonly comparisonSignature: ComparisonSignature;
@@ -27,7 +30,7 @@ export interface LoggedSetInput {
 }
 
 export interface SetPatch {
-  loadKg?: number;
+  load?: { entered: number; unit: WeightUnit };
   reps?: number;
   rir?: number;
 }
@@ -42,7 +45,7 @@ export function sessionExerciseIdFor(sessionId: SessionId, slotIndex: number): S
 
 async function beginSession(
   title: string | null,
-  slots: readonly RoutineSlot[],
+  definitionIds: readonly string[],
   nowMillis: number
 ): Promise<SessionId> {
   const sessionId = `ses_${ulidFactory.next(nowMillis)}` as SessionId;
@@ -61,13 +64,13 @@ async function beginSession(
         title,
       },
     },
-    ...slots.map<AppendInput>((routineSlot, index) => ({
+    ...definitionIds.map<AppendInput>((definitionId, index) => ({
       aggregateId: sessionId,
       eventType: 'ExerciseAddedToSession',
       payload: {
         sessionExerciseId: sessionExerciseIdFor(sessionId, index),
         sessionId,
-        exerciseDefinitionId: routineSlot.exerciseDefinitionId,
+        exerciseDefinitionId: definitionId as ExerciseDefinitionId,
         equipmentInstanceId: null,
         orderIndex: index,
         supersetGroupId: null,
@@ -80,8 +83,21 @@ async function beginSession(
   return sessionId;
 }
 
-export async function startSession(routine: Routine, nowMillis: number): Promise<SessionId> {
-  return beginSession(routine.name, routine.slots, nowMillis);
+export async function startSession(routine: RoutineRecord, nowMillis: number): Promise<SessionId> {
+  const sessionId = await beginSession(
+    routine.name,
+    routine.slots.map(slot => slot.exerciseDefinitionId),
+    nowMillis
+  );
+  // A separate short write on purpose: the append transaction stays exactly one
+  // transaction wide, and a lost plan snapshot only costs prefilled targets.
+  await saveSessionPlan({
+    sessionId,
+    routineId: routine.id,
+    routineName: routine.name,
+    slots: routine.slots.map(slot => ({ ...slot })),
+  });
+  return sessionId;
 }
 
 export async function startEmptySession(nowMillis: number): Promise<SessionId> {
@@ -138,9 +154,9 @@ export async function logSet(input: LoggedSetInput, nowMillis: number): Promise<
   const offset = tzOffsetMinutes(nowMillis);
 
   const measurements: SetMeasurements = {
-    enteredLoad: input.loadKg,
-    enteredUnit: 'kg',
-    canonicalExternalLoadKg: kilograms(input.loadKg),
+    enteredLoad: input.enteredLoad,
+    enteredUnit: input.unit,
+    canonicalExternalLoadKg: toKilograms(input.enteredLoad, input.unit),
     reps: input.reps,
     durationSeconds: null,
     distanceMeters: null,
@@ -198,8 +214,12 @@ export async function amendSet(
   nowMillis: number
 ): Promise<void> {
   const measurements: Partial<SetMeasurements> = {
-    ...(patch.loadKg !== undefined
-      ? { enteredLoad: patch.loadKg, canonicalExternalLoadKg: kilograms(patch.loadKg) }
+    ...(patch.load !== undefined
+      ? {
+          enteredLoad: patch.load.entered,
+          enteredUnit: patch.load.unit,
+          canonicalExternalLoadKg: toKilograms(patch.load.entered, patch.load.unit),
+        }
       : {}),
     ...(patch.reps !== undefined ? { reps: patch.reps } : {}),
     ...(patch.rir !== undefined ? { rirEntered: patch.rir } : {}),

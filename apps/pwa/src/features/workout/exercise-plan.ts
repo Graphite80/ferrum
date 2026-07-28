@@ -9,7 +9,7 @@ import {
   kilograms,
 } from '@ferrum/domain';
 import { loadExerciseLibrary } from '@ferrum/exercise-library';
-import { SEED_ROUTINE, type RoutineSlot } from './routine.ts';
+import { type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 
 export interface ExercisePlan {
   readonly name: string;
@@ -22,17 +22,18 @@ export interface ExercisePlan {
 
 // Everything needed to render and log against an exercise, resolved from the
 // session's own recorded sets first so an old session keeps rendering correctly
-// after the seed routine changes, then the routine, then the library definition.
+// after the routine changes, then the session's plan snapshot, then the library.
 export function planExercise(
   exercise: SessionExercise,
-  recordedSets: readonly WorkoutSet[]
+  recordedSets: readonly WorkoutSet[],
+  planSlots: readonly RoutineSlotRecord[]
 ): ExercisePlan {
   const library = loadExerciseLibrary();
   const definition =
     library.byId.get(exercise.exerciseDefinitionId) ??
     library.resolveAlias(exercise.exerciseDefinitionId);
   const slot =
-    SEED_ROUTINE.slots.find(s => s.exerciseDefinitionId === exercise.exerciseDefinitionId) ?? null;
+    planSlots.find(s => s.exerciseDefinitionId === exercise.exerciseDefinitionId) ?? null;
   const lastRecorded = recordedSets.at(-1) ?? null;
 
   return {
@@ -45,27 +46,30 @@ export function planExercise(
           null),
     comparisonSignature:
       lastRecorded?.comparisonSignature ??
-      slot?.comparisonSignature ??
+      (slot?.comparisonSignature as ComparisonSignature | undefined) ??
       (definition != null
         ? comparisonSignature(definition, null)
         : fallbackSignature(exercise.exerciseDefinitionId)),
-    incrementKg: slot?.incrementKg ?? definition?.defaultIncrementKg ?? kilograms(2.5),
+    incrementKg:
+      slot != null
+        ? kilograms(slot.incrementKg)
+        : (definition?.defaultIncrementKg ?? kilograms(2.5)),
     restSeconds: slot?.restSeconds ?? definition?.defaultRestSeconds ?? 120,
   };
 }
 
-function prescriptionFromSlot(slot: RoutineSlot): SetPrescriptionSnapshot {
+function prescriptionFromSlot(slot: RoutineSlotRecord): SetPrescriptionSnapshot {
   return {
     prescriptionVersion: 1,
     setType: 'working',
-    targetLoadKg: slot.targetLoadKg,
+    targetLoadKg: slot.targetLoadKg == null ? null : kilograms(slot.targetLoadKg),
     targetRepMin: slot.targetRepMin,
     targetRepMax: slot.targetRepMax,
-    targetRir: slot.targetRir,
+    targetRir: [slot.targetRirMin, slot.targetRirMax],
     targetRpe: null,
     ruleId: null,
     ruleVersion: null,
-    explanationContext: 'seed routine',
+    explanationContext: 'routine',
   };
 }
 

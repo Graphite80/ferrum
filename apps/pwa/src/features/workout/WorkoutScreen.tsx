@@ -5,12 +5,14 @@ import {
   type SessionExerciseId,
   type SessionId,
   type SessionProjection,
+  type WeightUnit,
   type WorkoutSet,
 } from '@ferrum/domain';
 import { loadSession, subscribe } from '../../db/event-store.ts';
-import { type RestTimerRecord } from '../../db/ferrum-db.ts';
+import { type RestTimerRecord, type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 import { type LastPerformance, lastPerformances } from '../../db/history.ts';
 import { WakeLockController, type WakeLockState } from '../../platform/wake-lock.ts';
+import { loadSessionPlan } from '../routines/routine-store.ts';
 import { planExercise } from './exercise-plan.ts';
 import { ExerciseSearchPanel } from './ExerciseSearchPanel.tsx';
 import { ExerciseSection } from './ExerciseSection.tsx';
@@ -34,12 +36,15 @@ import { BTN_PRIMARY, BTN_SECONDARY, BTN_QUIET, CARD, EYEBROW, MONO } from '../.
 
 export function WorkoutScreen({
   sessionId,
+  unit,
   onFinished,
 }: {
   sessionId: SessionId;
+  unit: WeightUnit;
   onFinished: () => void;
 }) {
   const [projection, setProjection] = useState<SessionProjection | null>(null);
+  const [planSlots, setPlanSlots] = useState<readonly RoutineSlotRecord[] | null>(null);
   const [timer, setTimer] = useState<RestTimerRecord | null>(null);
   const [nowMillis, setNowMillis] = useState(() => Date.now());
   const [wakeLock, setWakeLock] = useState<WakeLockState | null>(null);
@@ -59,6 +64,9 @@ export function WorkoutScreen({
 
   useEffect(() => {
     void refresh();
+    void loadSessionPlan(sessionId).then(plan => {
+      setPlanSlots(plan?.slots ?? []);
+    });
     return subscribe(changed => {
       if (changed === sessionId) void refresh();
     });
@@ -111,7 +119,10 @@ export function WorkoutScreen({
     [projection]
   );
 
-  if (projection?.session == null) {
+  // The plan snapshot must be resolved before the first entry row mounts: SetRow
+  // captures its defaults in state at mount, so a plan arriving late would leave
+  // the prefill at the generic fallback instead of the routine's target.
+  if (projection?.session == null || planSlots == null) {
     return (
       <main className="p-6 text-ash" data-testid="loading-workout">
         Loading workout…
@@ -162,12 +173,13 @@ export function WorkoutScreen({
       />
 
       {projection.exercises.map(exercise => {
-        const plan = planExercise(exercise, allSetsByExercise.get(exercise.id) ?? []);
+        const plan = planExercise(exercise, allSetsByExercise.get(exercise.id) ?? [], planSlots);
         return (
           <ExerciseSection
             key={exercise.id}
             exercise={exercise}
             plan={plan}
+            unit={unit}
             liveSets={liveSetsByExercise.get(exercise.id) ?? []}
             lastTime={lastTimes.get(exercise.exerciseDefinitionId)}
             onLog={values => {
@@ -178,7 +190,8 @@ export function WorkoutScreen({
                     sessionId,
                     sessionExerciseId: exercise.id,
                     orderIndex: nextOrderIndex(exercise.id),
-                    loadKg: values.loadKg,
+                    enteredLoad: values.load,
+                    unit,
                     reps: values.reps,
                     rir: values.rir,
                     comparisonSignature: plan.comparisonSignature,

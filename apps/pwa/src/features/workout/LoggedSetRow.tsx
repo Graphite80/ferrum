@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { type WorkoutSet } from '@ferrum/domain';
+import { type WeightUnit, type WorkoutSet, formatLoad, kilograms } from '@ferrum/domain';
+import { displayLoad, displayStep } from '../settings/settings-store.ts';
 import { type SetPatch } from './session-controller.ts';
 import { Stepper } from './SetRow.tsx';
 import { BTN_QUIET, EYEBROW, MONO } from '../../ui.ts';
@@ -7,6 +8,7 @@ import { BTN_QUIET, EYEBROW, MONO } from '../../ui.ts';
 export interface LoggedSetRowProps {
   readonly position: number;
   readonly set: WorkoutSet;
+  readonly unit: WeightUnit;
   readonly incrementKg: number;
   readonly onAmend: (patch: SetPatch) => void;
   readonly onDelete: () => void;
@@ -15,12 +17,17 @@ export interface LoggedSetRowProps {
 export function LoggedSetRow(props: LoggedSetRowProps) {
   const measurements = props.set.measurements;
   const [editing, setEditing] = useState(false);
-  const [loadKg, setLoadKg] = useState(0);
+  const [load, setLoad] = useState(0);
   const [reps, setReps] = useState(0);
   const [rir, setRir] = useState(0);
 
+  const displayedLoad =
+    measurements.canonicalExternalLoadKg == null
+      ? 0
+      : displayLoad(measurements.canonicalExternalLoadKg, props.unit);
+
   const openEditor = () => {
-    setLoadKg(measurements.enteredLoad ?? 0);
+    setLoad(displayedLoad);
     setReps(measurements.reps ?? 0);
     setRir(measurements.rirEntered ?? 0);
     setEditing(true);
@@ -28,7 +35,7 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
 
   const save = () => {
     const patch: SetPatch = {};
-    if (loadKg !== (measurements.enteredLoad ?? 0)) patch.loadKg = loadKg;
+    if (load !== displayedLoad) patch.load = { entered: load, unit: props.unit };
     if (reps !== (measurements.reps ?? 0)) patch.reps = reps;
     if (rir !== (measurements.rirEntered ?? 0)) patch.rir = rir;
     setEditing(false);
@@ -59,8 +66,10 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
           </span>
         )}
         <span className={`${MONO} font-medium text-chalk`} data-testid="logged-set-values">
-          {measurements.enteredLoad == null ? '—' : `${String(measurements.enteredLoad)} kg`} ×{' '}
-          {measurements.reps ?? '—'}
+          {measurements.canonicalExternalLoadKg == null
+            ? '—'
+            : formatLoad(measurements.canonicalExternalLoadKg, props.unit)}{' '}
+          × {measurements.reps ?? '—'}
         </span>
         <span className={`${MONO} text-xs font-medium text-ash`}>
           RIR {measurements.rirEntered == null ? '—' : String(measurements.rirEntered)}
@@ -71,9 +80,9 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
         <div className="flex flex-col gap-2 p-3 pt-0" data-testid="logged-set-editor">
           <Stepper
             label="Load"
-            value={loadKg}
-            step={props.incrementKg}
-            onChange={setLoadKg}
+            value={load}
+            step={displayStep(kilograms(props.incrementKg), props.unit)}
+            onChange={setLoad}
             testId="amend-load"
           />
           <Stepper label="Reps" value={reps} step={1} onChange={setReps} testId="amend-reps" />

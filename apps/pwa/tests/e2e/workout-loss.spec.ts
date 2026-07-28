@@ -31,6 +31,9 @@ test.describe('workout survival', () => {
     await expect(page.getByTestId('rest-timer')).toBeVisible();
 
     await page.getByTestId('finish-session').click();
+    await expect(page.getByTestId('workout-summary')).toBeVisible();
+    await page.getByTestId('summary-home').click();
+    await page.getByTestId('open-history').click();
     await expect(page.getByTestId('history-list')).toBeVisible();
     await expect(page.getByTestId('history-item')).toHaveCount(1);
   });
@@ -62,7 +65,12 @@ test.describe('workout survival', () => {
     await expect(page.getByTestId('session-title')).toBeVisible();
     expect(await setCount(page)).toBe(2);
 
+    // The whole finish path must work with no network: the summary and the
+    // history list are read from IndexedDB alone.
     await page.getByTestId('finish-session').click();
+    await expect(page.getByTestId('workout-summary')).toBeVisible();
+    await page.getByTestId('summary-home').click();
+    await page.getByTestId('open-history').click();
     await expect(page.getByTestId('history-item')).toHaveCount(1);
 
     await context.setOffline(false);
@@ -118,13 +126,16 @@ test.describe('workout survival', () => {
     await startWorkout(page);
     await logFirstSet(page);
     await page.getByTestId('finish-session').click();
-    await expect(page.getByTestId('history-item')).toHaveCount(1);
+    await expect(page.getByTestId('summary-total-sets')).toHaveText('1');
 
-    await page.getByTestId('back-home').click();
+    await page.getByTestId('summary-home').click();
     await page.getByTestId('start-routine').click();
     await page.getByTestId('set-0-done').first().click();
     await page.getByTestId('finish-session').click();
+    await expect(page.getByTestId('workout-summary')).toBeVisible();
+    await page.getByTestId('summary-home').click();
 
+    await page.getByTestId('open-history').click();
     await expect(page.getByTestId('history-item')).toHaveCount(2);
     await expect(page.getByTestId('pending-events')).toContainText('events not yet synced');
   });

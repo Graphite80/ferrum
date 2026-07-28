@@ -1,19 +1,24 @@
 import { useState } from 'react';
+import { type WeightUnit } from '@ferrum/domain';
 import { BTN_PRIMARY, EYEBROW, MONO } from '../../ui.ts';
 
 export interface SetRowProps {
   readonly index: number;
+  readonly unit: WeightUnit;
   readonly previousLabel: string;
   readonly targetLabel: string | null;
-  readonly defaultLoadKg: number;
+  readonly defaultLoad: number;
   readonly defaultReps: number;
   readonly defaultRir: number;
-  readonly incrementKg: number;
-  readonly onComplete: (values: { loadKg: number; reps: number; rir: number }) => void;
+  readonly incrementStep: number;
+  readonly onComplete: (values: { load: number; reps: number; rir: number }) => void;
 }
 
+// `defaultLoad` and `incrementStep` arrive already converted to the display unit;
+// the value handed back through onComplete is what the user saw and accepted, in
+// that same unit. Conversion to canonical kilograms happens at the event boundary.
 export function SetRow(props: SetRowProps) {
-  const [loadKg, setLoadKg] = useState(props.defaultLoadKg);
+  const [load, setLoad] = useState(props.defaultLoad);
   const [reps, setReps] = useState(props.defaultReps);
   const [rir, setRir] = useState(props.defaultRir);
   const [expanded, setExpanded] = useState(false);
@@ -42,7 +47,7 @@ export function SetRow(props: SetRowProps) {
           }}
           data-testid={`set-${String(props.index)}-load`}
         >
-          {loadKg} <span className="text-xs text-ash">kg</span>
+          {load} <span className="text-xs text-ash">{props.unit}</span>
         </button>
         <button
           type="button"
@@ -68,7 +73,7 @@ export function SetRow(props: SetRowProps) {
           type="button"
           className={`${BTN_PRIMARY} flex-[1.4] px-3 font-semibold`}
           onClick={() => {
-            props.onComplete({ loadKg, reps, rir });
+            props.onComplete({ load, reps, rir });
           }}
           data-testid={`set-${String(props.index)}-done`}
         >
@@ -80,9 +85,9 @@ export function SetRow(props: SetRowProps) {
         <div className="mt-3 flex flex-col gap-2" data-testid={`set-${String(props.index)}-editor`}>
           <Stepper
             label="Load"
-            value={loadKg}
-            step={props.incrementKg}
-            onChange={setLoadKg}
+            value={load}
+            step={props.incrementStep}
+            onChange={setLoad}
             testId={`set-${String(props.index)}-load-stepper`}
           />
           <Stepper
@@ -160,6 +165,6 @@ export function Stepper(props: StepperProps) {
 }
 
 function roundStep(value: number, step: number): number {
-  const precision = step < 1 ? 1000 : 1;
+  const precision = Number.isInteger(step) ? 1 : 1000;
   return Math.round(value * precision) / precision;
 }
