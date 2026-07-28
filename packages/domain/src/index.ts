@@ -10,4 +10,5 @@ export * from './comparison.ts';
 export * from './prescription.ts';
 export * from './set.ts';
 export * from './events.ts';
+export * from './envelope.ts';
 export * from './projection.ts';

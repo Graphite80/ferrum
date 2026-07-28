@@ -1,6 +1,7 @@
 import {
   COMPARISON_SIGNATURE_VERSION,
   EVENT_SCHEMA_VERSION,
+  buildDomainEvent,
   groupBy,
   instant,
   localDateToUtcMillis,
@@ -8,12 +9,9 @@ import {
   type ComparisonSignature,
   type DeviceId,
   type DomainEvent,
-  type DomainEventPayloadMap,
-  type DomainEventType,
-  type EventEnvelope,
+  type DomainEventBody,
   type EventId,
   type ExerciseDefinitionId,
-  type Instant,
   type Kilograms,
   type SessionExerciseId,
   type SessionId,
@@ -415,31 +413,33 @@ function emitSessions(
     const tzOffsetMinutes = first.row.tzOffsetMinutes ?? context.tzOffsetMinutes;
     let ordinal = 0;
 
-    const push = <T extends DomainEventType>(
-      eventType: T,
-      discriminator: string,
-      payload: DomainEventPayloadMap[T]
-    ): void => {
+    const push = (discriminator: string, body: DomainEventBody): void => {
+      const wallMillis = startedAt + Math.floor(ordinal / HLC_COUNTER_LIMIT);
       events.push(
-        buildEnvelope(
-          eventType,
-          sessionId,
-          discriminator,
-          payload,
-          startedAt,
-          ordinal,
-          context
-        ) as DomainEvent
+        buildDomainEvent(body, {
+          eventId: stableId('evt', sessionId, body.eventType, discriminator) as EventId,
+          aggregateId: sessionId,
+          userId: context.options.userId,
+          deviceId: context.options.deviceId,
+          schemaVersion: EVENT_SCHEMA_VERSION,
+          hlc: { wallMillis, counter: ordinal % HLC_COUNTER_LIMIT, nodeId: context.source },
+          clientCreatedAt: instant(wallMillis),
+          serverReceivedAt: null,
+          serverSequence: null,
+        })
       );
       ordinal += 1;
     };
 
-    push('SessionStarted', 'start', {
-      sessionId,
-      startedAt,
-      localDate,
-      tzOffsetMinutes,
-      title: first.row.sessionTitle,
+    push('start', {
+      eventType: 'SessionStarted',
+      payload: {
+        sessionId,
+        startedAt,
+        localDate,
+        tzOffsetMinutes,
+        title: first.row.sessionTitle,
+      },
     });
 
     const byExercise = groupBy(rows, item => item.row.rawExerciseName);
@@ -452,26 +452,32 @@ function emitSessions(
       const definitionId =
         exerciseRows[0]?.exerciseDefinitionId ?? (rawName as ExerciseDefinitionId);
 
-      push('ExerciseAddedToSession', `exercise:${rawName}`, {
-        sessionExerciseId,
-        sessionId,
-        exerciseDefinitionId: definitionId,
-        equipmentInstanceId: null,
-        orderIndex,
-        supersetGroupId: null,
-        supersetOrder: null,
+      push(`exercise:${rawName}`, {
+        eventType: 'ExerciseAddedToSession',
+        payload: {
+          sessionExerciseId,
+          sessionId,
+          exerciseDefinitionId: definitionId,
+          equipmentInstanceId: null,
+          orderIndex,
+          supersetGroupId: null,
+          supersetOrder: null,
+        },
       });
       orderIndex += 1;
     }
 
     for (const [supersetKey, members] of collectSupersets(rows, exerciseIds)) {
-      push('SupersetGroupChanged', `superset:${supersetKey}`, {
-        sessionId,
-        groupId: stableId('ssg', sessionId, supersetKey) as SupersetGroupId,
-        restMode: 'after_round_only',
-        restSecondsIntra: 0,
-        restSecondsInter: 0,
-        memberSessionExerciseIds: members,
+      push(`superset:${supersetKey}`, {
+        eventType: 'SupersetGroupChanged',
+        payload: {
+          sessionId,
+          groupId: stableId('ssg', sessionId, supersetKey) as SupersetGroupId,
+          restMode: 'after_round_only',
+          restSecondsIntra: 0,
+          restSecondsInter: 0,
+          memberSessionExerciseIds: members,
+        },
       });
       assumptions.add(
         'Superset rest is recorded as zero seconds: the export names the grouping but never its rest timings.'
@@ -499,40 +505,43 @@ function emitSessions(
           originalPayload: item.row.originalPayload,
         };
 
-        push('SetLogged', `set:${item.row.sourceRecordId}`, {
-          setId,
-          sessionExerciseId,
-          orderIndex: setOrderIndex,
-          setType,
-          measurements: {
-            enteredLoad: item.row.enteredLoad,
-            enteredUnit: item.row.enteredUnit ?? 'kg',
-            canonicalExternalLoadKg: item.canonicalLoadKg,
-            reps: item.row.reps,
-            durationSeconds: item.row.durationSeconds,
-            distanceMeters: item.row.distanceMeters,
-            rirEntered: item.rir,
-            rpeEntered: item.rpe,
-            actualRestSeconds: item.row.restSeconds,
+        push(`set:${item.row.sourceRecordId}`, {
+          eventType: 'SetLogged',
+          payload: {
+            setId,
+            sessionExerciseId,
+            orderIndex: setOrderIndex,
+            setType,
+            measurements: {
+              enteredLoad: item.row.enteredLoad,
+              enteredUnit: item.row.enteredUnit ?? 'kg',
+              canonicalExternalLoadKg: item.canonicalLoadKg,
+              reps: item.row.reps,
+              durationSeconds: item.row.durationSeconds,
+              distanceMeters: item.row.distanceMeters,
+              rirEntered: item.rir,
+              rpeEntered: item.rpe,
+              actualRestSeconds: item.row.restSeconds,
+            },
+            qualifiers: {
+              tempo: null,
+              rangeOfMotionNote: null,
+              painFlag: 0,
+              formFlag: false,
+              note: item.row.note,
+            },
+            equipmentInstanceId: null,
+            bodyweightKgSnapshot: null,
+            bodyweightSource: null,
+            bodyweightAgeDays: null,
+            prescriptionSnapshot: null,
+            exerciseRevisionSnapshot: 1,
+            comparisonSignature: item.signature,
+            provenance,
+            performedAt: item.row.startedAt,
+            localDate: item.row.localDate,
+            tzOffsetMinutes,
           },
-          qualifiers: {
-            tempo: null,
-            rangeOfMotionNote: null,
-            painFlag: 0,
-            formFlag: false,
-            note: item.row.note,
-          },
-          equipmentInstanceId: null,
-          bodyweightKgSnapshot: null,
-          bodyweightSource: null,
-          bodyweightAgeDays: null,
-          prescriptionSnapshot: null,
-          exerciseRevisionSnapshot: 1,
-          comparisonSignature: item.signature,
-          provenance,
-          performedAt: item.row.startedAt,
-          localDate: item.row.localDate,
-          tzOffsetMinutes,
         });
 
         if (decision?.reclassified === true) {
@@ -563,9 +572,12 @@ function emitSessions(
     }
 
     const durationSeconds = first.row.sessionDurationSeconds;
-    push('SessionFinished', 'finish', {
-      sessionId,
-      finishedAt: instant(startedAt + (durationSeconds ?? 0) * 1000),
+    push('finish', {
+      eventType: 'SessionFinished',
+      payload: {
+        sessionId,
+        finishedAt: instant(startedAt + (durationSeconds ?? 0) * 1000),
+      },
     });
     if (durationSeconds == null) {
       assumptions.add(
@@ -647,31 +659,6 @@ function collectSupersets(
 }
 
 const HLC_COUNTER_LIMIT = 0x10000;
-
-function buildEnvelope<T extends DomainEventType>(
-  eventType: T,
-  sessionId: SessionId,
-  discriminator: string,
-  payload: DomainEventPayloadMap[T],
-  startedAt: Instant,
-  ordinal: number,
-  context: EmissionContext
-): EventEnvelope<T> {
-  const wallMillis = startedAt + Math.floor(ordinal / HLC_COUNTER_LIMIT);
-  return {
-    eventId: stableId('evt', sessionId, eventType, discriminator) as EventId,
-    aggregateId: sessionId,
-    userId: context.options.userId,
-    deviceId: context.options.deviceId,
-    eventType,
-    schemaVersion: EVENT_SCHEMA_VERSION,
-    hlc: { wallMillis, counter: ordinal % HLC_COUNTER_LIMIT, nodeId: context.source },
-    payload,
-    clientCreatedAt: instant(wallMillis),
-    serverReceivedAt: null,
-    serverSequence: null,
-  };
-}
 
 export function importedRecordKeysOf(result: {
   readonly events: readonly DomainEvent[];

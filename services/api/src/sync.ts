@@ -1,11 +1,17 @@
 import {
   ClockDriftError,
+  buildDomainEvent,
   decodeHlc,
   encodeHlc,
   instant,
   receive,
+  type DeviceId,
   type DomainEvent,
+  type DomainEventBody,
+  type EventId,
   type Hlc,
+  type SessionId,
+  type UserId,
 } from '@ferrum/domain';
 import {
   type PullRequest,
@@ -165,17 +171,25 @@ export async function pullPage(
 }
 
 function rowToEvent(row: QueryResultRow): DomainEvent {
-  return {
-    eventId: String(row.event_id),
-    aggregateId: String(row.aggregate_id),
-    userId: String(row.user_id),
-    deviceId: String(row.device_id),
+  // Every stored row went through parseWireEvent before insert, so event_type is a
+  // known DomainEventType — but the compiler cannot carry that runtime-proven
+  // correlation between eventType and payload back out of the database, so the pair
+  // is cast once here. This cast and its twin in packages/sync-protocol/src/wire.ts
+  // parseWireEvent are the only legitimate DomainEvent casts in the repo — both sit
+  // at the untrusted wire boundary.
+  const body = {
     eventType: String(row.event_type),
+    payload: row.payload,
+  } as unknown as DomainEventBody;
+  return buildDomainEvent(body, {
+    eventId: String(row.event_id) as EventId,
+    aggregateId: String(row.aggregate_id) as SessionId,
+    userId: String(row.user_id) as UserId,
+    deviceId: String(row.device_id) as DeviceId,
     schemaVersion: Number(row.schema_version),
     hlc: decodeHlc(String(row.hlc)),
-    payload: row.payload,
     clientCreatedAt: instant(Number(row.client_created_at_millis)),
     serverReceivedAt: instant(Number(row.server_received_at_millis)),
     serverSequence: Number(row.server_sequence),
-  } as unknown as DomainEvent;
+  });
 }

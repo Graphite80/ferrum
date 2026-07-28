@@ -1,8 +1,11 @@
 import {
   ClockDriftError,
+  buildDomainEvent,
+  type DeviceId,
   type DomainEvent,
   type DomainEventPayloadMap,
   type DomainEventType,
+  type EventId,
   type SessionId,
   type SessionProjection,
   EVENT_SCHEMA_VERSION,
@@ -61,23 +64,19 @@ export async function appendEvents(
     const envelopes: DomainEvent[] = [];
     for (const input of inputs) {
       clock = tick(clock, nowMillis);
-      // AppendInput is a distributed union, so every call site is checked for a
-      // payload that matches its eventType. TypeScript cannot carry that correlation
-      // through a loop over the union, which is the only reason this cast exists.
-      const envelope = {
-        eventId: ulidFactory.next(nowMillis),
-        aggregateId: input.aggregateId,
-        userId: null,
-        deviceId: record.deviceId,
-        eventType: input.eventType,
-        schemaVersion: EVENT_SCHEMA_VERSION,
-        hlc: clock,
-        payload: input.payload,
-        clientCreatedAt: instant(nowMillis),
-        serverReceivedAt: null,
-        serverSequence: null,
-      } as unknown as DomainEvent;
-      envelopes.push(envelope);
+      envelopes.push(
+        buildDomainEvent(input, {
+          eventId: ulidFactory.next(nowMillis) as EventId,
+          aggregateId: input.aggregateId,
+          userId: null,
+          deviceId: record.deviceId as DeviceId,
+          schemaVersion: EVENT_SCHEMA_VERSION,
+          hlc: clock,
+          clientCreatedAt: instant(nowMillis),
+          serverReceivedAt: null,
+          serverSequence: null,
+        })
+      );
     }
 
     const rows: StoredEvent[] = envelopes.map(envelope => ({

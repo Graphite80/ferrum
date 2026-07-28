@@ -23,6 +23,7 @@
     "types": ["node", "vite/client"],
     "paths": {
       "@ferrum/domain": ["./packages/domain/src/index.ts"],
+      "@ferrum/domain/testing": ["./packages/domain/src/testing.ts"],
       "@ferrum/domain/*": ["./packages/domain/src/*"],
       "@ferrum/exercise-library": ["./packages/exercise-library/src/index.ts"],
       "@ferrum/importers": ["./packages/importers/src/index.ts"],

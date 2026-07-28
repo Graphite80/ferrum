@@ -7,7 +7,7 @@ import {
   projectAll,
   projectSession,
 } from '../src/index.ts';
-import { scriptedSessionArbitrary, type ScriptedSession } from './support/factories.ts';
+import { scriptedSessionArbitrary, type ScriptedSession } from '../src/testing/factories.ts';
 
 function retarget(session: ScriptedSession, sessionId: SessionId): DomainEvent[] {
   return session.events.map(

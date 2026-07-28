@@ -9,14 +9,22 @@ import { PGlite } from '@electric-sql/pglite';
 import { type Bot } from 'grammy';
 import { type Update } from 'grammy/types';
 import {
+  EVENT_SCHEMA_VERSION,
   allSets,
+  buildEvent,
   comparisonSignature,
+  instant,
   kilograms,
   localDate,
   type DomainEvent,
+  type EventId,
+  type ProgressionRuleId,
+  type SessionExerciseId,
   type SessionId,
+  type SetPrescriptionSnapshot,
   type UserId,
   type DeviceId,
+  type WorkoutSetId,
 } from '@ferrum/domain';
 import { loadExerciseLibrary } from '@ferrum/exercise-library';
 import { extractLifeAsCode, libraryResolver, runImport } from '@ferrum/importers';
@@ -461,17 +469,21 @@ describe('/next', () => {
     if (bench === undefined) throw new Error('bench definition missing');
     const signature = comparisonSignature(bench, null);
     const sessionId = 'ses-prescribed-1' as SessionId;
+    const sessionExerciseId = 'sxe-p1' as SessionExerciseId;
     const day = localDate('2026-07-26');
     const base = Date.parse('2026-07-26T10:00:00Z');
-    const shared = {
+    const envelope = (eventId: string, tick: number) => ({
+      eventId: eventId as EventId,
       aggregateId: sessionId,
       userId: userId as UserId,
       deviceId: 'seed' as DeviceId,
-      schemaVersion: 1,
+      schemaVersion: EVENT_SCHEMA_VERSION,
+      hlc: { wallMillis: base + tick, counter: 0, nodeId: 'seed' },
+      clientCreatedAt: instant(base + tick),
       serverReceivedAt: null,
       serverSequence: null,
-    };
-    const snapshot = {
+    });
+    const snapshot: SetPrescriptionSnapshot = {
       prescriptionVersion: 1,
       setType: 'working',
       targetLoadKg: kilograms(100),
@@ -479,26 +491,20 @@ describe('/next', () => {
       targetRepMax: 8,
       targetRir: [1, 3],
       targetRpe: null,
-      ruleId: 'rule-bench-dp',
+      ruleId: 'rule-bench-dp' as ProgressionRuleId,
       ruleVersion: 1,
       explanationContext: null,
     };
     return [
-      {
-        ...shared,
-        eventId: 'evt-p1',
-        eventType: 'SessionStarted',
-        hlc: { wallMillis: base, counter: 0, nodeId: 'seed' },
-        payload: { sessionId, startedAt: base, localDate: day, tzOffsetMinutes: 0, title: 'Push' },
-        clientCreatedAt: base,
-      },
-      {
-        ...shared,
-        eventId: 'evt-p2',
-        eventType: 'ExerciseAddedToSession',
-        hlc: { wallMillis: base + 1, counter: 0, nodeId: 'seed' },
-        payload: {
-          sessionExerciseId: 'sxe-p1',
+      buildEvent(
+        'SessionStarted',
+        { sessionId, startedAt: instant(base), localDate: day, tzOffsetMinutes: 0, title: 'Push' },
+        envelope('evt-p1', 0)
+      ),
+      buildEvent(
+        'ExerciseAddedToSession',
+        {
+          sessionExerciseId,
           sessionId,
           exerciseDefinitionId: bench.id,
           equipmentInstanceId: null,
@@ -506,16 +512,13 @@ describe('/next', () => {
           supersetGroupId: null,
           supersetOrder: null,
         },
-        clientCreatedAt: base + 1,
-      },
-      {
-        ...shared,
-        eventId: 'evt-p3',
-        eventType: 'SetLogged',
-        hlc: { wallMillis: base + 2, counter: 0, nodeId: 'seed' },
-        payload: {
-          setId: 'set-p1',
-          sessionExerciseId: 'sxe-p1',
+        envelope('evt-p2', 1)
+      ),
+      buildEvent(
+        'SetLogged',
+        {
+          setId: 'set-p1' as WorkoutSetId,
+          sessionExerciseId,
           orderIndex: 0,
           setType: 'working',
           measurements: {
@@ -544,21 +547,18 @@ describe('/next', () => {
           exerciseRevisionSnapshot: 1,
           comparisonSignature: signature,
           provenance: null,
-          performedAt: base + 2,
+          performedAt: instant(base + 2),
           localDate: day,
           tzOffsetMinutes: 0,
         },
-        clientCreatedAt: base + 2,
-      },
-      {
-        ...shared,
-        eventId: 'evt-p4',
-        eventType: 'SessionFinished',
-        hlc: { wallMillis: base + 3, counter: 0, nodeId: 'seed' },
-        payload: { sessionId, finishedAt: base + 3 },
-        clientCreatedAt: base + 3,
-      },
-    ] as unknown as DomainEvent[];
+        envelope('evt-p3', 2)
+      ),
+      buildEvent(
+        'SessionFinished',
+        { sessionId, finishedAt: instant(base + 3) },
+        envelope('evt-p4', 3)
+      ),
+    ];
   }
 
   it('shows last performances when history exists but nothing was ever prescribed', async () => {

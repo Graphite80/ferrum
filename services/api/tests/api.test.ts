@@ -2,7 +2,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { serve, type ServerType } from '@hono/node-server';
 import { PGlite } from '@electric-sql/pglite';
 import fc from 'fast-check';
-import { instant, localDate, projectSession, type DomainEvent } from '@ferrum/domain';
+import {
+  instant,
+  localDate,
+  projectSession,
+  type DomainEvent,
+  type ExerciseDefinitionId,
+  type SessionExerciseId,
+  type WorkoutSetId,
+} from '@ferrum/domain';
 import {
   isProtocolError,
   parsePullResponse,
@@ -23,12 +31,7 @@ import {
   signature,
   SESSION_ID,
   type EventBuilderState,
-} from '../../../packages/domain/tests/support/factories.ts';
-import type {
-  SessionExerciseId,
-  ExerciseDefinitionId,
-  WorkoutSetId,
-} from '../../../packages/domain/src/index.ts';
+} from '@ferrum/domain/testing';
 
 let server: ServerType;
 let baseUrl = '';

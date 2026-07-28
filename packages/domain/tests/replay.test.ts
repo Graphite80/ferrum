@@ -6,7 +6,7 @@ import {
   type WorkoutSetId,
   projectSession,
 } from '../src/index.ts';
-import { SESSION_ID, scriptedSessionArbitrary } from './support/factories.ts';
+import { SESSION_ID, scriptedSessionArbitrary } from '../src/testing/factories.ts';
 
 function substantive(projection: SessionProjection): unknown {
   return {

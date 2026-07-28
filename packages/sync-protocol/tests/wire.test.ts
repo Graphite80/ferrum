@@ -21,7 +21,7 @@ import {
   newBuilderState,
   scriptedSessionArbitrary,
   SESSION_ID,
-} from '../../domain/tests/support/factories.ts';
+} from '@ferrum/domain/testing';
 
 function overWire<T>(value: T): unknown {
   return JSON.parse(JSON.stringify(value)) as unknown;

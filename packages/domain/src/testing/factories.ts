@@ -19,10 +19,11 @@ import {
   type WorkoutSetId,
   type ExerciseDefinitionId,
   EVENT_SCHEMA_VERSION,
+  buildEvent,
   instant,
   kilograms,
   localDate,
-} from '../../src/index.ts';
+} from '../index.ts';
 
 export const SESSION_ID = 'session-01' as SessionId;
 export const USER_ID = 'user-01' as UserId;
@@ -57,19 +58,17 @@ export function makeEvent<T extends DomainEventType>(
   state.clocks.set(device, next);
   state.sequence += 1;
 
-  return {
+  return buildEvent(eventType, payload, {
     eventId: `evt-${state.sequence.toString().padStart(6, '0')}` as EventId,
     aggregateId: SESSION_ID,
     userId: USER_ID,
     deviceId: device as DeviceId,
-    eventType,
     schemaVersion: EVENT_SCHEMA_VERSION,
     hlc: next,
-    payload,
     clientCreatedAt: instant(wallMillis),
     serverReceivedAt: null,
     serverSequence: null,
-  };
+  });
 }
 
 export function measurements(loadKg: number, reps: number): SetMeasurements {

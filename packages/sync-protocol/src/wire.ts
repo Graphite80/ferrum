@@ -1,10 +1,17 @@
 import {
   EVENT_SCHEMA_VERSION,
+  buildDomainEvent,
   decodeHlc,
   encodeHlc,
+  type DeviceId,
   type DomainEvent,
+  type DomainEventBody,
   type DomainEventType,
+  type EventId,
   type Hlc,
+  type Instant,
+  type SessionId,
+  type UserId,
 } from '@ferrum/domain';
 import {
   PULL_MAX_LIMIT,
@@ -231,20 +238,23 @@ export function parseWireEvent(value: unknown, path = 'event'): DomainEvent | Pr
 
   // The payload interior is deliberately passed through untyped: the envelope is the
   // sync contract, payload evolution is governed by schemaVersion, and the projection
-  // already tolerates partial payloads field-by-field.
-  return {
-    eventId,
-    aggregateId,
-    userId: record.userId,
-    deviceId,
-    eventType,
+  // already tolerates partial payloads field-by-field. eventType was validated against
+  // EVENT_TYPE_FLAGS above, but the compiler cannot carry a runtime-proven correlation
+  // between eventType and payload, so the pair is cast once here. This cast and its
+  // twin in services/api/src/sync.ts rowToEvent are the only legitimate DomainEvent
+  // casts in the repo — both sit at the untrusted wire boundary.
+  const body = { eventType, payload } as unknown as DomainEventBody;
+  return buildDomainEvent(body, {
+    eventId: eventId as EventId,
+    aggregateId: aggregateId as SessionId,
+    userId: record.userId as UserId | null,
+    deviceId: deviceId as DeviceId,
     schemaVersion: EVENT_SCHEMA_VERSION,
     hlc,
-    payload,
-    clientCreatedAt,
-    serverReceivedAt,
+    clientCreatedAt: clientCreatedAt as Instant,
+    serverReceivedAt: serverReceivedAt as Instant | null,
     serverSequence,
-  } as unknown as DomainEvent;
+  });
 }
 
 export function parsePushRequest(json: unknown): PushRequest | ProtocolError {

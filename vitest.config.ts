@@ -12,7 +12,12 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**/*.ts'],
-      exclude: ['packages/exercise-library/src/generated/**'],
+      exclude: [
+        'packages/exercise-library/src/generated/**',
+        // Test support shipped via the @ferrum/domain/testing subpath, not product code.
+        'packages/domain/src/testing.ts',
+        'packages/domain/src/testing/**',
+      ],
       thresholds: { branches: 80, functions: 85, lines: 85, statements: 85 },
     },
   },

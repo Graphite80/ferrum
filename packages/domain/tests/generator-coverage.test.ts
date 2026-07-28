@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { projectSession } from '../src/index.ts';
-import { SESSION_ID, scriptedSessionArbitrary } from './support/factories.ts';
+import { SESSION_ID, scriptedSessionArbitrary } from '../src/testing/factories.ts';
 
 describe('generator coverage', () => {
   it('reports the shape of generated sessions', () => {
