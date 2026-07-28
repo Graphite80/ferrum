@@ -92,7 +92,14 @@ export default [
             { from: 'sync-protocol', allow: ['domain', 'sync-protocol'] },
             {
               from: 'api',
-              allow: ['domain', 'sync-protocol', 'exercise-library', 'importers', 'api'],
+              allow: [
+                'domain',
+                'sync-protocol',
+                'exercise-library',
+                'importers',
+                'progression-engine',
+                'api',
+              ],
             },
           ],
         },

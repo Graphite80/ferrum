@@ -4,6 +4,8 @@ export * from './warmup.ts';
 export * from './csv.ts';
 export * from './dedupe.ts';
 export * from './pipeline.ts';
+export * from './resolver.ts';
 export * from './sources/life-as-code.ts';
 export * from './sources/hevy.ts';
 export * from './sources/strong.ts';
+export * from './sources/telegram.ts';

@@ -682,7 +682,9 @@ function groupBy<T>(items: readonly T[], key: (item: T) => string): Map<string, 
   return groups;
 }
 
-export function importedRecordKeysOf(result: ImportResult): Set<string> {
+export function importedRecordKeysOf(result: {
+  readonly events: readonly DomainEvent[];
+}): Set<string> {
   const keys = new Set<string>();
   for (const event of result.events) {
     if (event.eventType !== 'SetLogged') continue;

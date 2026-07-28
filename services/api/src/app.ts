@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { Hono } from 'hono';
+import { Hono, type MiddlewareHandler } from 'hono';
+import { webhookCallback, type Bot } from 'grammy';
 import {
   PULL_DEFAULT_LIMIT,
   PULL_MAX_LIMIT,
@@ -10,15 +11,22 @@ import {
 } from '@ferrum/sync-protocol';
 import { type Database } from './db.ts';
 import { ClockDriftBatchError, pullPage, pushBatch } from './sync.ts';
+import { mintLinkToken } from './bot/store.ts';
+
+export interface TelegramMount {
+  readonly bot: Bot;
+  readonly webhookSecret: string;
+}
 
 export interface AppOptions {
   readonly db: Database;
   readonly enableDevRoutes: boolean;
+  readonly telegram?: TelegramMount;
 }
 
 type AppEnv = { Variables: { userId: string } };
 
-export function createApp({ db, enableDevRoutes }: AppOptions): Hono<AppEnv> {
+export function createApp({ db, enableDevRoutes, telegram }: AppOptions): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
   app.get('/health', c => c.json({ ok: true }));
@@ -33,7 +41,7 @@ export function createApp({ db, enableDevRoutes }: AppOptions): Hono<AppEnv> {
     });
   }
 
-  app.use('/sync/*', async (c, next) => {
+  const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
     const header = c.req.header('authorization');
     if (header === undefined || !header.toLowerCase().startsWith('bearer ')) {
       return c.json({ error: 'unauthorized' }, 401);
@@ -45,7 +53,10 @@ export function createApp({ db, enableDevRoutes }: AppOptions): Hono<AppEnv> {
     if (row === undefined) return c.json({ error: 'unauthorized' }, 401);
     c.set('userId', String(row.user_id));
     await next();
-  });
+  };
+
+  app.use('/sync/*', requireAuth);
+  app.use('/link/*', requireAuth);
 
   app.post('/sync/push', async c => {
     let body: unknown;
@@ -86,6 +97,18 @@ export function createApp({ db, enableDevRoutes }: AppOptions): Hono<AppEnv> {
     const page = await pullPage(db, c.get('userId'), { afterSequence: after, limit });
     return c.json(serializePullResponse(page));
   });
+
+  app.post('/link/token', async c => {
+    const minted = await mintLinkToken(db, c.get('userId'));
+    return c.json(minted);
+  });
+
+  if (telegram !== undefined) {
+    const handleUpdate = webhookCallback(telegram.bot, 'hono', {
+      secretToken: telegram.webhookSecret,
+    });
+    app.post('/telegram/webhook', c => handleUpdate(c));
+  }
 
   return app;
 }

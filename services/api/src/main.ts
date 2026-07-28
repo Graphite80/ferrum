@@ -1,6 +1,7 @@
 import { serve } from '@hono/node-server';
 import pg from 'pg';
 import { createApp } from './app.ts';
+import { createTelegramBot } from './bot/index.ts';
 import { migrate } from './migrate.ts';
 import { pgDatabase } from './pg-database.ts';
 
@@ -17,7 +18,19 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 const db = pgDatabase(new pg.Pool({ connectionString: databaseUrl }));
 await migrate(db);
 
-const app = createApp({ db, enableDevRoutes: process.env.NODE_ENV !== 'production' });
+const botToken = process.env.TELEGRAM_BOT_TOKEN;
+const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+const telegram =
+  botToken !== undefined && botToken !== '' && webhookSecret !== undefined && webhookSecret !== ''
+    ? { bot: createTelegramBot({ token: botToken, db }), webhookSecret }
+    : undefined;
+if (telegram !== undefined) await telegram.bot.init();
+
+const app = createApp({
+  db,
+  enableDevRoutes: process.env.NODE_ENV !== 'production',
+  ...(telegram === undefined ? {} : { telegram }),
+});
 
 serve({ fetch: app.fetch, port }, info => {
   console.log(`ferrum api listening on :${info.port}`);

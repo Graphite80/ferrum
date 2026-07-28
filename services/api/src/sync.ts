@@ -106,6 +106,23 @@ export async function pushBatch(
   return { accepted, duplicates, cursor: Number(cursorResult.rows[0]?.cursor) };
 }
 
+export async function loadUserEvents(
+  db: QueryRunner,
+  userId: string
+): Promise<readonly DomainEvent[]> {
+  const result = await db.query(
+    `select event_id, aggregate_id, user_id, device_id, event_type, schema_version, hlc, payload,
+            (extract(epoch from client_created_at) * 1000)::bigint as client_created_at_millis,
+            (extract(epoch from server_received_at) * 1000)::bigint as server_received_at_millis,
+            server_sequence
+     from events
+     where user_id = $1
+     order by server_sequence`,
+    [userId]
+  );
+  return result.rows.map(rowToEvent);
+}
+
 export async function pullPage(
   db: QueryRunner,
   userId: string,

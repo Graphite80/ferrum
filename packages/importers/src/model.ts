@@ -1,6 +1,6 @@
 import type { Instant, LocalDate, SetType, WeightUnit, WorkoutSetId } from '@ferrum/domain';
 
-export type ImportSourceId = 'life-as-code' | 'hevy' | 'strong';
+export type ImportSourceId = 'life-as-code' | 'hevy' | 'strong' | 'telegram';
 
 export type LoadKind = 'external' | 'assistance' | 'bodyweight_only';
 
