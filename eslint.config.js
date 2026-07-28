@@ -15,7 +15,6 @@ export default [
       '**/playwright-report/**',
       '**/test-results/**',
       '**/*.config.{js,ts}',
-      '**/tests/**',
       'packages/exercise-library/src/generated/**',
     ],
   },
@@ -132,6 +131,19 @@ export default [
           ],
         },
       ],
+    },
+  },
+  {
+    // Tests stay on the strict typed config, minus the rules that only produce
+    // noise there: non-null assertions on values the test just created, and the
+    // unsafe-assignment churn of asserting on parsed JSON.
+    files: ['**/tests/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      // Wire tests build malformed inputs by deleting computed keys from valid ones.
+      '@typescript-eslint/no-dynamic-delete': 'off',
+      '@typescript-eslint/no-unnecessary-type-parameters': 'off',
     },
   },
   {

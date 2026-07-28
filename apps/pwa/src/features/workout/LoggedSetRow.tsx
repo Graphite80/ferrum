@@ -8,8 +8,8 @@ import {
 } from '@ferrum/domain';
 import { displayStep } from '../../data/settings-store.ts';
 import { type SetPatch } from '../../data/session-controller.ts';
-import { Stepper } from './SetRow.tsx';
-import { BTN_QUIET, EYEBROW, MONO } from '../../ui.ts';
+import { Stepper } from '../../components/Stepper.tsx';
+import { button, eyebrow, mono } from '../../ui.ts';
 
 export interface LoggedSetRowProps {
   readonly position: number;
@@ -62,20 +62,23 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
           else openEditor();
         }}
       >
-        <span className={EYEBROW}>Set {props.position}</span>
+        <span className={eyebrow()}>Set {props.position}</span>
         {props.set.setType === 'warmup' && (
           <span
-            className={`${EYEBROW} rounded-[2px] border border-seam px-1.5 py-0.5`}
+            className={eyebrow({ className: 'rounded-[2px] border border-seam px-1.5 py-0.5' })}
             data-testid="warmup-marker"
           >
             Warmup
           </span>
         )}
-        <span className={`${MONO} font-medium text-chalk`} data-testid="logged-set-values">
+        <span
+          className={mono({ className: 'font-medium text-chalk' })}
+          data-testid="logged-set-values"
+        >
           {formatLoad(measurements.canonicalExternalLoadKg, { unit: props.unit })} ×{' '}
           {measurements.reps ?? '—'}
         </span>
-        <span className={`${MONO} text-xs font-medium text-ash`}>
+        <span className={mono({ className: 'text-xs font-medium text-ash' })}>
           RIR {measurements.rirEntered == null ? '—' : String(measurements.rirEntered)}
         </span>
       </button>
@@ -94,7 +97,7 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
           <div className="flex items-stretch gap-2">
             <button
               type="button"
-              className={`${BTN_QUIET} flex-1`}
+              className={button({ intent: 'quiet', className: 'flex-1' })}
               data-testid="delete-set"
               onClick={() => {
                 setEditing(false);

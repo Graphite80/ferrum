@@ -1,4 +1,5 @@
 import { liveQuery } from 'dexie';
+import { type DomainEvent } from '@ferrum/domain';
 import {
   PULL_DEFAULT_LIMIT,
   isProtocolError,
@@ -32,11 +33,41 @@ export interface SyncStatus {
 export type SyncTrigger =
   'start' | 'append' | 'online' | 'visible' | 'manual' | 'retry' | 'coalesced';
 
-const PUSH_BATCH_LIMIT = 500;
-const APPEND_DEBOUNCE_MILLIS = 2_000;
-const BACKOFF_BASE_MILLIS = 5_000;
-const BACKOFF_CAP_MILLIS = 300_000;
-const DRIFT_RETRY_MILLIS = 3_600_000;
+export interface SyncState {
+  readonly cursor: number;
+  readonly lastSuccessAtMillis: number | null;
+  readonly driftMessage: string | null;
+}
+
+export interface PushableEvent {
+  readonly eventId: string;
+  readonly envelope: DomainEvent;
+}
+
+export type TimerHandle = ReturnType<typeof setTimeout>;
+
+export interface SyncClientDeps {
+  readonly loadConfig: () => Promise<SyncConfig>;
+  readonly loadState: () => Promise<SyncState>;
+  readonly saveState: (patch: Partial<SyncState>) => Promise<void>;
+  readonly unacknowledgedBatch: (limit: number) => Promise<readonly PushableEvent[]>;
+  readonly markAcknowledged: (eventIds: readonly string[]) => Promise<void>;
+  readonly importRemoteEvents: (
+    events: readonly DomainEvent[],
+    nowMillis: number
+  ) => Promise<number>;
+  readonly fetch: (url: string, init: RequestInit) => Promise<Response>;
+  readonly now: () => number;
+  readonly random: () => number;
+  readonly setTimer: (callback: () => void, delayMillis: number) => TimerHandle;
+  readonly clearTimer: (handle: TimerHandle) => void;
+}
+
+export const PUSH_BATCH_LIMIT = 500;
+export const APPEND_DEBOUNCE_MILLIS = 2_000;
+export const BACKOFF_BASE_MILLIS = 5_000;
+export const BACKOFF_CAP_MILLIS = 300_000;
+export const DRIFT_RETRY_MILLIS = 3_600_000;
 const REQUEST_TIMEOUT_MILLIS = 20_000;
 
 class ClockDriftSyncError extends Error {
@@ -51,77 +82,257 @@ class ClockDriftSyncError extends Error {
 
 type StatusListener = (status: SyncStatus) => void;
 
-const statusListeners = new Set<StatusListener>();
-
-let status: SyncStatus = {
-  configured: false,
-  syncing: false,
-  pendingCount: 0,
-  cursor: 0,
-  lastSuccessAtMillis: null,
-  lastError: null,
-  driftMessage: null,
-};
-
-let initialized = false;
-let cycleInFlight = false;
-let rerunRequested = false;
-let failureCount = 0;
-let lastDriftAtMillis = 0;
-let retryTimer: ReturnType<typeof setTimeout> | null = null;
-let appendTimer: ReturnType<typeof setTimeout> | null = null;
-
-export function getSyncStatus(): SyncStatus {
-  return status;
+interface SyncTarget {
+  readonly serverUrl: string;
+  readonly syncToken: string;
 }
 
-export function subscribeSyncStatus(listener: StatusListener): () => void {
-  statusListeners.add(listener);
-  return () => statusListeners.delete(listener);
-}
+export class SyncClient {
+  private status: SyncStatus = {
+    configured: false,
+    syncing: false,
+    pendingCount: 0,
+    cursor: 0,
+    lastSuccessAtMillis: null,
+    lastError: null,
+    driftMessage: null,
+  };
 
-function publish(patch: Partial<SyncStatus>): void {
-  status = { ...status, ...patch };
-  for (const listener of statusListeners) listener(status);
+  private readonly statusListeners = new Set<StatusListener>();
+  private started = false;
+  private cycleInFlight = false;
+  private rerunRequested = false;
+  private failureCount = 0;
+  private lastDriftAtMillis = 0;
+  private retryTimer: TimerHandle | null = null;
+  private appendTimer: TimerHandle | null = null;
+  private lastPendingCount: number | null = null;
+
+  constructor(private readonly deps: SyncClientDeps) {}
+
+  getStatus(): SyncStatus {
+    return this.status;
+  }
+
+  subscribeStatus(listener: StatusListener): () => void {
+    this.statusListeners.add(listener);
+    return () => this.statusListeners.delete(listener);
+  }
+
+  noteConfigSaved(config: SyncConfig): void {
+    this.publish({
+      configured: config.serverUrl !== null && config.syncToken !== null,
+      lastError: null,
+    });
+  }
+
+  // The unacknowledged count is the write signal: it rises only when this device
+  // appends locally (pulled events land acknowledged, pushes only lower it), so
+  // feeding it here schedules the debounced push without any listener fan-out in
+  // the event store.
+  notePendingCount(count: number): void {
+    const rose = this.lastPendingCount !== null && count > this.lastPendingCount;
+    this.lastPendingCount = count;
+    this.publish({ pendingCount: count });
+    if (rose) this.scheduleAppendSync();
+  }
+
+  async start(): Promise<void> {
+    if (this.started) return;
+    this.started = true;
+    const [state, config] = await Promise.all([this.deps.loadState(), this.deps.loadConfig()]);
+    this.publish({
+      configured: config.serverUrl !== null && config.syncToken !== null,
+      cursor: state.cursor,
+      lastSuccessAtMillis: state.lastSuccessAtMillis,
+      driftMessage: state.driftMessage,
+    });
+    this.requestSync('start');
+  }
+
+  requestSync(trigger: SyncTrigger): void {
+    if (this.cycleInFlight) {
+      this.rerunRequested = true;
+      return;
+    }
+    const driftGateActive =
+      this.status.driftMessage !== null &&
+      trigger !== 'manual' &&
+      trigger !== 'retry' &&
+      this.deps.now() - this.lastDriftAtMillis < DRIFT_RETRY_MILLIS;
+    if (driftGateActive) return;
+    if (trigger === 'manual' && this.retryTimer !== null) {
+      this.deps.clearTimer(this.retryTimer);
+      this.retryTimer = null;
+      this.failureCount = 0;
+    }
+    // An armed backoff owns the schedule: ambient triggers (visibility, online,
+    // append) must not turn every app switch into an immediate hammer while the
+    // server is down. Manual and the retry timer itself still pass.
+    if (this.retryTimer !== null && trigger !== 'manual' && trigger !== 'retry') return;
+    this.cycleInFlight = true;
+    void this.runCycle().finally(() => {
+      this.cycleInFlight = false;
+      if (this.rerunRequested) {
+        this.rerunRequested = false;
+        this.requestSync('coalesced');
+      }
+    });
+  }
+
+  private publish(patch: Partial<SyncStatus>): void {
+    this.status = { ...this.status, ...patch };
+    for (const listener of this.statusListeners) listener(this.status);
+  }
+
+  private scheduleRetry(delayMillis: number): void {
+    if (this.retryTimer !== null) this.deps.clearTimer(this.retryTimer);
+    this.retryTimer = this.deps.setTimer(() => {
+      this.retryTimer = null;
+      this.requestSync('retry');
+    }, delayMillis);
+  }
+
+  private scheduleAppendSync(): void {
+    if (this.appendTimer !== null) this.deps.clearTimer(this.appendTimer);
+    this.appendTimer = this.deps.setTimer(() => {
+      this.appendTimer = null;
+      this.requestSync('append');
+    }, APPEND_DEBOUNCE_MILLIS);
+  }
+
+  private async runCycle(): Promise<void> {
+    try {
+      const config = await this.deps.loadConfig();
+      if (config.serverUrl === null || config.syncToken === null) {
+        this.publish({ configured: false, syncing: false });
+        return;
+      }
+      const target = { serverUrl: config.serverUrl, syncToken: config.syncToken };
+      this.publish({ configured: true, syncing: true });
+      await this.pushAll(target);
+      await this.pullAll(target);
+      this.failureCount = 0;
+      const now = this.deps.now();
+      await this.deps.saveState({ lastSuccessAtMillis: now, driftMessage: null });
+      this.publish({
+        syncing: false,
+        lastSuccessAtMillis: now,
+        lastError: null,
+        driftMessage: null,
+      });
+    } catch (error) {
+      if (error instanceof ClockDriftSyncError) {
+        this.lastDriftAtMillis = this.deps.now();
+        await this.deps.saveState({ driftMessage: error.message });
+        this.publish({ syncing: false, driftMessage: error.message, lastError: null });
+        this.scheduleRetry(DRIFT_RETRY_MILLIS);
+        return;
+      }
+      this.failureCount += 1;
+      const message = error instanceof Error ? error.message : String(error);
+      this.publish({ syncing: false, lastError: message });
+      // Jitter keeps a fleet of devices that failed together from retrying in
+      // lockstep against a single replica the moment it recovers.
+      const backoff = Math.min(
+        BACKOFF_BASE_MILLIS * 2 ** (this.failureCount - 1),
+        BACKOFF_CAP_MILLIS
+      );
+      this.scheduleRetry(backoff * (0.5 + this.deps.random() * 0.5));
+    }
+  }
+
+  private async callServer(
+    target: SyncTarget,
+    path: string,
+    init: { method: 'GET' } | { method: 'POST'; body: string }
+  ): Promise<Response> {
+    const headers: Record<string, string> = { authorization: `Bearer ${target.syncToken}` };
+    if (init.method === 'POST') headers['content-type'] = 'application/json';
+    return this.deps.fetch(`${target.serverUrl.replace(/\/+$/, '')}${path}`, {
+      ...init,
+      headers,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MILLIS),
+    });
+  }
+
+  private async pushAll(target: SyncTarget): Promise<void> {
+    for (;;) {
+      const batch = await this.deps.unacknowledgedBatch(PUSH_BATCH_LIMIT);
+      const first = batch[0];
+      if (first === undefined) return;
+      const request = serializePushRequest({
+        deviceId: first.envelope.deviceId,
+        events: batch.map(row => row.envelope),
+      });
+      const response = await this.callServer(target, '/sync/push', {
+        method: 'POST',
+        body: JSON.stringify(request),
+      });
+      if (response.status === 409) {
+        const body = (await response.json().catch(() => null)) as {
+          driftedEventIds?: readonly string[];
+        } | null;
+        throw new ClockDriftSyncError(body?.driftedEventIds?.length ?? batch.length);
+      }
+      if (!response.ok) throw new Error(`push failed with status ${response.status}`);
+      const parsed = parsePushResponse((await response.json()) as unknown);
+      if (isProtocolError(parsed)) throw new Error(parsed.message);
+      await this.deps.markAcknowledged(batch.map(row => row.eventId));
+      if (batch.length < PUSH_BATCH_LIMIT) return;
+    }
+  }
+
+  // The pull cursor only ever advances along pull pages. The cursor a push returns
+  // is the head of the whole per-user log; jumping there would skip any events
+  // another device pushed at lower sequences than our own batch.
+  private async pullAll(target: SyncTarget): Promise<void> {
+    let cursor = (await this.deps.loadState()).cursor;
+    for (;;) {
+      const response = await this.callServer(
+        target,
+        `/sync/pull?after=${String(cursor)}&limit=${String(PULL_DEFAULT_LIMIT)}`,
+        { method: 'GET' }
+      );
+      if (!response.ok) throw new Error(`pull failed with status ${response.status}`);
+      const parsed = parsePullResponse((await response.json()) as unknown);
+      if (isProtocolError(parsed)) throw new Error(parsed.message);
+      await this.deps.importRemoteEvents(parsed.events, this.deps.now());
+      // A server restored from backup (or a wrong URL) can hand back a smaller
+      // cursor; regressing ours would re-pull the same pages forever.
+      cursor = Math.max(cursor, parsed.cursor);
+      await this.deps.saveState({ cursor });
+      this.publish({ cursor });
+      if (!parsed.hasMore || parsed.events.length === 0) return;
+    }
+  }
 }
 
 export async function loadSyncConfig(): Promise<SyncConfig> {
-  const record = await db.settings.get('settings');
-  return {
-    serverUrl: record?.syncServerUrl ?? null,
-    syncToken: record?.syncToken ?? null,
-  };
+  const record = await db.settings.get('syncConfig');
+  return record?.key === 'syncConfig'
+    ? { serverUrl: record.serverUrl, syncToken: record.syncToken }
+    : { serverUrl: null, syncToken: null };
 }
 
 export async function saveSyncConfig(config: SyncConfig): Promise<void> {
-  await db.transaction('rw', db.settings, async () => {
-    const existing = await db.settings.get('settings');
-    await db.settings.put({
-      key: 'settings',
-      unit: existing?.unit ?? 'kg',
-      ...(config.serverUrl === null ? {} : { syncServerUrl: config.serverUrl }),
-      ...(config.syncToken === null ? {} : { syncToken: config.syncToken }),
-    });
+  await db.settings.put({
+    key: 'syncConfig',
+    serverUrl: config.serverUrl,
+    syncToken: config.syncToken,
   });
-  publish({
-    configured: config.serverUrl !== null && config.syncToken !== null,
-    lastError: null,
-  });
-}
-
-interface SyncState {
-  readonly cursor: number;
-  readonly lastSuccessAtMillis: number | null;
-  readonly driftMessage: string | null;
+  syncClient.noteConfigSaved(config);
 }
 
 async function loadSyncState(): Promise<SyncState> {
   const record = await db.meta.get('syncState');
-  return {
-    cursor: record?.cursor ?? 0,
-    lastSuccessAtMillis: record?.lastSuccessAtMillis ?? null,
-    driftMessage: record?.driftMessage ?? null,
-  };
+  return record?.key === 'syncState'
+    ? {
+        cursor: record.cursor,
+        lastSuccessAtMillis: record.lastSuccessAtMillis,
+        driftMessage: record.driftMessage,
+      }
+    : { cursor: 0, lastSuccessAtMillis: null, driftMessage: null };
 }
 
 async function saveSyncState(patch: Partial<SyncState>): Promise<void> {
@@ -129,194 +340,54 @@ async function saveSyncState(patch: Partial<SyncState>): Promise<void> {
   await db.meta.put({ key: 'syncState', ...current, ...patch });
 }
 
-function normalizeServerUrl(serverUrl: string): string {
-  return serverUrl.replace(/\/+$/, '');
+export const syncClient = new SyncClient({
+  loadConfig: () => withDatabaseRecovery(loadSyncConfig),
+  loadState: () => withDatabaseRecovery(loadSyncState),
+  saveState: patch => withDatabaseRecovery(() => saveSyncState(patch)),
+  unacknowledgedBatch: limit => withDatabaseRecovery(() => unacknowledgedBatch(limit)),
+  markAcknowledged: eventIds => withDatabaseRecovery(() => markAcknowledged(eventIds)),
+  importRemoteEvents: (events, nowMillis) =>
+    withDatabaseRecovery(() => importRemoteEvents(events, nowMillis)),
+  fetch: (url, init) => fetch(url, init),
+  now: () => Date.now(),
+  random: () => Math.random(),
+  setTimer: (callback, delayMillis) => setTimeout(callback, delayMillis),
+  clearTimer: handle => {
+    clearTimeout(handle);
+  },
+});
+
+export function getSyncStatus(): SyncStatus {
+  return syncClient.getStatus();
 }
 
-async function callServer(
-  config: { serverUrl: string; syncToken: string },
-  path: string,
-  init: { method: 'GET' } | { method: 'POST'; body: string }
-): Promise<Response> {
-  const headers: Record<string, string> = { authorization: `Bearer ${config.syncToken}` };
-  if (init.method === 'POST') headers['content-type'] = 'application/json';
-  return fetch(`${normalizeServerUrl(config.serverUrl)}${path}`, {
-    ...init,
-    headers,
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MILLIS),
-  });
-}
-
-async function pushAll(config: { serverUrl: string; syncToken: string }): Promise<void> {
-  for (;;) {
-    const batch = await withDatabaseRecovery(() => unacknowledgedBatch(PUSH_BATCH_LIMIT));
-    const first = batch[0];
-    if (first === undefined) return;
-    const request = serializePushRequest({
-      deviceId: first.envelope.deviceId,
-      events: batch.map(row => row.envelope),
-    });
-    const response = await callServer(config, '/sync/push', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
-    if (response.status === 409) {
-      const body = (await response.json().catch(() => null)) as {
-        driftedEventIds?: readonly string[];
-      } | null;
-      throw new ClockDriftSyncError(body?.driftedEventIds?.length ?? batch.length);
-    }
-    if (!response.ok) throw new Error(`push failed with status ${response.status}`);
-    const parsed = parsePushResponse((await response.json()) as unknown);
-    if (isProtocolError(parsed)) throw new Error(parsed.message);
-    await withDatabaseRecovery(() => markAcknowledged(batch.map(row => row.eventId)));
-    if (batch.length < PUSH_BATCH_LIMIT) return;
-  }
-}
-
-// The pull cursor only ever advances along pull pages. The cursor a push returns is
-// the head of the whole per-user log; jumping there would skip any events another
-// device pushed at lower sequences than our own batch.
-async function pullAll(config: { serverUrl: string; syncToken: string }): Promise<void> {
-  let cursor = (await loadSyncState()).cursor;
-  for (;;) {
-    const response = await callServer(
-      config,
-      `/sync/pull?after=${String(cursor)}&limit=${String(PULL_DEFAULT_LIMIT)}`,
-      { method: 'GET' }
-    );
-    if (!response.ok) throw new Error(`pull failed with status ${response.status}`);
-    const parsed = parsePullResponse((await response.json()) as unknown);
-    if (isProtocolError(parsed)) throw new Error(parsed.message);
-    await withDatabaseRecovery(() => importRemoteEvents(parsed.events, Date.now()));
-    // A server restored from backup (or a wrong URL) can hand back a smaller
-    // cursor; regressing ours would re-pull the same pages forever.
-    cursor = Math.max(cursor, parsed.cursor);
-    await saveSyncState({ cursor });
-    publish({ cursor });
-    if (!parsed.hasMore || parsed.events.length === 0) return;
-  }
-}
-
-function scheduleRetry(delayMillis: number): void {
-  if (retryTimer !== null) clearTimeout(retryTimer);
-  retryTimer = setTimeout(() => {
-    retryTimer = null;
-    requestSync('retry');
-  }, delayMillis);
-}
-
-async function runCycle(): Promise<void> {
-  try {
-    const config = await withDatabaseRecovery(() => loadSyncConfig());
-    if (config.serverUrl === null || config.syncToken === null) {
-      publish({ configured: false, syncing: false });
-      return;
-    }
-    const target = { serverUrl: config.serverUrl, syncToken: config.syncToken };
-    publish({ configured: true, syncing: true });
-    await pushAll(target);
-    await pullAll(target);
-    failureCount = 0;
-    const now = Date.now();
-    await saveSyncState({ lastSuccessAtMillis: now, driftMessage: null });
-    publish({
-      syncing: false,
-      lastSuccessAtMillis: now,
-      lastError: null,
-      driftMessage: null,
-    });
-  } catch (error) {
-    if (error instanceof ClockDriftSyncError) {
-      lastDriftAtMillis = Date.now();
-      await saveSyncState({ driftMessage: error.message });
-      publish({ syncing: false, driftMessage: error.message, lastError: null });
-      scheduleRetry(DRIFT_RETRY_MILLIS);
-      return;
-    }
-    failureCount += 1;
-    const message = error instanceof Error ? error.message : String(error);
-    publish({ syncing: false, lastError: message });
-    // Jitter keeps a fleet of devices that failed together from retrying in
-    // lockstep against a single replica the moment it recovers.
-    const backoff = Math.min(BACKOFF_BASE_MILLIS * 2 ** (failureCount - 1), BACKOFF_CAP_MILLIS);
-    scheduleRetry(backoff * (0.5 + Math.random() * 0.5));
-  }
+export function subscribeSyncStatus(listener: StatusListener): () => void {
+  return syncClient.subscribeStatus(listener);
 }
 
 export function requestSync(trigger: SyncTrigger): void {
-  if (cycleInFlight) {
-    rerunRequested = true;
-    return;
-  }
-  const driftGateActive =
-    status.driftMessage !== null &&
-    trigger !== 'manual' &&
-    trigger !== 'retry' &&
-    Date.now() - lastDriftAtMillis < DRIFT_RETRY_MILLIS;
-  if (driftGateActive) return;
-  if (trigger === 'manual' && retryTimer !== null) {
-    clearTimeout(retryTimer);
-    retryTimer = null;
-    failureCount = 0;
-  }
-  // An armed backoff owns the schedule: ambient triggers (visibility, online,
-  // append) must not turn every app switch into an immediate hammer while the
-  // server is down. Manual and the retry timer itself still pass.
-  if (retryTimer !== null && trigger !== 'manual' && trigger !== 'retry') return;
-  cycleInFlight = true;
-  void runCycle().finally(() => {
-    cycleInFlight = false;
-    if (rerunRequested) {
-      rerunRequested = false;
-      requestSync('coalesced');
-    }
-  });
+  syncClient.requestSync(trigger);
 }
 
-function scheduleAppendSync(): void {
-  if (appendTimer !== null) clearTimeout(appendTimer);
-  appendTimer = setTimeout(() => {
-    appendTimer = null;
-    requestSync('append');
-  }, APPEND_DEBOUNCE_MILLIS);
-}
+let initialized = false;
 
-// The unacknowledged count is the write signal: it rises only when this device
-// appends locally (pulled events land acknowledged, pushes only lower it), so
-// observing it schedules the debounced push without any listener fan-out in the
-// event store. Dexie re-runs the query on writes from any tab of this origin.
-function observePendingCount(): void {
-  let lastPendingCount: number | null = null;
+export async function initSync(): Promise<void> {
+  if (initialized) return;
+  initialized = true;
+  // Dexie re-runs the query on writes from any tab of this origin.
   liveQuery(() => unacknowledgedCount()).subscribe({
     next: count => {
-      const rose = lastPendingCount !== null && count > lastPendingCount;
-      lastPendingCount = count;
-      publish({ pendingCount: count });
-      if (rose) scheduleAppendSync();
+      syncClient.notePendingCount(count);
     },
     error: (error: unknown) => {
       console.error('pending count observation failed', error);
     },
   });
-}
-
-export async function initSync(): Promise<void> {
-  if (initialized) return;
-  initialized = true;
-  const [state, config] = await Promise.all([loadSyncState(), loadSyncConfig()]);
-  publish({
-    configured: config.serverUrl !== null && config.syncToken !== null,
-    cursor: state.cursor,
-    lastSuccessAtMillis: state.lastSuccessAtMillis,
-    driftMessage: state.driftMessage,
-  });
-  observePendingCount();
   window.addEventListener('online', () => {
-    requestSync('online');
+    syncClient.requestSync('online');
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') requestSync('visible');
+    if (document.visibilityState === 'visible') syncClient.requestSync('visible');
   });
-  requestSync('start');
+  await syncClient.start();
 }

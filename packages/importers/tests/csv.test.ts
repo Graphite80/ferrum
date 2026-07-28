@@ -46,7 +46,7 @@ describe('the CSV parser round-trips arbitrary field content', () => {
   it('survives a byte order mark in front of any of it', () => {
     fc.assert(
       fc.property(tableArbitrary, table => {
-        const text = `﻿${serializeCsv(table, { quoteAll: true })}`;
+        const text = `\u{feff}${serializeCsv(table, { quoteAll: true })}`;
         expect(parseCsv(text)).toStrictEqual(table);
       }),
       { numRuns: 200 }

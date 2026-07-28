@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { type ExerciseDefinition } from '@ferrum/domain';
 import { loadExerciseLibrary } from '@ferrum/exercise-library';
-import { BTN_QUIET, CARD } from '../../ui.ts';
+import { button, card } from '../../ui.ts';
 
 export interface ExerciseSearchPanelProps {
   readonly onPick: (definition: ExerciseDefinition) => void;
@@ -26,7 +26,7 @@ export function ExerciseSearchPanel(props: ExerciseSearchPanelProps) {
         </h2>
         <button
           type="button"
-          className={`${BTN_QUIET} px-4`}
+          className={button({ intent: 'quiet', className: 'px-4' })}
           data-testid="close-exercise-search"
           onClick={props.onClose}
         >
@@ -37,7 +37,9 @@ export function ExerciseSearchPanel(props: ExerciseSearchPanelProps) {
       <input
         autoFocus
         type="search"
-        className={`${CARD} tap-target px-4 text-base text-chalk outline-none placeholder:text-ash`}
+        className={card({
+          className: 'tap-target px-4 text-base text-chalk outline-none placeholder:text-ash',
+        })}
         placeholder="Search exercises"
         value={query}
         onChange={event => {
@@ -56,7 +58,7 @@ export function ExerciseSearchPanel(props: ExerciseSearchPanelProps) {
           <li key={definition.id}>
             <button
               type="button"
-              className={`${CARD} tap-target w-full px-4 py-2 text-left`}
+              className={card({ className: 'tap-target w-full px-4 py-2 text-left' })}
               data-testid="exercise-search-result"
               onClick={() => {
                 props.onPick(definition);

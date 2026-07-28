@@ -42,7 +42,11 @@ async function stopSyncServer(): Promise<void> {
   const child = serverProcess;
   if (child === null) return;
   serverProcess = null;
-  const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
+  const exited = new Promise<void>(resolve =>
+    child.once('exit', () => {
+      resolve();
+    })
+  );
   child.kill('SIGTERM');
   await exited;
 }

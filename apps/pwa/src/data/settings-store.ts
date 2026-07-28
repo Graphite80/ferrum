@@ -3,14 +3,11 @@ import { db } from '../db/ferrum-db.ts';
 
 export async function loadUnit(): Promise<WeightUnit> {
   const record = await db.settings.get('settings');
-  return record?.unit ?? 'kg';
+  return record?.key === 'settings' ? record.unit : 'kg';
 }
 
 export async function saveUnit(unit: WeightUnit): Promise<void> {
-  await db.transaction('rw', db.settings, async () => {
-    const existing = await db.settings.get('settings');
-    await db.settings.put({ ...existing, key: 'settings', unit });
-  });
+  await db.settings.put({ key: 'settings', unit });
 }
 
 // Steppers work in the display unit; two decimals is enough to round-trip any

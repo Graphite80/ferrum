@@ -8,6 +8,7 @@
   },
   "types": "./src/index.ts",
   "dependencies": {
-    "@ferrum/domain": "*"
+    "@ferrum/domain": "*",
+    "valibot": "^1.4.2"
   }
 }

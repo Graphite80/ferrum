@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { type WeightUnit, fromKilograms, kilograms, toKilograms } from '@ferrum/domain';
 import { type RoutineRecord, type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 import { ExerciseSearchPanel } from '../workout/ExerciseSearchPanel.tsx';
-import { Stepper } from '../workout/SetRow.tsx';
+import { Stepper } from '../../components/Stepper.tsx';
 import { displayStep } from '../../data/settings-store.ts';
 import {
   deleteRoutine,
@@ -12,7 +12,8 @@ import {
   putRoutine,
   slotFromDefinition,
 } from '../../data/routine-store.ts';
-import { BTN_PRIMARY, BTN_QUIET, BTN_SECONDARY, CARD, EYEBROW } from '../../ui.ts';
+import { ScreenShell } from '../../components/ScreenShell.tsx';
+import { button, card, eyebrow } from '../../ui.ts';
 
 export function RoutineBuilderScreen({
   routineId,
@@ -83,29 +84,27 @@ function RoutineEditor({
   };
 
   return (
-    <main
-      className="mx-auto flex min-h-full max-w-md flex-col gap-4 p-4"
-      data-testid="routine-builder"
-    >
-      <header className="flex items-center justify-between border-b border-seam pb-3">
-        <h1 className="font-display text-2xl font-bold tracking-[0.04em] uppercase">
-          {routineId == null ? 'New routine' : 'Edit routine'}
-        </h1>
+    <ScreenShell
+      title={routineId == null ? 'New routine' : 'Edit routine'}
+      testId="routine-builder"
+      action={
         <button
           type="button"
-          className={`${BTN_QUIET} px-4`}
+          className={button({ intent: 'quiet', className: 'px-4' })}
           data-testid="builder-cancel"
           onClick={onDone}
         >
           Cancel
         </button>
-      </header>
-
+      }
+    >
       <label className="flex flex-col gap-1">
-        <span className={EYEBROW}>Name</span>
+        <span className={eyebrow()}>Name</span>
         <input
           type="text"
-          className={`${CARD} tap-target px-4 text-base text-chalk outline-none placeholder:text-ash`}
+          className={card({
+            className: 'tap-target px-4 text-base text-chalk outline-none placeholder:text-ash',
+          })}
           value={draft.name}
           placeholder="Routine name"
           onChange={event => {
@@ -137,7 +136,7 @@ function RoutineEditor({
 
       <button
         type="button"
-        className={BTN_SECONDARY}
+        className={button({ intent: 'secondary' })}
         data-testid="builder-add-exercise"
         onClick={() => {
           setSearchOpen(true);
@@ -148,7 +147,7 @@ function RoutineEditor({
 
       <button
         type="button"
-        className={`${BTN_PRIMARY} w-full text-lg`}
+        className={button({ size: 'lg', className: 'w-full' })}
         data-testid="builder-save"
         onClick={save}
       >
@@ -170,7 +169,7 @@ function RoutineEditor({
         ) : (
           <button
             type="button"
-            className={BTN_QUIET}
+            className={button({ intent: 'quiet' })}
             data-testid="builder-delete"
             onClick={() => {
               setConfirmingDelete(true);
@@ -191,7 +190,7 @@ function RoutineEditor({
           }}
         />
       )}
-    </main>
+    </ScreenShell>
   );
 }
 
@@ -218,7 +217,7 @@ function SlotEditor({
   const loadStep = displayStep(kilograms(slot.incrementKg), unit);
 
   return (
-    <section className={`${CARD} flex flex-col gap-2 p-3`} data-testid="builder-slot">
+    <section className={card({ className: 'flex flex-col gap-2 p-3' })} data-testid="builder-slot">
       <header className="flex items-center justify-between gap-2">
         <h2 className="min-w-0 font-display text-lg leading-tight font-semibold uppercase">
           {slot.name}
@@ -313,7 +312,7 @@ function SlotEditor({
       {slot.targetLoadKg == null ? (
         <button
           type="button"
-          className={BTN_QUIET}
+          className={button({ intent: 'quiet' })}
           data-testid={`${prefix}-set-target`}
           onClick={() => {
             onPatch({ targetLoadKg: toKilograms(loadStep * 4, unit) });

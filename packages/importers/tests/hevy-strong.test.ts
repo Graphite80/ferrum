@@ -55,7 +55,6 @@ function loggedSets(result: ImportResult): {
   return result.events
     .filter(event => event.eventType === 'SetLogged')
     .map(event => {
-      if (event.eventType !== 'SetLogged') throw new Error('unreachable');
       return {
         setType: event.payload.setType,
         enteredLoad: event.payload.measurements.enteredLoad,
@@ -180,7 +179,7 @@ describe('Hevy imports', () => {
       expect(set.provenance?.source).toBe('hevy');
       expect(set.provenance?.importBatchId).toBe('batch-hevy:workouts-csv-v1');
       expect(set.provenance?.originalPayload).toMatchObject({
-        fields: { exercise_title: expect.any(String) as unknown as string },
+        fields: { exercise_title: expect.any(String) as unknown },
       });
     }
 

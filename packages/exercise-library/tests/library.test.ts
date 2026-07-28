@@ -168,13 +168,13 @@ describe('alias resolution', () => {
         fc.constantFrom('', ' ', '   ', '\t', '\n', ' \t '),
         fc.constantFrom('', ' ', '   ', '\t', '\n', ' \t '),
         ({ label, id }, caseFlips, insertions, leading, trailing) => {
-          const recased = [...label]
+          const recased = Array.from(label)
             .map((character, index) =>
               caseFlips[index] === true ? character.toUpperCase() : character.toLowerCase()
             )
             .join('');
 
-          const characters = [...recased];
+          const characters = Array.from(recased);
           for (const [position, mark] of insertions) {
             characters.splice(position % (characters.length + 1), 0, mark);
           }

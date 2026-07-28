@@ -13,7 +13,7 @@ import { SpikeA } from './features/spike/SpikeA.tsx';
 import { WorkoutScreen } from './features/workout/WorkoutScreen.tsx';
 import { applyUpdate, subscribeUpdateReady } from './platform/sw-update.ts';
 import { initSync } from './sync/sync-client.ts';
-import { BTN_PRIMARY } from './ui.ts';
+import { button } from './ui.ts';
 
 type Screen =
   | { name: 'home' }
@@ -22,21 +22,45 @@ type Screen =
   | { name: 'history' }
   | { name: 'historyDetail'; sessionId: SessionId }
   | { name: 'routineBuilder'; routineId: string | null }
-  | { name: 'settings' };
+  | { name: 'settings' }
+  // Diagnostics, not a feature: reached at /#spike on the device under test, with
+  // no entry point in the normal navigation.
+  | { name: 'spike' };
 
-// Reached at /#spike on the device under test; it is diagnostics, not a feature,
-// so it deliberately has no entry point in the normal navigation. Split at the top
-// so the two trees never share a hook order.
-export function App() {
-  if (window.location.hash === '#spike') return <SpikeA />;
-  return <WorkoutApp />;
+function initialScreen(): Screen {
+  return window.location.hash === '#spike' ? { name: 'spike' } : { name: 'home' };
 }
 
-function WorkoutApp() {
-  const [screen, setScreen] = useState<Screen>({ name: 'home' });
+function urlFor(screen: Screen): string {
+  const base = window.location.pathname + window.location.search;
+  return screen.name === 'spike' ? `${base}#spike` : base;
+}
+
+export function App() {
+  const [screen, setScreen] = useState<Screen>(initialScreen);
   const [unit, setUnit] = useState<WeightUnit>('kg');
   const [booted, setBooted] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
+
+  // Every in-app navigation pushes a history entry, so the Android back gesture
+  // walks back through screens instead of exiting the app. Back from the entry
+  // screen leaves the app — that one is the platform's exit affordance.
+  const navigate = (next: Screen) => {
+    setScreen(next);
+    history.pushState({ screen: next }, '', urlFor(next));
+  };
+
+  useEffect(() => {
+    history.replaceState({ screen: initialScreen() }, '', urlFor(initialScreen()));
+    const onPopState = (event: PopStateEvent) => {
+      const state = event.state as { screen?: Screen } | null;
+      setScreen(state?.screen ?? initialScreen());
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, []);
 
   // Resuming happens before anything is painted. A user who force-quit mid-workout
   // must land back inside that workout, not on a home screen that implies it is gone.
@@ -44,11 +68,17 @@ function WorkoutApp() {
     void (async () => {
       await ensureSeedRoutine(Date.now());
       setUnit(await loadUnit());
-      for (const sessionId of await listSessionIds()) {
-        const projection = await loadSession(sessionId);
-        if (projection.session?.status === 'active') {
-          setScreen({ name: 'workout', sessionId });
-          break;
+      if (window.location.hash !== '#spike') {
+        for (const sessionId of await listSessionIds()) {
+          const projection = await loadSession(sessionId);
+          if (projection.session?.status === 'active') {
+            // Pushed, not replaced: back from a resumed workout lands on Home
+            // instead of exiting, and the session stays active either way.
+            const resumed: Screen = { name: 'workout', sessionId };
+            setScreen(resumed);
+            history.pushState({ screen: resumed }, '', urlFor(resumed));
+            break;
+          }
         }
       }
       setBooted(true);
@@ -74,7 +104,7 @@ function WorkoutApp() {
 
   return (
     <>
-      <CurrentScreen screen={screen} unit={unit} onNavigate={setScreen} onUnitChanged={setUnit} />
+      <CurrentScreen screen={screen} unit={unit} onNavigate={navigate} onUnitChanged={setUnit} />
       {showUpdateToast && (
         <div
           className="fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md items-center justify-between gap-3 border-t border-seam bg-forged p-4"
@@ -83,7 +113,7 @@ function WorkoutApp() {
           <span className="text-sm text-chalk">Update ready</span>
           <button
             type="button"
-            className={`${BTN_PRIMARY} px-4`}
+            className={button({ className: 'px-4' })}
             data-testid="sw-update-restart"
             onClick={applyUpdate}
           >
@@ -189,5 +219,7 @@ function CurrentScreen({
           }}
         />
       );
+    case 'spike':
+      return <SpikeA />;
   }
 }

@@ -123,7 +123,7 @@ beforeAll(async () => {
     },
   });
   bot.api.config.use((_prev, method, payload) => {
-    outbox.push({ method, payload: payload as Record<string, unknown> });
+    outbox.push({ method, payload });
     return Promise.resolve({
       ok: true as const,
       result: canned(method, payload as Record<string, unknown>),
@@ -210,7 +210,8 @@ function sentMessages(): ApiCall[] {
 
 function lastText(): string {
   const last = sentMessages()[sentMessages().length - 1];
-  return String(last?.payload['text'] ?? '');
+  const text = last?.payload['text'];
+  return typeof text === 'string' ? text : '';
 }
 
 interface KeyboardButton {

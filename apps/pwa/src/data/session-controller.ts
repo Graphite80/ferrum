@@ -39,8 +39,8 @@ function tzOffsetMinutes(nowMillis: number): number {
   return -new Date(nowMillis).getTimezoneOffset();
 }
 
-export function sessionExerciseIdFor(sessionId: SessionId, slotIndex: number): SessionExerciseId {
-  return `${sessionId}:ex${String(slotIndex)}` as SessionExerciseId;
+function mintSessionExerciseId(sessionId: SessionId, nowMillis: number): SessionExerciseId {
+  return `${sessionId}:ex_${ulidFactory.next(nowMillis)}` as SessionExerciseId;
 }
 
 async function beginSession(
@@ -68,7 +68,7 @@ async function beginSession(
       aggregateId: sessionId,
       eventType: 'ExerciseAddedToSession',
       payload: {
-        sessionExerciseId: sessionExerciseIdFor(sessionId, index),
+        sessionExerciseId: mintSessionExerciseId(sessionId, nowMillis),
         sessionId,
         exerciseDefinitionId: definitionId as ExerciseDefinitionId,
         equipmentInstanceId: null,
@@ -110,7 +110,7 @@ export async function addExercise(
   orderIndex: number,
   nowMillis: number
 ): Promise<SessionExerciseId> {
-  const sessionExerciseId = `${sessionId}:ex_${ulidFactory.next(nowMillis)}` as SessionExerciseId;
+  const sessionExerciseId = mintSessionExerciseId(sessionId, nowMillis);
   await appendEvents(
     [
       {

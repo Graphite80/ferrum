@@ -3,7 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { type SessionId, type WeightUnit, formatLoad, kilograms } from '@ferrum/domain';
 import { startEmptySession, startSession } from '../../data/session-controller.ts';
 import { listRoutines } from '../../data/routine-store.ts';
-import { BTN_PRIMARY, BTN_QUIET, BTN_SECONDARY, CARD, EYEBROW, MONO } from '../../ui.ts';
+import { ScreenShell } from '../../components/ScreenShell.tsx';
+import { button, card, eyebrow, mono } from '../../ui.ts';
 
 export function HomeScreen({
   unit,
@@ -24,25 +25,26 @@ export function HomeScreen({
   const [starting, setStarting] = useState(false);
 
   return (
-    <main className="mx-auto flex min-h-full max-w-md flex-col gap-4 p-4">
-      <header className="flex items-center justify-between border-b border-seam pb-3">
-        <h1 className="font-display text-4xl font-bold tracking-[0.04em] uppercase">Ferrum</h1>
+    <ScreenShell
+      title="Ferrum"
+      titleClassName="text-4xl"
+      action={
         <button
           type="button"
-          className={`${BTN_QUIET} px-4`}
+          className={button({ intent: 'quiet', className: 'px-4' })}
           aria-label="Settings"
           data-testid="open-settings"
           onClick={onOpenSettings}
         >
           Settings
         </button>
-      </header>
-
+      }
+    >
       {routines?.map(routine => (
-        <div key={routine.id} className={`${CARD} p-4`} data-testid="routine-card">
+        <div key={routine.id} className={card({ className: 'p-4' })} data-testid="routine-card">
           <div className="flex items-baseline justify-between gap-2">
             <div className="min-w-0">
-              <p className={EYEBROW}>Routine</p>
+              <p className={eyebrow()}>Routine</p>
               <p
                 className="mt-1 font-display text-xl font-semibold uppercase"
                 data-testid="routine-name"
@@ -52,7 +54,7 @@ export function HomeScreen({
             </div>
             <button
               type="button"
-              className={`${BTN_QUIET} px-4`}
+              className={button({ intent: 'quiet', className: 'px-4' })}
               data-testid="edit-routine"
               onClick={() => {
                 onEditRoutine(routine.id);
@@ -69,7 +71,7 @@ export function HomeScreen({
                   className="flex items-baseline justify-between gap-2"
                 >
                   <span className="min-w-0">{slot.name}</span>
-                  <span className={`${MONO} shrink-0 text-sm font-medium text-ash`}>
+                  <span className={mono({ className: 'shrink-0 text-sm font-medium text-ash' })}>
                     {slot.sets} × {slot.targetRepMin}–{slot.targetRepMax}
                     {slot.targetLoadKg != null &&
                       ` @ ${formatLoad(kilograms(slot.targetLoadKg), { unit })}`}
@@ -82,7 +84,7 @@ export function HomeScreen({
           <button
             type="button"
             disabled={starting || routine.slots.length === 0}
-            className={`${BTN_PRIMARY} mt-3 w-full text-lg`}
+            className={button({ size: 'lg', className: 'mt-3 w-full' })}
             data-testid="start-routine"
             onClick={() => {
               setStarting(true);
@@ -100,7 +102,7 @@ export function HomeScreen({
       {routines != null && (
         <button
           type="button"
-          className={BTN_SECONDARY}
+          className={button({ intent: 'secondary' })}
           data-testid="new-routine"
           onClick={onNewRoutine}
         >
@@ -125,12 +127,12 @@ export function HomeScreen({
       </button>
       <button
         type="button"
-        className={BTN_SECONDARY}
+        className={button({ intent: 'secondary' })}
         data-testid="open-history"
         onClick={onOpenHistory}
       >
         History
       </button>
-    </main>
+    </ScreenShell>
   );
 }

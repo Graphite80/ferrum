@@ -16,7 +16,7 @@ import { LoggedSetRow } from './LoggedSetRow.tsx';
 import { PlateSleeve } from './PlateSleeve.tsx';
 import { type SetPatch } from '../../data/session-controller.ts';
 import { SetRow } from './SetRow.tsx';
-import { BTN_QUIET, MONO } from '../../ui.ts';
+import { button, mono } from '../../ui.ts';
 
 export interface ExerciseSectionProps {
   readonly exercise: SessionExercise;
@@ -68,7 +68,10 @@ export function ExerciseSection(props: ExerciseSectionProps) {
         </h2>
         <div className="flex shrink-0 items-center gap-2">
           <PlateSleeve completed={liveSets.length} target={plan.targetSets} />
-          <span className={`${MONO} text-xs font-medium text-ash`} data-testid="exercise-set-count">
+          <span
+            className={mono({ className: 'text-xs font-medium text-ash' })}
+            data-testid="exercise-set-count"
+          >
             {plan.targetSets == null
               ? `${String(liveSets.length)} sets`
               : `${String(liveSets.length)}/${String(plan.targetSets)}`}
@@ -92,7 +95,7 @@ export function ExerciseSection(props: ExerciseSectionProps) {
       {menuOpen && liveSets.length === 0 && (
         <button
           type="button"
-          className={BTN_QUIET}
+          className={button({ intent: 'quiet' })}
           data-testid="remove-exercise"
           onClick={() => {
             setMenuOpen(false);
@@ -142,7 +145,7 @@ export function ExerciseSection(props: ExerciseSectionProps) {
           </p>
           <button
             type="button"
-            className={BTN_QUIET}
+            className={button({ intent: 'quiet' })}
             data-testid="add-set"
             onClick={() => {
               setExtraOpen(true);

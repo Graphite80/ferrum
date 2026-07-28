@@ -13,7 +13,9 @@ import { type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 import { type TopSet, bestPriorSets, topWorkingSet } from '../../db/history.ts';
 import { loadSessionPlanSlots } from '../../data/routine-store.ts';
 import { exerciseDisplayName, formatDuration } from './session-view.ts';
-import { BTN_PRIMARY, CARD, EYEBROW, MONO } from '../../ui.ts';
+import { ScreenShell } from '../../components/ScreenShell.tsx';
+import { StatCard } from '../../components/StatCard.tsx';
+import { button, card, eyebrow, mono } from '../../ui.ts';
 
 interface ExerciseSummary {
   readonly key: string;
@@ -58,37 +60,40 @@ export function WorkoutSummaryScreen({
   );
 
   return (
-    <main
-      className="mx-auto flex min-h-full max-w-md flex-col gap-4 p-4"
-      data-testid="workout-summary"
+    <ScreenShell
+      title={session.title ?? 'Workout'}
+      titleClassName="text-3xl"
+      eyebrowText="Workout complete"
+      testId="workout-summary"
     >
-      <header className="border-b border-seam pb-3">
-        <p className={EYEBROW}>Workout complete</p>
-        <h1 className="font-display text-3xl font-bold tracking-[0.04em] uppercase">
-          {session.title ?? 'Workout'}
-        </h1>
-      </header>
-
       <div className="grid grid-cols-3 gap-2">
-        <SummaryStat
+        <StatCard
           label="Duration"
           value={
             session.finishedAt == null ? '—' : formatDuration(session.startedAt, session.finishedAt)
           }
-          testId="summary-duration"
+          valueTestId="summary-duration"
         />
-        <SummaryStat label="Sets" value={String(workingSets.length)} testId="summary-total-sets" />
-        <SummaryStat
+        <StatCard
+          label="Sets"
+          value={String(workingSets.length)}
+          valueTestId="summary-total-sets"
+        />
+        <StatCard
           label="Volume"
           value={formatLoad(kilograms(volumeKg), { unit, fractionDigits: 0 })}
-          testId="summary-volume"
+          valueTestId="summary-volume"
         />
       </div>
 
       {lines.length > 0 && (
         <ul className="flex flex-col gap-2">
           {lines.map(line => (
-            <li key={line.key} className={`${CARD} p-3`} data-testid="summary-exercise">
+            <li
+              key={line.key}
+              className={card({ className: 'p-3' })}
+              data-testid="summary-exercise"
+            >
               <div className="flex items-center justify-between gap-2">
                 <h2 className="min-w-0 font-display text-lg leading-tight font-semibold uppercase">
                   {line.name}
@@ -104,14 +109,20 @@ export function WorkoutSummaryScreen({
               </div>
               <div className="mt-2 flex flex-col gap-1 border-t border-seam pt-2 text-sm">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className={EYEBROW}>Prescribed</span>
-                  <span className={`${MONO} font-medium text-ash`} data-testid="summary-prescribed">
+                  <span className={eyebrow()}>Prescribed</span>
+                  <span
+                    className={mono({ className: 'font-medium text-ash' })}
+                    data-testid="summary-prescribed"
+                  >
                     {line.prescribed ?? '—'}
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className={EYEBROW}>Done</span>
-                  <span className={`${MONO} font-medium text-chalk`} data-testid="summary-actual">
+                  <span className={eyebrow()}>Done</span>
+                  <span
+                    className={mono({ className: 'font-medium text-chalk' })}
+                    data-testid="summary-actual"
+                  >
                     {line.actual}
                   </span>
                 </div>
@@ -123,24 +134,13 @@ export function WorkoutSummaryScreen({
 
       <button
         type="button"
-        className={`${BTN_PRIMARY} w-full text-lg`}
+        className={button({ size: 'lg', className: 'w-full' })}
         data-testid="summary-home"
         onClick={onHome}
       >
         Home
       </button>
-    </main>
-  );
-}
-
-function SummaryStat({ label, value, testId }: { label: string; value: string; testId: string }) {
-  return (
-    <div className={`${CARD} flex flex-col gap-1 p-3`}>
-      <span className={EYEBROW}>{label}</span>
-      <span className={`${MONO} text-lg leading-none font-bold text-chalk`} data-testid={testId}>
-        {value}
-      </span>
-    </div>
+    </ScreenShell>
   );
 }
 

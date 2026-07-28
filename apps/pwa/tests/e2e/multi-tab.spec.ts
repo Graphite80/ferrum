@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 // Two tabs of an installed web app share one IndexedDB, so they share the device
 // id and the hybrid logical clock. The failure this guards against is the common
@@ -57,7 +57,7 @@ interface EventKey {
   deviceId: string;
 }
 
-async function readEventKeys(page: import('@playwright/test').Page): Promise<EventKey[]> {
+async function readEventKeys(page: Page): Promise<EventKey[]> {
   return page.evaluate<EventKey[]>(async () => {
     const open = indexedDB.open('ferrum');
     const database = await new Promise<IDBDatabase>((resolve, reject) => {

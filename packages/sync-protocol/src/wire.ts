@@ -14,6 +14,29 @@ import {
   type UserId,
 } from '@ferrum/domain';
 import {
+  array,
+  boolean,
+  custom,
+  integer,
+  literal,
+  maxLength,
+  maxValue,
+  minLength,
+  minValue,
+  nullable,
+  number,
+  object,
+  optional,
+  picklist,
+  pipe,
+  rawTransform,
+  safeParse,
+  string,
+  transform,
+  type BaseIssue,
+  type GenericSchema,
+} from 'valibot';
+import {
   PULL_MAX_LIMIT,
   PUSH_MAX_EVENTS,
   type PullRequest,
@@ -134,213 +157,177 @@ export function serializePullResponse(response: PullResponse): WirePullResponse 
   };
 }
 
-function asRecord(value: unknown, path: string): Record<string, unknown> | ProtocolError {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return protocolError('not_an_object', path, 'Expected a JSON object');
-  }
-  return value as Record<string, unknown>;
+const NOT_AN_OBJECT_MESSAGE = 'Expected a JSON object';
+
+function isJsonRecord(input: unknown): input is Record<string, unknown> {
+  return typeof input === 'object' && input !== null && !Array.isArray(input);
 }
 
-function nonEmptyString(value: unknown, path: string): string | ProtocolError {
-  if (typeof value !== 'string' || value.length === 0) {
-    return protocolError('invalid_field', path, 'Expected a non-empty string');
-  }
-  return value;
+const nonEmptyStringSchema = pipe(
+  string('Expected a non-empty string'),
+  minLength(1, 'Expected a non-empty string')
+);
+
+const finiteNumberSchema = number('Expected a finite number');
+
+const nonNegativeIntegerSchema = pipe(
+  finiteNumberSchema,
+  integer('Expected a non-negative integer'),
+  minValue(0, 'Expected a non-negative integer')
+);
+
+// HLC validation stays hand-rolled on purpose: decodeHlc owns the 12:4:nodeId width
+// contract, and a regex would silently drift from it.
+const hlcSchema = pipe(
+  string('Expected an encoded HLC string'),
+  rawTransform(({ dataset, addIssue, NEVER }): Hlc => {
+    let decoded: Hlc;
+    try {
+      decoded = decodeHlc(dataset.value);
+    } catch {
+      addIssue({ message: `Malformed HLC "${dataset.value}"` });
+      return NEVER;
+    }
+    if (!Number.isFinite(decoded.wallMillis) || !Number.isFinite(decoded.counter)) {
+      addIssue({ message: `Non-hexadecimal HLC "${dataset.value}"` });
+      return NEVER;
+    }
+    if (decoded.nodeId.length === 0 || decoded.nodeId.includes(':')) {
+      addIssue({ message: `Invalid HLC node id in "${dataset.value}"` });
+      return NEVER;
+    }
+    return decoded;
+  })
+);
+
+const payloadSchema = custom<Record<string, unknown>>(isJsonRecord, NOT_AN_OBJECT_MESSAGE);
+
+const wireEventSchema = pipe(
+  object({
+    eventId: nonEmptyStringSchema,
+    aggregateId: nonEmptyStringSchema,
+    deviceId: nonEmptyStringSchema,
+    userId: nullable(string('Expected a string or null')),
+    eventType: picklist(
+      DOMAIN_EVENT_TYPES,
+      issue => `Unknown event type ${JSON.stringify(issue.input)}`
+    ),
+    schemaVersion: literal(EVENT_SCHEMA_VERSION, `Expected schema version ${EVENT_SCHEMA_VERSION}`),
+    hlc: hlcSchema,
+    payload: payloadSchema,
+    clientCreatedAt: finiteNumberSchema,
+    serverReceivedAt: optional(nullable(number('Expected a number or null')), null),
+    serverSequence: optional(nullable(number('Expected a number or null')), null),
+  }),
+  transform((record): DomainEvent => {
+    // The payload interior is deliberately passed through untyped: the envelope is the
+    // sync contract, payload evolution is governed by schemaVersion, and the projection
+    // already tolerates partial payloads field-by-field. eventType was validated against
+    // DOMAIN_EVENT_TYPES above, but the compiler cannot carry a runtime-proven correlation
+    // between eventType and payload, so the pair is cast once here. This cast and its
+    // twin in services/api/src/sync.ts rowToEvent are the only legitimate DomainEvent
+    // casts in the repo — both sit at the untrusted wire boundary.
+    const body = {
+      eventType: record.eventType,
+      payload: record.payload,
+    } as unknown as DomainEventBody;
+    return buildDomainEvent(body, {
+      eventId: record.eventId as EventId,
+      aggregateId: record.aggregateId as SessionId,
+      userId: record.userId as UserId | null,
+      deviceId: record.deviceId as DeviceId,
+      schemaVersion: EVENT_SCHEMA_VERSION,
+      hlc: record.hlc,
+      clientCreatedAt: record.clientCreatedAt as Instant,
+      serverReceivedAt: record.serverReceivedAt as Instant | null,
+      serverSequence: record.serverSequence,
+    });
+  })
+);
+
+const pushRequestSchema = object({
+  deviceId: nonEmptyStringSchema,
+  events: pipe(
+    array(wireEventSchema, 'Expected an array of events'),
+    maxLength(PUSH_MAX_EVENTS, `A push carries at most ${PUSH_MAX_EVENTS} events`)
+  ),
+});
+
+const pushResponseSchema = object({
+  accepted: nonNegativeIntegerSchema,
+  duplicates: nonNegativeIntegerSchema,
+  cursor: nonNegativeIntegerSchema,
+});
+
+const pullRequestSchema = object({
+  afterSequence: nonNegativeIntegerSchema,
+  limit: pipe(
+    nonNegativeIntegerSchema,
+    minValue(1, `Expected a limit between 1 and ${PULL_MAX_LIMIT}`),
+    maxValue(PULL_MAX_LIMIT, `Expected a limit between 1 and ${PULL_MAX_LIMIT}`)
+  ),
+});
+
+const pullResponseSchema = object({
+  events: array(wireEventSchema, 'Expected an array of events'),
+  cursor: nonNegativeIntegerSchema,
+  hasMore: boolean('Expected a boolean'),
+});
+
+function pathSegment(key: unknown): string {
+  if (typeof key === 'number') return `[${key}]`;
+  if (typeof key === 'string') return `.${key}`;
+  return '.?';
 }
 
-function finiteNumber(value: unknown, path: string): number | ProtocolError {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return protocolError('invalid_field', path, 'Expected a finite number');
-  }
-  return value;
+function toProtocolError(issue: BaseIssue<unknown>, rootPath: string): ProtocolError {
+  const items = issue.path ?? [];
+  const path = rootPath + items.map(item => pathSegment(item.key)).join('');
+  const lastKey = items.at(-1)?.key;
+  // `custom` only ever guards payload records, so both branches mean "not a JSON object".
+  const notAnObject = issue.expected === 'Object' || issue.type === 'custom';
+  const code: ProtocolErrorCode =
+    lastKey === 'hlc'
+      ? 'malformed_hlc'
+      : lastKey === 'eventType'
+        ? 'unknown_event_type'
+        : lastKey === 'schemaVersion'
+          ? 'unsupported_schema_version'
+          : notAnObject
+            ? 'not_an_object'
+            : 'invalid_field';
+  return protocolError(code, path, notAnObject ? NOT_AN_OBJECT_MESSAGE : issue.message);
 }
 
-function nonNegativeInteger(value: unknown, path: string): number | ProtocolError {
-  const parsed = finiteNumber(value, path);
-  if (isProtocolError(parsed)) return parsed;
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    return protocolError('invalid_field', path, 'Expected a non-negative integer');
+function parseWith<TOutput>(
+  schema: GenericSchema<unknown, TOutput>,
+  input: unknown,
+  rootPath: string
+): TOutput | ProtocolError {
+  if (!isJsonRecord(input)) {
+    return protocolError('not_an_object', rootPath, NOT_AN_OBJECT_MESSAGE);
   }
-  return parsed;
-}
-
-function parseHlcField(value: unknown, path: string): Hlc | ProtocolError {
-  if (typeof value !== 'string') {
-    return protocolError('malformed_hlc', path, 'Expected an encoded HLC string');
-  }
-  let decoded: Hlc;
-  try {
-    decoded = decodeHlc(value);
-  } catch {
-    return protocolError('malformed_hlc', path, `Malformed HLC "${value}"`);
-  }
-  if (!Number.isFinite(decoded.wallMillis) || !Number.isFinite(decoded.counter)) {
-    return protocolError('malformed_hlc', path, `Non-hexadecimal HLC "${value}"`);
-  }
-  if (decoded.nodeId.length === 0 || decoded.nodeId.includes(':')) {
-    return protocolError('malformed_hlc', path, `Invalid HLC node id in "${value}"`);
-  }
-  return decoded;
+  const result = safeParse(schema, input, { abortEarly: true });
+  if (result.success) return result.output;
+  return toProtocolError(result.issues[0], rootPath);
 }
 
 export function parseWireEvent(value: unknown, path = 'event'): DomainEvent | ProtocolError {
-  const record = asRecord(value, path);
-  if (isProtocolError(record)) return record;
-
-  const eventId = nonEmptyString(record.eventId, `${path}.eventId`);
-  if (isProtocolError(eventId)) return eventId;
-
-  const aggregateId = nonEmptyString(record.aggregateId, `${path}.aggregateId`);
-  if (isProtocolError(aggregateId)) return aggregateId;
-
-  const deviceId = nonEmptyString(record.deviceId, `${path}.deviceId`);
-  if (isProtocolError(deviceId)) return deviceId;
-
-  if (record.userId !== null && typeof record.userId !== 'string') {
-    return protocolError('invalid_field', `${path}.userId`, 'Expected a string or null');
-  }
-
-  const eventType = record.eventType;
-  if (typeof eventType !== 'string' || !(eventType in EVENT_TYPE_FLAGS)) {
-    return protocolError(
-      'unknown_event_type',
-      `${path}.eventType`,
-      `Unknown event type ${JSON.stringify(eventType)}`
-    );
-  }
-
-  if (record.schemaVersion !== EVENT_SCHEMA_VERSION) {
-    return protocolError(
-      'unsupported_schema_version',
-      `${path}.schemaVersion`,
-      `Expected schema version ${EVENT_SCHEMA_VERSION}`
-    );
-  }
-
-  const hlc = parseHlcField(record.hlc, `${path}.hlc`);
-  if (isProtocolError(hlc)) return hlc;
-
-  const payload = asRecord(record.payload, `${path}.payload`);
-  if (isProtocolError(payload)) return payload;
-
-  const clientCreatedAt = finiteNumber(record.clientCreatedAt, `${path}.clientCreatedAt`);
-  if (isProtocolError(clientCreatedAt)) return clientCreatedAt;
-
-  const serverReceivedAt = record.serverReceivedAt ?? null;
-  if (serverReceivedAt !== null && typeof serverReceivedAt !== 'number') {
-    return protocolError('invalid_field', `${path}.serverReceivedAt`, 'Expected a number or null');
-  }
-
-  const serverSequence = record.serverSequence ?? null;
-  if (serverSequence !== null && typeof serverSequence !== 'number') {
-    return protocolError('invalid_field', `${path}.serverSequence`, 'Expected a number or null');
-  }
-
-  // The payload interior is deliberately passed through untyped: the envelope is the
-  // sync contract, payload evolution is governed by schemaVersion, and the projection
-  // already tolerates partial payloads field-by-field. eventType was validated against
-  // EVENT_TYPE_FLAGS above, but the compiler cannot carry a runtime-proven correlation
-  // between eventType and payload, so the pair is cast once here. This cast and its
-  // twin in services/api/src/sync.ts rowToEvent are the only legitimate DomainEvent
-  // casts in the repo — both sit at the untrusted wire boundary.
-  const body = { eventType, payload } as unknown as DomainEventBody;
-  return buildDomainEvent(body, {
-    eventId: eventId as EventId,
-    aggregateId: aggregateId as SessionId,
-    userId: record.userId as UserId | null,
-    deviceId: deviceId as DeviceId,
-    schemaVersion: EVENT_SCHEMA_VERSION,
-    hlc,
-    clientCreatedAt: clientCreatedAt as Instant,
-    serverReceivedAt: serverReceivedAt as Instant | null,
-    serverSequence,
-  });
+  return parseWith(wireEventSchema, value, path);
 }
 
 export function parsePushRequest(json: unknown): PushRequest | ProtocolError {
-  const record = asRecord(json, 'pushRequest');
-  if (isProtocolError(record)) return record;
-
-  const deviceId = nonEmptyString(record.deviceId, 'pushRequest.deviceId');
-  if (isProtocolError(deviceId)) return deviceId;
-
-  if (!Array.isArray(record.events)) {
-    return protocolError('invalid_field', 'pushRequest.events', 'Expected an array of events');
-  }
-  if (record.events.length > PUSH_MAX_EVENTS) {
-    return protocolError(
-      'invalid_field',
-      'pushRequest.events',
-      `A push carries at most ${String(PUSH_MAX_EVENTS)} events`
-    );
-  }
-
-  const events: DomainEvent[] = [];
-  for (const [index, value] of record.events.entries()) {
-    const event = parseWireEvent(value, `pushRequest.events[${index}]`);
-    if (isProtocolError(event)) return event;
-    events.push(event);
-  }
-  return { deviceId, events };
+  return parseWith(pushRequestSchema, json, 'pushRequest');
 }
 
 export function parsePushResponse(json: unknown): PushResponse | ProtocolError {
-  const record = asRecord(json, 'pushResponse');
-  if (isProtocolError(record)) return record;
-
-  const accepted = nonNegativeInteger(record.accepted, 'pushResponse.accepted');
-  if (isProtocolError(accepted)) return accepted;
-
-  const duplicates = nonNegativeInteger(record.duplicates, 'pushResponse.duplicates');
-  if (isProtocolError(duplicates)) return duplicates;
-
-  const cursor = nonNegativeInteger(record.cursor, 'pushResponse.cursor');
-  if (isProtocolError(cursor)) return cursor;
-
-  return { accepted, duplicates, cursor };
+  return parseWith(pushResponseSchema, json, 'pushResponse');
 }
 
 export function parsePullRequest(json: unknown): PullRequest | ProtocolError {
-  const record = asRecord(json, 'pullRequest');
-  if (isProtocolError(record)) return record;
-
-  const afterSequence = nonNegativeInteger(record.afterSequence, 'pullRequest.afterSequence');
-  if (isProtocolError(afterSequence)) return afterSequence;
-
-  const limit = nonNegativeInteger(record.limit, 'pullRequest.limit');
-  if (isProtocolError(limit)) return limit;
-  if (limit < 1 || limit > PULL_MAX_LIMIT) {
-    return protocolError(
-      'invalid_field',
-      'pullRequest.limit',
-      `Expected a limit between 1 and ${PULL_MAX_LIMIT}`
-    );
-  }
-
-  return { afterSequence, limit };
+  return parseWith(pullRequestSchema, json, 'pullRequest');
 }
 
 export function parsePullResponse(json: unknown): PullResponse | ProtocolError {
-  const record = asRecord(json, 'pullResponse');
-  if (isProtocolError(record)) return record;
-
-  if (!Array.isArray(record.events)) {
-    return protocolError('invalid_field', 'pullResponse.events', 'Expected an array of events');
-  }
-
-  const events: DomainEvent[] = [];
-  for (const [index, value] of record.events.entries()) {
-    const event = parseWireEvent(value, `pullResponse.events[${index}]`);
-    if (isProtocolError(event)) return event;
-    events.push(event);
-  }
-
-  const cursor = nonNegativeInteger(record.cursor, 'pullResponse.cursor');
-  if (isProtocolError(cursor)) return cursor;
-
-  if (typeof record.hasMore !== 'boolean') {
-    return protocolError('invalid_field', 'pullResponse.hasMore', 'Expected a boolean');
-  }
-
-  return { events, cursor, hasMore: record.hasMore };
+  return parseWith(pullResponseSchema, json, 'pullResponse');
 }

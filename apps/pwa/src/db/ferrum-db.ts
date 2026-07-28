@@ -1,4 +1,4 @@
-import { Dexie, type EntityTable } from 'dexie';
+import { Dexie, type EntityTable, type Table } from 'dexie';
 import { type DomainEvent, type WeightUnit } from '@ferrum/domain';
 
 export interface StoredEvent {
@@ -63,20 +63,18 @@ export interface SessionPlanRecord {
   slots: RoutineSlotRecord[];
 }
 
-export interface SettingsRecord {
-  key: 'settings';
-  unit: WeightUnit;
-  syncServerUrl?: string;
-  syncToken?: string;
-}
+export type SettingsRecord =
+  | { key: 'settings'; unit: WeightUnit }
+  | { key: 'syncConfig'; serverUrl: string | null; syncToken: string | null };
 
-export interface MetaRecord {
-  key: 'seeded' | 'syncState';
-  atMillis?: number;
-  cursor?: number;
-  lastSuccessAtMillis?: number | null;
-  driftMessage?: string | null;
-}
+export type MetaRecord =
+  | { key: 'seeded'; atMillis: number }
+  | {
+      key: 'syncState';
+      cursor: number;
+      lastSuccessAtMillis: number | null;
+      driftMessage: string | null;
+    };
 
 export class FerrumDb extends Dexie {
   events!: EntityTable<StoredEvent, 'eventId'>;
@@ -85,8 +83,10 @@ export class FerrumDb extends Dexie {
   restTimers!: EntityTable<RestTimerRecord, 'sessionId'>;
   routines!: EntityTable<RoutineRecord, 'id'>;
   sessionPlans!: EntityTable<SessionPlanRecord, 'sessionId'>;
-  settings!: EntityTable<SettingsRecord, 'key'>;
-  meta!: EntityTable<MetaRecord, 'key'>;
+  // Table rather than EntityTable: EntityTable's InsertType collapses a
+  // discriminated union to its common keys, rejecting every variant's own fields.
+  settings!: Table<SettingsRecord, SettingsRecord['key'], SettingsRecord>;
+  meta!: Table<MetaRecord, MetaRecord['key'], MetaRecord>;
 
   constructor(name = 'ferrum') {
     // Relaxed durability lets the browser acknowledge a transaction before it

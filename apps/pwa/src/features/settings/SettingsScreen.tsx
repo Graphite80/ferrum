@@ -12,9 +12,13 @@ import {
   type SyncConfig,
   type SyncStatus,
 } from '../../sync/sync-client.ts';
-import { BTN_PRIMARY, BTN_QUIET, BTN_SECONDARY, CARD, EYEBROW, MONO } from '../../ui.ts';
+import { ScreenShell } from '../../components/ScreenShell.tsx';
+import { StatCard } from '../../components/StatCard.tsx';
+import { button, card, eyebrow, mono } from '../../ui.ts';
 
-const INPUT = `${CARD} tap-target px-4 text-base text-chalk outline-none placeholder:text-ash`;
+const INPUT = card({
+  className: 'tap-target px-4 text-base text-chalk outline-none placeholder:text-ash',
+});
 
 export function SettingsScreen({
   unit,
@@ -32,33 +36,33 @@ export function SettingsScreen({
   };
 
   return (
-    <main className="mx-auto flex min-h-full max-w-md flex-col gap-4 p-4" data-testid="settings">
-      <header className="flex items-center justify-between border-b border-seam pb-3">
-        <h1 className="font-display text-2xl font-bold tracking-[0.04em] uppercase">Settings</h1>
+    <ScreenShell
+      title="Settings"
+      testId="settings"
+      action={
         <button
           type="button"
-          className={`${BTN_QUIET} px-4`}
+          className={button({ intent: 'quiet', className: 'px-4' })}
           data-testid="settings-back"
           onClick={onBack}
         >
           Home
         </button>
-      </header>
-
-      <div className={`${CARD} flex flex-col gap-3 p-4`}>
-        <p className={EYEBROW}>Weight unit</p>
-        <p className="text-xs text-ash">
-          Display only. Every set is stored in kilograms, alongside the number and unit actually
-          entered.
-        </p>
+      }
+    >
+      <StatCard
+        label="Weight unit"
+        description="Display only. Every set is stored in kilograms, alongside the number and unit actually entered."
+        className="gap-3 p-4"
+      >
         <div className="flex gap-2">
           <UnitButton current={unit} value="kg" onPick={pick} />
           <UnitButton current={unit} value="lb" onPick={pick} />
         </div>
-      </div>
+      </StatCard>
 
       <SyncCard />
-    </main>
+    </ScreenShell>
   );
 }
 
@@ -105,14 +109,14 @@ function SyncCardBody({
   };
 
   return (
-    <div className={`${CARD} flex flex-col gap-3 p-4`} data-testid="sync-settings">
-      <p className={EYEBROW}>Sync</p>
+    <div className={card({ className: 'flex flex-col gap-3 p-4' })} data-testid="sync-settings">
+      <p className={eyebrow()}>Sync</p>
       <p className="text-xs text-ash">
         Optional. Ferrum works fully offline without a server; add one to back up history and share
         it across devices.
       </p>
       <label className="flex flex-col gap-1">
-        <span className={EYEBROW}>Server URL</span>
+        <span className={eyebrow()}>Server URL</span>
         <input
           type="url"
           className={INPUT}
@@ -126,7 +130,7 @@ function SyncCardBody({
         />
       </label>
       <label className="flex flex-col gap-1">
-        <span className={EYEBROW}>Access token</span>
+        <span className={eyebrow()}>Access token</span>
         <input
           type="password"
           className={INPUT}
@@ -142,7 +146,7 @@ function SyncCardBody({
       <div className="flex gap-2">
         <button
           type="button"
-          className={`${BTN_PRIMARY} flex-1`}
+          className={button({ className: 'flex-1' })}
           data-testid="sync-save"
           onClick={save}
         >
@@ -150,7 +154,7 @@ function SyncCardBody({
         </button>
         <button
           type="button"
-          className={`${BTN_SECONDARY} flex-1`}
+          className={button({ intent: 'secondary', className: 'flex-1' })}
           data-testid="sync-now"
           disabled={!status.configured}
           onClick={() => {
@@ -161,15 +165,15 @@ function SyncCardBody({
         </button>
       </div>
       <p className="text-xs text-ash" data-testid="sync-status-line">
-        <span className={`${MONO} font-medium`} data-testid="sync-pending">
+        <span className={mono({ className: 'font-medium' })} data-testid="sync-pending">
           {pending ?? status.pendingCount}
         </span>{' '}
         pending · cursor{' '}
-        <span className={`${MONO} font-medium`} data-testid="sync-cursor">
+        <span className={mono({ className: 'font-medium' })} data-testid="sync-cursor">
           {status.cursor}
         </span>{' '}
         · last sync{' '}
-        <span className={`${MONO} font-medium`} data-testid="sync-last-success">
+        <span className={mono({ className: 'font-medium' })} data-testid="sync-last-success">
           {status.lastSuccessAtMillis === null
             ? 'never'
             : new Date(status.lastSuccessAtMillis).toLocaleTimeString()}

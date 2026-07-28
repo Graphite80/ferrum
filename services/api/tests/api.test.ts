@@ -149,7 +149,7 @@ function smallSession(state: EventBuilderState, wallStart = 1_000_000): DomainEv
 }
 
 function domainView(event: DomainEvent): DomainEvent {
-  return { ...event, userId: null, serverReceivedAt: null, serverSequence: null } as DomainEvent;
+  return { ...event, userId: null, serverReceivedAt: null, serverSequence: null };
 }
 
 describe('health', () => {
