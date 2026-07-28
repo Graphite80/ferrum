@@ -25,7 +25,7 @@ import { createTelegramBot } from '../src/bot/index.ts';
 import { type Database } from '../src/db.ts';
 import { migrate } from '../src/migrate.ts';
 import { loadUserEvents, pushBatch } from '../src/sync.ts';
-import { pgliteDatabase } from './support/pglite-database.ts';
+import { pgliteDatabase } from '../src/pglite-database.ts';
 
 const TOKEN = '12345:TEST';
 const WEBHOOK_SECRET = 'hook-secret';

@@ -1,6 +1,18 @@
+import { useEffect, useState } from 'react';
 import { type WeightUnit } from '@ferrum/domain';
 import { saveUnit } from './settings-store.ts';
-import { BTN_QUIET, CARD, EYEBROW } from '../../ui.ts';
+import { subscribe, unacknowledgedCount } from '../../db/event-store.ts';
+import {
+  getSyncStatus,
+  loadSyncConfig,
+  requestSync,
+  saveSyncConfig,
+  subscribeSyncStatus,
+  type SyncStatus,
+} from '../../sync/sync-client.ts';
+import { BTN_PRIMARY, BTN_QUIET, BTN_SECONDARY, CARD, EYEBROW, MONO } from '../../ui.ts';
+
+const INPUT = `${CARD} tap-target px-4 text-base text-chalk outline-none placeholder:text-ash`;
 
 export function SettingsScreen({
   unit,
@@ -42,7 +54,135 @@ export function SettingsScreen({
           <UnitButton current={unit} value="lb" onPick={pick} />
         </div>
       </div>
+
+      <SyncCard />
     </main>
+  );
+}
+
+function SyncCard() {
+  const [serverUrl, setServerUrl] = useState('');
+  const [token, setToken] = useState('');
+  const [loaded, setLoaded] = useState(false);
+  const [status, setStatus] = useState<SyncStatus>(getSyncStatus());
+  const [pending, setPending] = useState(getSyncStatus().pendingCount);
+
+  useEffect(() => {
+    void loadSyncConfig().then(config => {
+      setServerUrl(config.serverUrl ?? '');
+      setToken(config.syncToken ?? '');
+      setLoaded(true);
+    });
+    void unacknowledgedCount().then(setPending);
+    const unsubscribeStatus = subscribeSyncStatus(next => {
+      setStatus(next);
+      setPending(next.pendingCount);
+    });
+    const unsubscribeStore = subscribe(() => {
+      void unacknowledgedCount().then(setPending);
+    });
+    return () => {
+      unsubscribeStatus();
+      unsubscribeStore();
+    };
+  }, []);
+
+  const save = () => {
+    const trimmedUrl = serverUrl.trim();
+    const trimmedToken = token.trim();
+    void saveSyncConfig({
+      serverUrl: trimmedUrl === '' ? null : trimmedUrl,
+      syncToken: trimmedToken === '' ? null : trimmedToken,
+    }).then(() => {
+      requestSync('manual');
+    });
+  };
+
+  return (
+    <div className={`${CARD} flex flex-col gap-3 p-4`} data-testid="sync-settings">
+      <p className={EYEBROW}>Sync</p>
+      <p className="text-xs text-ash">
+        Optional. Ferrum works fully offline without a server; add one to back up history and share
+        it across devices.
+      </p>
+      <label className="flex flex-col gap-1">
+        <span className={EYEBROW}>Server URL</span>
+        <input
+          type="url"
+          className={INPUT}
+          placeholder="https://ferrum.example.com"
+          value={serverUrl}
+          disabled={!loaded}
+          onChange={event => {
+            setServerUrl(event.target.value);
+          }}
+          data-testid="sync-server-url"
+        />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className={EYEBROW}>Access token</span>
+        <input
+          type="password"
+          className={INPUT}
+          placeholder="Token"
+          value={token}
+          disabled={!loaded}
+          onChange={event => {
+            setToken(event.target.value);
+          }}
+          data-testid="sync-token"
+        />
+      </label>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className={`${BTN_PRIMARY} flex-1`}
+          data-testid="sync-save"
+          onClick={save}
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          className={`${BTN_SECONDARY} flex-1`}
+          data-testid="sync-now"
+          disabled={!status.configured}
+          onClick={() => {
+            requestSync('manual');
+          }}
+        >
+          {status.syncing ? 'Syncing…' : 'Sync now'}
+        </button>
+      </div>
+      <p className="text-xs text-ash" data-testid="sync-status-line">
+        <span className={`${MONO} font-medium`} data-testid="sync-pending">
+          {pending}
+        </span>{' '}
+        pending · cursor{' '}
+        <span className={`${MONO} font-medium`} data-testid="sync-cursor">
+          {status.cursor}
+        </span>{' '}
+        · last sync{' '}
+        <span className={`${MONO} font-medium`} data-testid="sync-last-success">
+          {status.lastSuccessAtMillis === null
+            ? 'never'
+            : new Date(status.lastSuccessAtMillis).toLocaleTimeString()}
+        </span>
+      </p>
+      {status.lastError !== null && (
+        <p className="text-xs text-plate-red" data-testid="sync-error">
+          Sync failed: {status.lastError}. Retrying automatically.
+        </p>
+      )}
+      {status.driftMessage !== null && (
+        <p
+          className="rounded-md border border-plate-red p-2 text-xs text-plate-red"
+          data-testid="sync-drift-warning"
+        >
+          {status.driftMessage}
+        </p>
+      )}
+    </div>
   );
 }
 

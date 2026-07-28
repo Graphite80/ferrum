@@ -43,6 +43,7 @@ export default defineConfig({
       '@': path.resolve(here, './src'),
       '@ferrum/domain': path.resolve(repoRoot, 'packages/domain/src/index.ts'),
       '@ferrum/exercise-library': path.resolve(repoRoot, 'packages/exercise-library/src/index.ts'),
+      '@ferrum/sync-protocol': path.resolve(repoRoot, 'packages/sync-protocol/src/index.ts'),
     },
   },
   server: { port: 5173, strictPort: true },

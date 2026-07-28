@@ -7,7 +7,10 @@ export async function loadUnit(): Promise<WeightUnit> {
 }
 
 export async function saveUnit(unit: WeightUnit): Promise<void> {
-  await db.settings.put({ key: 'settings', unit });
+  await db.transaction('rw', db.settings, async () => {
+    const existing = await db.settings.get('settings');
+    await db.settings.put({ ...existing, key: 'settings', unit });
+  });
 }
 
 // Steppers work in the display unit; two decimals is enough to round-trip any

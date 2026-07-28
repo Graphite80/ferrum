@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Hono, type MiddlewareHandler } from 'hono';
+import { cors } from 'hono/cors';
 import { webhookCallback, type Bot } from 'grammy';
 import {
   PULL_DEFAULT_LIMIT,
@@ -55,6 +56,10 @@ export function createApp({ db, enableDevRoutes, telegram }: AppOptions): Hono<A
     await next();
   };
 
+  // The PWA may be installed from one origin and pointed at a server on another.
+  // Auth is a bearer token, never a cookie, so an open CORS policy grants nothing
+  // an attacker's page could not already do with a stolen token.
+  app.use('/sync/*', cors());
   app.use('/sync/*', requireAuth);
   app.use('/link/*', requireAuth);
 

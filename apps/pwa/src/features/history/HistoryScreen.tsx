@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { type SessionId, type SessionProjection } from '@ferrum/domain';
-import { listSessionIds, loadSession, unacknowledgedCount } from '../../db/event-store.ts';
+import {
+  listSessionIds,
+  loadSession,
+  subscribe,
+  unacknowledgedCount,
+} from '../../db/event-store.ts';
+import { subscribeSyncStatus } from '../../sync/sync-client.ts';
 import { BTN_QUIET, CARD, MONO } from '../../ui.ts';
 
 export function HistoryScreen({
@@ -14,11 +20,22 @@ export function HistoryScreen({
   const [pending, setPending] = useState(0);
 
   useEffect(() => {
-    void (async () => {
+    const refresh = async () => {
       const ids = await listSessionIds();
       setSessions(await Promise.all(ids.map(id => loadSession(id))));
       setPending(await unacknowledgedCount());
-    })();
+    };
+    void refresh();
+    const unsubscribeStore = subscribe(() => {
+      void refresh();
+    });
+    const unsubscribeSync = subscribeSyncStatus(status => {
+      setPending(status.pendingCount);
+    });
+    return () => {
+      unsubscribeStore();
+      unsubscribeSync();
+    };
   }, []);
 
   return (

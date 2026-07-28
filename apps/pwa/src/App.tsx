@@ -12,6 +12,7 @@ import { loadUnit } from './features/settings/settings-store.ts';
 import { SpikeA } from './features/spike/SpikeA.tsx';
 import { WorkoutScreen } from './features/workout/WorkoutScreen.tsx';
 import { applyUpdate, subscribeUpdateReady } from './platform/sw-update.ts';
+import { initSync } from './sync/sync-client.ts';
 import { BTN_PRIMARY } from './ui.ts';
 
 type Screen =
@@ -51,6 +52,9 @@ function WorkoutApp() {
         }
       }
       setBooted(true);
+      // Sync starts strictly after boot: it must never delay the resume path, and
+      // it stays a no-op until a server and token are configured in Settings.
+      await initSync();
     })();
   }, []);
 

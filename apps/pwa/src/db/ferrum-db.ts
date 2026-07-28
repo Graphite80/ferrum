@@ -66,11 +66,16 @@ export interface SessionPlanRecord {
 export interface SettingsRecord {
   key: 'settings';
   unit: WeightUnit;
+  syncServerUrl?: string;
+  syncToken?: string;
 }
 
 export interface MetaRecord {
-  key: 'seeded';
-  atMillis: number;
+  key: 'seeded' | 'syncState';
+  atMillis?: number;
+  cursor?: number;
+  lastSuccessAtMillis?: number | null;
+  driftMessage?: string | null;
 }
 
 export class FerrumDb extends Dexie {

@@ -19,18 +19,20 @@ Read `docs/INVARIANTS.md` before changing anything in `packages/domain`. It is t
 
 ```text
 packages/domain              zero-dependency core: events, projection, load semantics, HLC, time
-packages/exercise-library    80 curated definitions (YAML -> generated TS)
-packages/importers           life-as-code JSON, Hevy CSV, Strong CSV
-packages/progression-engine  versioned deterministic policies
-apps/pwa                     React 19 + Vite + Dexie offline logger
+packages/exercise-library    80 curated definitions (YAML -> generated TS), ranked search
+packages/importers           life-as-code JSON, Hevy CSV, Strong CSV, Telegram shorthand
+packages/progression-engine  three versioned deterministic policies + historical replay harness
+packages/sync-protocol       push/pull wire format: validation, cursors, idempotency keys
+services/api                 Hono + Postgres: sync endpoints, Telegram bot, serves the PWA
+apps/pwa                     React 19 + Vite + Dexie offline logger (Hevy-grade loop)
 fixtures/                    real training history, the source of truth for edge cases
 docs/INVARIANTS.md           the domain contract
+Dockerfile                   one container: API + static PWA, GIT_SHA sed in builder stage
 ```
 
-`packages/program-engine`, `packages/analytics`, `packages/sync-protocol`, `packages/ui`,
-`services/api` and `services/worker` are in the plan but deliberately **not created yet** — an
-empty package that builds nothing is dead weight that reads as progress. Create each when it has
-real content (phases 4-5).
+`packages/program-engine`, `packages/analytics`, `packages/ui` and `services/worker` are in the
+plan but deliberately **not created yet** — an empty package that builds nothing is dead weight
+that reads as progress. Create each when it has real content (phase 5).
 
 ## Commands
 
@@ -46,6 +48,10 @@ cd apps/pwa && npx vite preview --port 4173 --strictPort --host 127.0.0.1
 cd apps/pwa && CI=1 BASE_URL=http://127.0.0.1:4173 npx playwright test   # workout-loss drills
 
 npm run generate --workspace @ferrum/exercise-library   # after editing src/data/*.yaml
+
+npm run dev --workspace @ferrum/api                     # needs DATABASE_URL; bot needs
+                                                        # TELEGRAM_BOT_TOKEN + TELEGRAM_WEBHOOK_SECRET
+docker build -t ferrum --build-arg GIT_SHA=$(git rev-parse HEAD) .
 ```
 
 Packages are consumed as **raw TypeScript** (`exports` points at `src/index.ts`); there is no build
@@ -126,8 +132,12 @@ cluster, not a new instance.
 
 ## Open work
 
-- `packages/importers` — Hevy and Strong adapters against verified headers; Strong has five
-  distinct headers split by platform, not by date.
-- e1RM with uncertainty; the muscle credit policy; the sync protocol.
+- Wire the deployment: Forgejo repo + webhook, gitops sensor/chart/ImageUpdater/DNS per the
+  recipe above. The Dockerfile side is done and smoke-tested.
+- e1RM with uncertainty; the muscle credit policy.
+- Telegram bot v2 gated on measured usage (ANALYSIS protocol, Final Synthesis step 5): live
+  rest-timer pushes need workout events flowing server-side mid-session; the current bot is
+  read-mostly + importer by design.
 - Spike A on a real iPhone. Nothing in this repo has run on iOS yet, and the wake-lock and
-  storage-eviction behaviour is the one thing that cannot be verified from a desktop.
+  storage-eviction behaviour is the one thing that cannot be verified from a desktop — now also
+  inside the Telegram webview.

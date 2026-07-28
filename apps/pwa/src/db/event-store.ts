@@ -104,6 +104,45 @@ export async function appendEvents(
   return written;
 }
 
+export async function unacknowledgedBatch(limit: number): Promise<StoredEvent[]> {
+  const rows = await db.events.where('acknowledged').equals(0).toArray();
+  rows.sort((a, b) => (a.orderKey < b.orderKey ? -1 : a.orderKey > b.orderKey ? 1 : 0));
+  return rows.slice(0, limit);
+}
+
+export async function markAcknowledged(eventIds: readonly string[]): Promise<void> {
+  if (eventIds.length === 0) return;
+  await db.transaction('rw', db.events, async () => {
+    await db.events.where('eventId').anyOf(eventIds).modify({ acknowledged: 1 });
+  });
+}
+
+// Foreign events already carry their envelopes — HLC, device id, event id — and
+// re-stamping any of it would fork the total order between replicas. They land
+// acknowledged: the server is where they came from.
+export async function importRemoteEvents(envelopes: readonly DomainEvent[]): Promise<number> {
+  if (envelopes.length === 0) return 0;
+  const fresh = await db.transaction('rw', db.events, async () => {
+    const existing = await db.events.bulkGet(envelopes.map(envelope => envelope.eventId));
+    const unseen = envelopes.filter((_, index) => existing[index] === undefined);
+    await db.events.bulkAdd(
+      unseen.map(envelope => ({
+        eventId: envelope.eventId,
+        aggregateId: envelope.aggregateId,
+        orderKey: eventOrderKey(envelope),
+        acknowledged: 1 as const,
+        envelope,
+      }))
+    );
+    return unseen;
+  });
+  const aggregateIds = new Set(fresh.map(envelope => envelope.aggregateId));
+  for (const aggregateId of aggregateIds) {
+    for (const listener of listeners) listener(aggregateId);
+  }
+  return fresh.length;
+}
+
 export async function loadSession(sessionId: SessionId): Promise<SessionProjection> {
   const rows = await db.events.where('aggregateId').equals(sessionId).toArray();
   return projectSession(

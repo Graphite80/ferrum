@@ -13,7 +13,7 @@ import {
 } from '@ferrum/sync-protocol';
 import { createApp } from '../src/app.ts';
 import { migrate } from '../src/migrate.ts';
-import { pgliteDatabase } from './support/pglite-database.ts';
+import { pgliteDatabase } from '../src/pglite-database.ts';
 import {
   makeEvent,
   measurements,

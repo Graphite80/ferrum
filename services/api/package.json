@@ -9,6 +9,7 @@
   "types": "./src/index.ts",
   "scripts": {
     "dev": "tsx watch src/main.ts",
+    "dev:memory": "tsx src/dev-server.ts",
     "start": "tsx src/main.ts"
   },
   "dependencies": {
