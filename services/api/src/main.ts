@@ -1,4 +1,5 @@
 import { serve } from '@hono/node-server';
+import { serveStatic } from '@hono/node-server/serve-static';
 import pg from 'pg';
 import { createApp } from './app.ts';
 import { createTelegramBot } from './bot/index.ts';
@@ -31,6 +32,12 @@ const app = createApp({
   enableDevRoutes: process.env.NODE_ENV !== 'production',
   ...(telegram === undefined ? {} : { telegram }),
 });
+
+const staticDir = process.env.STATIC_DIR;
+if (staticDir !== undefined && staticDir !== '') {
+  app.use('/*', serveStatic({ root: staticDir }));
+  app.use('/*', serveStatic({ root: staticDir, rewriteRequestPath: () => '/index.html' }));
+}
 
 serve({ fetch: app.fetch, port }, info => {
   console.log(`ferrum api listening on :${info.port}`);
