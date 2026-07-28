@@ -5,7 +5,7 @@ import {
   type SessionId,
   type SessionProjection,
   EVENT_SCHEMA_VERSION,
-  encodeHlc,
+  eventOrderKey,
   instant,
   projectSession,
   tick,
@@ -81,7 +81,7 @@ export async function appendEvents(
     const rows: StoredEvent[] = envelopes.map(envelope => ({
       eventId: envelope.eventId,
       aggregateId: envelope.aggregateId,
-      orderKey: `${encodeHlc(envelope.hlc)}#${envelope.eventId}`,
+      orderKey: eventOrderKey(envelope),
       acknowledged: 0,
       envelope,
     }));

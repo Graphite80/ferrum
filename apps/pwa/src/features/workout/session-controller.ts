@@ -1,7 +1,10 @@
 import {
+  type ComparisonSignature,
+  type ExerciseDefinitionId,
   type SessionExerciseId,
   type SessionId,
   type SetMeasurements,
+  type SetPrescriptionSnapshot,
   type SetQualifiers,
   type WorkoutSetId,
   instant,
@@ -15,11 +18,18 @@ import { type Routine, type RoutineSlot } from './routine.ts';
 export interface LoggedSetInput {
   readonly sessionId: SessionId;
   readonly sessionExerciseId: SessionExerciseId;
-  readonly slot: RoutineSlot;
   readonly orderIndex: number;
   readonly loadKg: number;
   readonly reps: number;
   readonly rir: number;
+  readonly comparisonSignature: ComparisonSignature;
+  readonly prescription: SetPrescriptionSnapshot | null;
+}
+
+export interface SetPatch {
+  loadKg?: number;
+  reps?: number;
+  rir?: number;
 }
 
 function tzOffsetMinutes(nowMillis: number): number {
@@ -30,7 +40,11 @@ export function sessionExerciseIdFor(sessionId: SessionId, slotIndex: number): S
   return `${sessionId}:ex${String(slotIndex)}` as SessionExerciseId;
 }
 
-export async function startSession(routine: Routine, nowMillis: number): Promise<SessionId> {
+async function beginSession(
+  title: string | null,
+  slots: readonly RoutineSlot[],
+  nowMillis: number
+): Promise<SessionId> {
   const sessionId = `ses_${ulidFactory.next(nowMillis)}` as SessionId;
   const offset = tzOffsetMinutes(nowMillis);
   const localDate = toLocalDate({ instant: instant(nowMillis), tzOffsetMinutes: offset });
@@ -44,10 +58,10 @@ export async function startSession(routine: Routine, nowMillis: number): Promise
         startedAt: instant(nowMillis),
         localDate,
         tzOffsetMinutes: offset,
-        title: routine.name,
+        title,
       },
     },
-    ...routine.slots.map<AppendInput>((routineSlot, index) => ({
+    ...slots.map<AppendInput>((routineSlot, index) => ({
       aggregateId: sessionId,
       eventType: 'ExerciseAddedToSession',
       payload: {
@@ -64,6 +78,59 @@ export async function startSession(routine: Routine, nowMillis: number): Promise
 
   await appendEvents(inputs, nowMillis);
   return sessionId;
+}
+
+export async function startSession(routine: Routine, nowMillis: number): Promise<SessionId> {
+  return beginSession(routine.name, routine.slots, nowMillis);
+}
+
+export async function startEmptySession(nowMillis: number): Promise<SessionId> {
+  return beginSession(null, [], nowMillis);
+}
+
+export async function addExercise(
+  sessionId: SessionId,
+  exerciseDefinitionId: ExerciseDefinitionId,
+  orderIndex: number,
+  nowMillis: number
+): Promise<SessionExerciseId> {
+  const sessionExerciseId = `${sessionId}:ex_${ulidFactory.next(nowMillis)}` as SessionExerciseId;
+  await appendEvents(
+    [
+      {
+        aggregateId: sessionId,
+        eventType: 'ExerciseAddedToSession',
+        payload: {
+          sessionExerciseId,
+          sessionId,
+          exerciseDefinitionId,
+          equipmentInstanceId: null,
+          orderIndex,
+          supersetGroupId: null,
+          supersetOrder: null,
+        },
+      },
+    ],
+    nowMillis
+  );
+  return sessionExerciseId;
+}
+
+export async function removeExercise(
+  sessionId: SessionId,
+  sessionExerciseId: SessionExerciseId,
+  nowMillis: number
+): Promise<void> {
+  await appendEvents(
+    [
+      {
+        aggregateId: sessionId,
+        eventType: 'ExerciseRemovedFromSession',
+        payload: { sessionExerciseId },
+      },
+    ],
+    nowMillis
+  );
 }
 
 export async function logSet(input: LoggedSetInput, nowMillis: number): Promise<WorkoutSetId> {
@@ -106,20 +173,9 @@ export async function logSet(input: LoggedSetInput, nowMillis: number): Promise<
           bodyweightKgSnapshot: null,
           bodyweightSource: null,
           bodyweightAgeDays: null,
-          prescriptionSnapshot: {
-            prescriptionVersion: 1,
-            setType: 'working',
-            targetLoadKg: input.slot.targetLoadKg,
-            targetRepMin: input.slot.targetRepMin,
-            targetRepMax: input.slot.targetRepMax,
-            targetRir: input.slot.targetRir,
-            targetRpe: null,
-            ruleId: null,
-            ruleVersion: null,
-            explanationContext: 'seed routine',
-          },
+          prescriptionSnapshot: input.prescription,
           exerciseRevisionSnapshot: 1,
-          comparisonSignature: input.slot.comparisonSignature,
+          comparisonSignature: input.comparisonSignature,
           provenance: null,
           performedAt: instant(nowMillis),
           localDate: toLocalDate({ instant: instant(nowMillis), tzOffsetMinutes: offset }),
@@ -131,6 +187,29 @@ export async function logSet(input: LoggedSetInput, nowMillis: number): Promise<
   );
 
   return setId;
+}
+
+// Only the amendable fields of INVARIANTS §5 can travel here; the payload type
+// structurally cannot carry immutable ones.
+export async function amendSet(
+  sessionId: SessionId,
+  setId: WorkoutSetId,
+  patch: SetPatch,
+  nowMillis: number
+): Promise<void> {
+  const measurements: Partial<SetMeasurements> = {
+    ...(patch.loadKg !== undefined
+      ? { enteredLoad: patch.loadKg, canonicalExternalLoadKg: kilograms(patch.loadKg) }
+      : {}),
+    ...(patch.reps !== undefined ? { reps: patch.reps } : {}),
+    ...(patch.rir !== undefined ? { rirEntered: patch.rir } : {}),
+  };
+  if (Object.keys(measurements).length === 0) return;
+
+  await appendEvents(
+    [{ aggregateId: sessionId, eventType: 'SetAmended', payload: { setId, measurements } }],
+    nowMillis
+  );
 }
 
 export async function deleteSet(

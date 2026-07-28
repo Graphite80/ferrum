@@ -65,7 +65,7 @@ export async function withDatabaseRecovery<T>(operation: () => Promise<T>): Prom
     if (!isRecoverableDatabaseError(error)) throw error;
     db.close();
     await db.open();
-    return await operation();
+    return operation();
   }
 }
 

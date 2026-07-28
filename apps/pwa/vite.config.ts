@@ -42,6 +42,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(here, './src'),
       '@ferrum/domain': path.resolve(repoRoot, 'packages/domain/src/index.ts'),
+      '@ferrum/exercise-library': path.resolve(repoRoot, 'packages/exercise-library/src/index.ts'),
     },
   },
   server: { port: 5173, strictPort: true },

@@ -3,7 +3,7 @@ import { useState } from 'react';
 export interface SetRowProps {
   readonly index: number;
   readonly previousLabel: string;
-  readonly targetLabel: string;
+  readonly targetLabel: string | null;
   readonly defaultLoadKg: number;
   readonly defaultReps: number;
   readonly defaultRir: number;
@@ -23,9 +23,11 @@ export function SetRow(props: SetRowProps) {
         <span>Set {props.index + 1}</span>
         <span data-testid="previous-label">{props.previousLabel}</span>
       </div>
-      <div className="mb-3 text-xs text-neutral-400" data-testid="target-label">
-        Target: {props.targetLabel}
-      </div>
+      {props.targetLabel != null && (
+        <div className="mb-3 text-xs text-neutral-400" data-testid="target-label">
+          Target: {props.targetLabel}
+        </div>
+      )}
 
       <div className="flex items-stretch gap-2">
         <button
@@ -99,7 +101,7 @@ export function SetRow(props: SetRowProps) {
   );
 }
 
-interface StepperProps {
+export interface StepperProps {
   readonly label: string;
   readonly value: number;
   readonly step: number;
@@ -111,7 +113,7 @@ interface StepperProps {
 // three-column grid, which squeezed the number input to zero width on a 412px
 // phone: the value was in the DOM, invisible, and untypeable. Found by the
 // workout-loss drill, not by looking at a desktop viewport.
-function Stepper(props: StepperProps) {
+export function Stepper(props: StepperProps) {
   return (
     <div className="flex items-center gap-2 rounded-lg border border-edge p-2">
       <span className="w-12 shrink-0 text-[11px] uppercase tracking-wide text-neutral-400">
