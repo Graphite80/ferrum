@@ -11,10 +11,11 @@ export default defineConfig({
       '@ferrum/exercise-library': path.resolve(root, 'packages/exercise-library/src/index.ts'),
       '@ferrum/importers': path.resolve(root, 'packages/importers/src/index.ts'),
       '@ferrum/progression-engine': path.resolve(root, 'packages/progression-engine/src/index.ts'),
+      '@ferrum/sync-protocol': path.resolve(root, 'packages/sync-protocol/src/index.ts'),
     },
   },
   test: {
-    include: ['packages/*/tests/**/*.test.ts'],
+    include: ['packages/*/tests/**/*.test.ts', 'services/*/tests/**/*.test.ts'],
     pool: 'forks',
     testTimeout: 30000,
     reporters: ['verbose'],

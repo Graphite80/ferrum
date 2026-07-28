@@ -21,7 +21,7 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ['packages/**/*.ts', 'apps/**/*.{ts,tsx}'],
+    files: ['packages/**/*.ts', 'apps/**/*.{ts,tsx}', 'services/**/*.ts'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -43,6 +43,8 @@ export default [
         { type: 'exercise-library', pattern: 'packages/exercise-library/src/**/*' },
         { type: 'progression-engine', pattern: 'packages/progression-engine/src/**/*' },
         { type: 'importers', pattern: 'packages/importers/src/**/*' },
+        { type: 'sync-protocol', pattern: 'packages/sync-protocol/src/**/*' },
+        { type: 'api', pattern: 'services/api/src/**/*' },
         { type: 'app', pattern: 'apps/pwa/src/**/*' },
       ],
     },
@@ -87,13 +89,22 @@ export default [
             { from: 'exercise-library', allow: ['domain', 'exercise-library'] },
             { from: 'progression-engine', allow: ['domain', 'progression-engine'] },
             { from: 'importers', allow: ['domain', 'exercise-library', 'importers'] },
+            { from: 'sync-protocol', allow: ['domain', 'sync-protocol'] },
+            {
+              from: 'api',
+              allow: ['domain', 'sync-protocol', 'exercise-library', 'importers', 'api'],
+            },
           ],
         },
       ],
     },
   },
   {
-    files: ['packages/domain/src/**/*.ts', 'packages/progression-engine/src/**/*.ts'],
+    files: [
+      'packages/domain/src/**/*.ts',
+      'packages/progression-engine/src/**/*.ts',
+      'packages/sync-protocol/src/**/*.ts',
+    ],
     languageOptions: { globals: {} },
     rules: {
       'no-restricted-globals': [

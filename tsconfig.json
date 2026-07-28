@@ -27,9 +27,16 @@
       "@ferrum/exercise-library": ["./packages/exercise-library/src/index.ts"],
       "@ferrum/importers": ["./packages/importers/src/index.ts"],
       "@ferrum/progression-engine": ["./packages/progression-engine/src/index.ts"],
+      "@ferrum/sync-protocol": ["./packages/sync-protocol/src/index.ts"],
       "@/*": ["./apps/pwa/src/*"]
     }
   },
-  "include": ["packages/*/src/**/*", "packages/*/tests/**/*", "apps/pwa/src/**/*"],
+  "include": [
+    "packages/*/src/**/*",
+    "packages/*/tests/**/*",
+    "apps/pwa/src/**/*",
+    "services/*/src/**/*",
+    "services/*/tests/**/*"
+  ],
   "exclude": ["node_modules", "**/dist", "**/node_modules"]
 }

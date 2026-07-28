@@ -1,0 +1,13 @@
+{
+  "name": "@ferrum/sync-protocol",
+  "version": "0.0.0-placeholder",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@ferrum/domain": "*"
+  }
+}
