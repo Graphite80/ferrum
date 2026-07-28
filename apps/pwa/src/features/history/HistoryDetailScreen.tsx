@@ -132,10 +132,7 @@ function DetailSetRow({
         </span>
       )}
       <span className={`${MONO} font-medium`} data-testid="detail-set-values">
-        {measurements.canonicalExternalLoadKg == null
-          ? '—'
-          : formatLoad(measurements.canonicalExternalLoadKg, unit)}{' '}
-        × {measurements.reps ?? '—'}
+        {formatLoad(measurements.canonicalExternalLoadKg, { unit })} × {measurements.reps ?? '—'}
       </span>
       <span className={`${MONO} text-xs font-medium text-ash`}>
         RIR {measurements.rirEntered == null ? '—' : String(measurements.rirEntered)}

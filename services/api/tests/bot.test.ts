@@ -9,10 +9,10 @@ import { PGlite } from '@electric-sql/pglite';
 import { type Bot } from 'grammy';
 import { type Update } from 'grammy/types';
 import {
+  allSets,
   comparisonSignature,
   kilograms,
   localDate,
-  projectSession,
   type DomainEvent,
   type SessionId,
   type UserId,
@@ -251,19 +251,6 @@ async function pullEvents(userId: string): Promise<DomainEvent[]> {
   }
 }
 
-function projectedSets(events: readonly DomainEvent[]) {
-  const bySession = new Map<SessionId, DomainEvent[]>();
-  for (const event of events) {
-    const sessionId = event.aggregateId as SessionId;
-    const bucket = bySession.get(sessionId) ?? [];
-    bucket.push(event);
-    bySession.set(sessionId, bucket);
-  }
-  return [...bySession.entries()].flatMap(
-    ([sessionId, sessionEvents]) => projectSession(sessionId, sessionEvents).sets
-  );
-}
-
 describe('/start', () => {
   it('creates user, identity and chat idempotently', async () => {
     await bot.handleUpdate(textUpdate(111, '/start'));
@@ -344,7 +331,7 @@ describe('CSV document import', () => {
 
     const userId = await chatUser(444);
     const events = await pullEvents(userId);
-    const sets = projectedSets(events);
+    const sets = allSets(events);
     expect(sets).toHaveLength(5);
     expect(new Set(sets.map(set => set.provenance?.source))).toEqual(new Set(['hevy']));
   });
@@ -356,7 +343,7 @@ describe('CSV document import', () => {
     expect(report).toContain('Duplicate rows skipped: 5');
 
     const userId = await chatUser(444);
-    expect(projectedSets(await pullEvents(userId))).toHaveLength(5);
+    expect(allSets(await pullEvents(userId))).toHaveLength(5);
   });
 
   it('refuses a file that is not a workout export, helpfully', async () => {
@@ -382,7 +369,7 @@ describe('shorthand capture', () => {
     expect(lastText()).toContain('Sets: 1');
 
     const userId = await chatUser(555);
-    const sets = projectedSets(await pullEvents(userId));
+    const sets = allSets(await pullEvents(userId));
     expect(sets).toHaveLength(1);
     const set = sets[0];
     expect(set?.provenance?.source).toBe('telegram');
@@ -421,7 +408,7 @@ describe('shorthand capture', () => {
     expect(lastText()).toContain('Sets: 1');
 
     const userId = await chatUser(666);
-    const sets = projectedSets(await pullEvents(userId));
+    const sets = allSets(await pullEvents(userId));
     expect(sets).toHaveLength(1);
     expect(sets[0]?.comparisonSignature).toContain('ex:bench_press_barbell');
     expect(sets[0]?.provenance?.source).toBe('telegram');

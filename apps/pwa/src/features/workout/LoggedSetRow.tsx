@@ -1,6 +1,12 @@
 import { useState } from 'react';
-import { type WeightUnit, type WorkoutSet, formatLoad, kilograms } from '@ferrum/domain';
-import { displayLoad, displayStep } from '../settings/settings-store.ts';
+import {
+  type WeightUnit,
+  type WorkoutSet,
+  displayLoad,
+  formatLoad,
+  kilograms,
+} from '@ferrum/domain';
+import { displayStep } from '../settings/settings-store.ts';
 import { type SetPatch } from './session-controller.ts';
 import { Stepper } from './SetRow.tsx';
 import { BTN_QUIET, EYEBROW, MONO } from '../../ui.ts';
@@ -66,10 +72,8 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
           </span>
         )}
         <span className={`${MONO} font-medium text-chalk`} data-testid="logged-set-values">
-          {measurements.canonicalExternalLoadKg == null
-            ? '—'
-            : formatLoad(measurements.canonicalExternalLoadKg, props.unit)}{' '}
-          × {measurements.reps ?? '—'}
+          {formatLoad(measurements.canonicalExternalLoadKg, { unit: props.unit })} ×{' '}
+          {measurements.reps ?? '—'}
         </span>
         <span className={`${MONO} text-xs font-medium text-ash`}>
           RIR {measurements.rirEntered == null ? '—' : String(measurements.rirEntered)}

@@ -1,4 +1,10 @@
-import { grams, type Kilograms, type LocalDate, type PrescriptionRule } from '@ferrum/domain';
+import {
+  grams,
+  isPresent,
+  type Kilograms,
+  type LocalDate,
+  type PrescriptionRule,
+} from '@ferrum/domain';
 import { heaviestSet, minLoad, minReps } from './evaluation.ts';
 import {
   CONFIDENCE_LEVELS,
@@ -114,12 +120,8 @@ function outcomeOf(
   if (next == null) return 'no_next_session';
   if (proposal == null || next.sets.length === 0) return 'no_target_to_check';
 
-  const targetLoads = proposal.sets.flatMap(set =>
-    set.targetLoadKg == null ? [] : [set.targetLoadKg]
-  );
-  const targetReps = proposal.sets.flatMap(set =>
-    set.targetRepMin == null ? [] : [set.targetRepMin]
-  );
+  const targetLoads = proposal.sets.map(set => set.targetLoadKg).filter(isPresent);
+  const targetReps = proposal.sets.map(set => set.targetRepMin).filter(isPresent);
   if (targetLoads.length !== proposal.sets.length || targetReps.length !== proposal.sets.length) {
     return 'no_target_to_check';
   }
@@ -216,7 +218,7 @@ function adopt<R extends PrescriptionRule>(
   const anchorSets = proposal.sets.some(set => set.setType === 'top')
     ? proposal.sets.filter(set => set.setType === 'top')
     : proposal.sets;
-  const loads = anchorSets.flatMap(set => (set.targetLoadKg == null ? [] : [set.targetLoadKg]));
+  const loads = anchorSets.map(set => set.targetLoadKg).filter(isPresent);
   if (loads.length === 0) return prescription;
   const lowest = loads.reduce((best, load) => (grams(load) < grams(best) ? load : best));
   return { ...prescription, currentTargetLoadKg: lowest };

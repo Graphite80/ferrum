@@ -3,16 +3,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  allSets,
   comparisonSignature,
   kilograms,
-  projectSession,
   type DeviceId,
-  type DomainEvent,
   type DoubleProgressionRule,
   type ExerciseDefinition,
   type PrescriptionRule,
   type ProgressionRuleId,
-  type SessionId,
   type UserId,
   type WorkoutSet,
 } from '@ferrum/domain';
@@ -72,18 +70,7 @@ function importProjectedSets(): WorkoutSet[] {
   expect(result.unresolved).toHaveLength(0);
   expect(result.report.setsImported).toBe(121);
 
-  const bySession = new Map<SessionId, DomainEvent[]>();
-  for (const event of result.events) {
-    const bucket = bySession.get(event.aggregateId) ?? [];
-    bucket.push(event);
-    bySession.set(event.aggregateId, bucket);
-  }
-
-  const sets: WorkoutSet[] = [];
-  for (const [sessionId, events] of bySession) {
-    sets.push(...projectSession(sessionId, events).sets);
-  }
-  return sets;
+  return allSets(result.events);
 }
 
 function resolveDefinition(name: string): ExerciseDefinition {

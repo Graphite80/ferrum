@@ -1,5 +1,10 @@
 import {
+  formatLoad,
   grams,
+  groupBy,
+  isPresent,
+  kilograms,
+  type Kilograms,
   type SessionProjection,
   type WorkoutSet,
   type SetPrescriptionSnapshot,
@@ -10,10 +15,6 @@ import { type ComparableSession, type Recommendation } from '@ferrum/progression
 
 export function escapeHtml(text: string): string {
   return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-}
-
-function formatKg(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
 }
 
 export function renderImportReport(
@@ -54,12 +55,7 @@ export function renderSummary(projection: SessionProjection, library: ExerciseLi
   const session = projection.session;
   if (session == null) return 'No finished workout found yet.';
 
-  const setsByExercise = new Map<string, WorkoutSet[]>();
-  for (const set of projection.sets) {
-    const bucket = setsByExercise.get(set.sessionExerciseId) ?? [];
-    bucket.push(set);
-    setsByExercise.set(set.sessionExerciseId, bucket);
-  }
+  const setsByExercise = groupBy(projection.sets, set => set.sessionExerciseId);
 
   const cards: ExerciseCardLine[] = [];
   for (const exercise of projection.exercises) {
@@ -80,7 +76,7 @@ export function renderSummary(projection: SessionProjection, library: ExerciseLi
     const reps = set.measurements.reps;
     return load == null || reps == null ? sum : sum + grams(load) * reps;
   }, 0);
-  lines.push(`Total volume: ${formatKg(volumeKg / 1000)} kg`);
+  lines.push(`Total volume: ${formatLoad(kilograms(volumeKg / 1000))}`);
 
   if (session.finishedAt != null && session.finishedAt > session.startedAt) {
     const minutes = Math.round((session.finishedAt - session.startedAt) / 60_000);
@@ -96,19 +92,17 @@ function exerciseLine(card: ExerciseCardLine): string {
 }
 
 function describePrescribed(sets: readonly WorkoutSet[]): string {
-  const snapshots = sets.flatMap(set =>
-    set.prescriptionSnapshot == null ? [] : [set.prescriptionSnapshot]
-  );
+  const snapshots = sets.map(set => set.prescriptionSnapshot).filter(isPresent);
   if (snapshots.length === sets.length && snapshots.length > 0) {
     return describeSnapshot(snapshots, sets.length);
   }
-  const topLoad = sets.reduce<number | null>((best, set) => {
+  const topLoad = sets.reduce<Kilograms | null>((best, set) => {
     const load = set.measurements.canonicalExternalLoadKg;
     if (load == null) return best;
     return best == null || load > best ? load : best;
   }, null);
   const reps = sets[0]?.measurements.reps ?? 0;
-  const load = topLoad == null ? '' : ` @ ${formatKg(topLoad)} kg`;
+  const load = topLoad == null ? '' : ` @ ${formatLoad(topLoad)}`;
   return `${sets.length}×${reps}${load}`;
 }
 
@@ -121,7 +115,7 @@ function describeSnapshot(snapshots: readonly SetPrescriptionSnapshot[], setCoun
         ? String(first.targetRepMin)
         : `${first.targetRepMin}-${first.targetRepMax}`
       : '?';
-  const load = first.targetLoadKg == null ? '' : ` @ ${formatKg(first.targetLoadKg)} kg`;
+  const load = first.targetLoadKg == null ? '' : ` @ ${formatLoad(first.targetLoadKg)}`;
   return `${setCount}×${reps}${load}`;
 }
 
@@ -148,7 +142,7 @@ export function renderLastPerformances(
   ];
   for (const session of recent) {
     const sets = session.sets
-      .map(set => `${formatKg(grams(set.systemLoadKg) / 1000)} kg × ${set.reps}`)
+      .map(set => `${formatLoad(set.systemLoadKg)} × ${set.reps}`)
       .join(', ');
     lines.push(`${session.localDate}: ${sets}`);
   }

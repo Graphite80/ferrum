@@ -85,7 +85,7 @@ export function WorkoutSummaryScreen({
         <SummaryStat label="Sets" value={String(workingSets.length)} testId="summary-total-sets" />
         <SummaryStat
           label="Volume"
-          value={formatLoad(kilograms(volumeKg), unit, 0)}
+          value={formatLoad(kilograms(volumeKg), { unit, fractionDigits: 0 })}
           testId="summary-volume"
         />
       </div>
@@ -189,14 +189,14 @@ async function summarize(
 
 function prescribedLabel(slot: RoutineSlotRecord, unit: WeightUnit): string {
   const load =
-    slot.targetLoadKg == null ? '' : ` @ ${formatLoad(kilograms(slot.targetLoadKg), unit)}`;
+    slot.targetLoadKg == null ? '' : ` @ ${formatLoad(kilograms(slot.targetLoadKg), { unit })}`;
   return `${String(slot.sets)} × ${String(slot.targetRepMin)}–${String(slot.targetRepMax)}${load}`;
 }
 
 function actualLabel(workingCount: number, top: TopSet | null, unit: WeightUnit): string {
   const sets = `${String(workingCount)} ${workingCount === 1 ? 'set' : 'sets'}`;
   if (top == null) return sets;
-  return `${sets} · top ${formatLoad(kilograms(top.loadKg), unit)} × ${String(top.reps)}`;
+  return `${sets} · top ${formatLoad(kilograms(top.loadKg), { unit })} × ${String(top.reps)}`;
 }
 
 function beatsPrior(top: TopSet, prior: TopSet | null): boolean {

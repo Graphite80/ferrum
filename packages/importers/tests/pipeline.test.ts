@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ComparisonSignature, DeviceId, UserId } from '@ferrum/domain';
+import { allSets, type ComparisonSignature, type DeviceId, type UserId } from '@ferrum/domain';
 import {
   extractLifeAsCode,
   runImport,
@@ -8,7 +8,6 @@ import {
   type ImportResult,
   type LifeAsCodeSetRow,
 } from '../src/index.ts';
-import { projectAll } from './support/projection.ts';
 import { InMemoryExerciseResolver } from './support/resolver.ts';
 
 function row(overrides: Partial<LifeAsCodeSetRow> & { id: number }): LifeAsCodeSetRow {
@@ -131,8 +130,8 @@ describe('the emitted event stream is a deterministic function of the file', () 
       deviceId: 'another-device' as DeviceId,
       resolver: new InMemoryExerciseResolver(['Bench Press (Barbell)']),
     });
-    const firstSet = projectAll(first)[0];
-    const secondSet = projectAll(second)[0];
+    const firstSet = allSets(first.events)[0];
+    const secondSet = allSets(second.events)[0];
     expect(secondSet?.id).toBe(firstSet?.id);
     expect(firstSet?.provenance?.importBatchId).toBe('batch-pipeline');
     expect(secondSet?.provenance?.importBatchId).toBe('a-different-batch');

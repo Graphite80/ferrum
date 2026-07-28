@@ -110,6 +110,11 @@ export async function pushBatch(
   return { accepted, duplicates, cursor: Number(cursorResult.rows[0]?.cursor) };
 }
 
+const EVENT_COLUMNS = `event_id, aggregate_id, user_id, device_id, event_type, schema_version, hlc, payload,
+            (extract(epoch from client_created_at) * 1000)::bigint as client_created_at_millis,
+            (extract(epoch from server_received_at) * 1000)::bigint as server_received_at_millis,
+            server_sequence`;
+
 export const USER_EVENTS_HARD_CAP = 100_000;
 
 export class EventLogTooLargeError extends Error {
@@ -125,10 +130,7 @@ export async function loadUserEvents(
   cap: number = USER_EVENTS_HARD_CAP
 ): Promise<readonly DomainEvent[]> {
   const result = await db.query(
-    `select event_id, aggregate_id, user_id, device_id, event_type, schema_version, hlc, payload,
-            (extract(epoch from client_created_at) * 1000)::bigint as client_created_at_millis,
-            (extract(epoch from server_received_at) * 1000)::bigint as server_received_at_millis,
-            server_sequence
+    `select ${EVENT_COLUMNS}
      from events
      where user_id = $1
      order by server_sequence
@@ -147,10 +149,7 @@ export async function pullPage(
   request: PullRequest
 ): Promise<PullResponse> {
   const result = await db.query(
-    `select event_id, aggregate_id, user_id, device_id, event_type, schema_version, hlc, payload,
-            (extract(epoch from client_created_at) * 1000)::bigint as client_created_at_millis,
-            (extract(epoch from server_received_at) * 1000)::bigint as server_received_at_millis,
-            server_sequence
+    `select ${EVENT_COLUMNS}
      from events
      where user_id = $1 and server_sequence > $2
      order by server_sequence

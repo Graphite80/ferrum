@@ -1,4 +1,5 @@
 import { type DomainEvent, type EventId, dedupeEvents, sortEvents } from './events.ts';
+import { groupBy } from './utils.ts';
 import {
   type Session,
   type SessionExercise,
@@ -113,7 +114,7 @@ export function projectSession(
     .map((exercise, index) => ({ ...exercise, orderIndex: index }));
 
   const exerciseRank = new Map(liveExercises.map((exercise, index) => [exercise.id, index]));
-  const allSets = [...state.sets.values()].sort(
+  const orderedSets = [...state.sets.values()].sort(
     (a, b) =>
       (exerciseRank.get(a.sessionExerciseId) ?? Number.MAX_SAFE_INTEGER) -
         (exerciseRank.get(b.sessionExerciseId) ?? Number.MAX_SAFE_INTEGER) ||
@@ -125,10 +126,10 @@ export function projectSession(
     sessionId,
     session: state.session,
     exercises: liveExercises,
-    sets: allSets.filter(
+    sets: orderedSets.filter(
       set => set.status !== 'deleted' && !state.removedExercises.has(set.sessionExerciseId)
     ),
-    deletedSets: allSets.filter(
+    deletedSets: orderedSets.filter(
       set => set.status === 'deleted' || state.removedExercises.has(set.sessionExerciseId)
     ),
     supersetGroups: [...state.supersetGroups.values()].sort((a, b) => (a.id < b.id ? -1 : 1)),
@@ -136,6 +137,20 @@ export function projectSession(
     anomalies: state.anomalies,
     appliedEventCount: state.appliedEventCount,
   };
+}
+
+export function projectAll(
+  events: readonly DomainEvent[]
+): ReadonlyMap<SessionId, SessionProjection> {
+  const projections = new Map<SessionId, SessionProjection>();
+  for (const [sessionId, sessionEvents] of groupBy(events, event => event.aggregateId)) {
+    projections.set(sessionId, projectSession(sessionId, sessionEvents));
+  }
+  return projections;
+}
+
+export function allSets(events: readonly DomainEvent[]): WorkoutSet[] {
+  return [...projectAll(events).values()].flatMap(projection => projection.sets);
 }
 
 function apply(state: MutableState, event: DomainEvent): void {

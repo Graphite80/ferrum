@@ -2,14 +2,16 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import tsconfigPaths from 'vite-tsconfig-paths';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(here, '../..');
 
 export default defineConfig({
   plugins: [
+    // tsconfig.json#paths at the repo root is the single source of the @ferrum/* and @/ aliases.
+    tsconfigPaths({ projects: [path.resolve(here, '../../tsconfig.json')] }),
     tailwindcss(),
     react(),
     VitePWA({
@@ -38,14 +40,6 @@ export default defineConfig({
       devOptions: { enabled: false, type: 'module' },
     }),
   ],
-  resolve: {
-    alias: {
-      '@': path.resolve(here, './src'),
-      '@ferrum/domain': path.resolve(repoRoot, 'packages/domain/src/index.ts'),
-      '@ferrum/exercise-library': path.resolve(repoRoot, 'packages/exercise-library/src/index.ts'),
-      '@ferrum/sync-protocol': path.resolve(repoRoot, 'packages/sync-protocol/src/index.ts'),
-    },
-  },
   server: { port: 5173, strictPort: true },
   build: { target: 'es2022', sourcemap: 'hidden' },
 });

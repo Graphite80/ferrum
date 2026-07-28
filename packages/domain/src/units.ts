@@ -43,8 +43,20 @@ export function fromKilograms(value: Kilograms, unit: WeightUnit): number {
   return unit === 'kg' ? value : value / KILOGRAMS_PER_POUND;
 }
 
-export function formatLoad(value: Kilograms, unit: WeightUnit, fractionDigits = 1): string {
-  const displayed = fromKilograms(value, unit);
-  const rounded = Number(displayed.toFixed(fractionDigits));
-  return `${String(rounded)} ${unit}`;
+export function displayLoad(value: Kilograms, unit: WeightUnit, fractionDigits = 2): number {
+  return Number(fromKilograms(value, unit).toFixed(fractionDigits));
+}
+
+export interface LoadFormat {
+  readonly unit?: WeightUnit;
+  readonly fractionDigits?: number;
+  readonly withUnit?: boolean;
+  readonly nullAs?: string;
+}
+
+export function formatLoad(value: Kilograms | null, format: LoadFormat = {}): string {
+  const { unit = 'kg', fractionDigits = 1, withUnit = true, nullAs = '—' } = format;
+  if (value == null) return nullAs;
+  const rounded = String(displayLoad(value, unit, fractionDigits));
+  return withUnit ? `${rounded} ${unit}` : rounded;
 }

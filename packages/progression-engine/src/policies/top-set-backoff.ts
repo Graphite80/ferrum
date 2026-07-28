@@ -1,5 +1,6 @@
 import {
   addLoad,
+  formatLoad,
   grams,
   sameLoad,
   scaleLoad,
@@ -10,7 +11,6 @@ import {
   commonWarnings,
   confidenceFrom,
   countTrailingSessions,
-  describeLoad,
   evidenceTrail,
   heaviestSet,
   increment,
@@ -108,8 +108,8 @@ export const topSetBackoffPolicy: ProgressionPolicy<TopSetBackoffRule> = {
     const backoffNote =
       rule.backoff.sets > 0
         ? ` Back-off sets are ${Math.round(rule.backoff.loadFromTopSet * 100)}% of the ` +
-          `${describeLoad(performedLoad)} actually lifted, rounded down to ` +
-          `${describeLoad(backoffLoad)}.`
+          `${formatLoad(performedLoad)} actually lifted, rounded down to ` +
+          `${formatLoad(backoffLoad)}.`
         : '';
 
     if (performedTopSet.reps < rule.topSet.reps) {
@@ -138,7 +138,7 @@ export const topSetBackoffPolicy: ProgressionPolicy<TopSetBackoffRule> = {
             ],
             explanation:
               `${failures} sessions in a row missed ${rule.topSet.reps} reps on the top set at ` +
-              `${describeLoad(performedLoad)} and the equipment offers nothing lighter.`,
+              `${formatLoad(performedLoad)} and the equipment offers nothing lighter.`,
             confidence,
             warnings,
           });
@@ -153,8 +153,8 @@ export const topSetBackoffPolicy: ProgressionPolicy<TopSetBackoffRule> = {
           reasonCodes: [...shared, 'top_set_reps_missed', 'repeated_failure'],
           explanation:
             `${failures} sessions in a row missed ${rule.topSet.reps} reps on the top set at ` +
-            `${describeLoad(performedLoad)} (last attempt ${performedTopSet.reps} reps). ` +
-            `Dropping the top set to ${describeLoad(reduced)}.`,
+            `${formatLoad(performedLoad)} (last attempt ${performedTopSet.reps} reps). ` +
+            `Dropping the top set to ${formatLoad(reduced)}.`,
           confidence,
           warnings,
         });
@@ -166,7 +166,7 @@ export const topSetBackoffPolicy: ProgressionPolicy<TopSetBackoffRule> = {
         reasonCodes: [...shared, 'top_set_reps_missed', 'backoff_from_performed_top_set'],
         explanation:
           `The top set made ${performedTopSet.reps} of ${rule.topSet.reps} reps at ` +
-          `${describeLoad(performedLoad)}. One missed top set is not a deload; repeat it.` +
+          `${formatLoad(performedLoad)}. One missed top set is not a deload; repeat it.` +
           backoffNote,
         confidence,
         warnings,
@@ -184,7 +184,7 @@ export const topSetBackoffPolicy: ProgressionPolicy<TopSetBackoffRule> = {
           'backoff_from_performed_top_set',
         ],
         explanation:
-          `The top set made ${performedTopSet.reps} reps at ${describeLoad(performedLoad)}, but no ` +
+          `The top set made ${performedTopSet.reps} reps at ${formatLoad(performedLoad)}, but no ` +
           `RPE was recorded, so there is no evidence it landed near the prescribed RPE ` +
           `${rule.topSet.targetRpe}. Load stays where it is.` +
           backoffNote,
@@ -225,7 +225,7 @@ export const topSetBackoffPolicy: ProgressionPolicy<TopSetBackoffRule> = {
             explanation:
               `${tooHard} sessions in a row took the top set at RPE ${rpe} against a target of ` +
               `${rule.topSet.targetRpe}. Reps are being bought with effort that is not there; ` +
-              `dropping to ${describeLoad(reduced)}.`,
+              `dropping to ${formatLoad(reduced)}.`,
             confidence,
             warnings,
           });
@@ -242,7 +242,7 @@ export const topSetBackoffPolicy: ProgressionPolicy<TopSetBackoffRule> = {
           'backoff_from_performed_top_set',
         ],
         explanation:
-          `The top set made ${performedTopSet.reps} reps at ${describeLoad(performedLoad)} but at ` +
+          `The top set made ${performedTopSet.reps} reps at ${formatLoad(performedLoad)} but at ` +
           `RPE ${rpe}, above the prescribed ${rule.topSet.targetRpe}. Hold the load until it is ` +
           `earned.` +
           backoffNote,
@@ -263,7 +263,7 @@ export const topSetBackoffPolicy: ProgressionPolicy<TopSetBackoffRule> = {
           'backoff_from_performed_top_set',
         ],
         explanation:
-          `The top set made ${performedTopSet.reps} reps at ${describeLoad(performedLoad)} at RPE ` +
+          `The top set made ${performedTopSet.reps} reps at ${formatLoad(performedLoad)} at RPE ` +
           `${rpe}, but no smallest available increment is known for this equipment.` +
           backoffNote,
         confidence,
@@ -286,7 +286,7 @@ export const topSetBackoffPolicy: ProgressionPolicy<TopSetBackoffRule> = {
         ],
         explanation:
           `The top set met ${rule.topSet.reps} reps at RPE ${rpe}, but readiness was reported low; ` +
-          `the top set stays at ${describeLoad(performedLoad)}.` +
+          `the top set stays at ${formatLoad(performedLoad)}.` +
           backoffNote,
         confidence,
         warnings,
@@ -306,7 +306,7 @@ export const topSetBackoffPolicy: ProgressionPolicy<TopSetBackoffRule> = {
         ],
         explanation:
           `The top set met ${rule.topSet.reps} reps at RPE ${rpe}, but ` +
-          `${describeLoad(performedLoad)} is the maximum this equipment offers.` +
+          `${formatLoad(performedLoad)} is the maximum this equipment offers.` +
           backoffNote,
         confidence,
         warnings,
@@ -318,9 +318,9 @@ export const topSetBackoffPolicy: ProgressionPolicy<TopSetBackoffRule> = {
       proposedPrescription: propose(nextTop),
       reasonCodes: [...shared, 'top_set_reps_met', 'backoff_from_performed_top_set'],
       explanation:
-        `The top set made ${performedTopSet.reps} reps at ${describeLoad(performedLoad)} at RPE ` +
+        `The top set made ${performedTopSet.reps} reps at ${formatLoad(performedLoad)} at RPE ` +
         `${rpe}, at or under the prescribed ${rule.topSet.targetRpe}. Next top set is ` +
-        `${describeLoad(nextTop)} (+${describeLoad(step.kilograms)}, ${step.source}).` +
+        `${formatLoad(nextTop)} (+${formatLoad(step.kilograms)}, ${step.source}).` +
         backoffNote,
       confidence,
       warnings,

@@ -1,6 +1,7 @@
 import {
   formatLoad,
   grams,
+  isPresent,
   roundToAvailableLoad,
   sameLoad,
   smallestAvailableIncrement,
@@ -44,7 +45,9 @@ export function effortVerdict(
 }
 
 export function effortSummary(sets: readonly ComparableSet[]): string {
-  const values = sets.flatMap(set => (set.effort.kind === 'unknown' ? [] : [set.effort.rir]));
+  const values = sets
+    .map(set => (set.effort.kind === 'unknown' ? null : set.effort.rir))
+    .filter(isPresent);
   if (values.length === 0) return 'no effort recorded';
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -104,10 +107,6 @@ export function roundLoad(
 
 export function isOnEquipmentGrid(load: Kilograms, equipment: EquipmentConstraints): boolean {
   return sameLoad(load, roundLoad(load, equipment, 'nearest'));
-}
-
-export function describeLoad(load: Kilograms): string {
-  return formatLoad(load, 'kg');
 }
 
 // Walks backwards from the most recent session and stops at the first one that does
@@ -219,15 +218,15 @@ export function commonWarnings(
   if (lowest != null && highest != null && !sameLoad(lowest, highest)) {
     reasonCodes.push('mixed_loads_within_session');
     warnings.push(
-      `Working sets on ${current.localDate} used loads from ${describeLoad(lowest)} to ` +
-        `${describeLoad(highest)}; the lowest was taken as the load achieved on every set.`
+      `Working sets on ${current.localDate} used loads from ${formatLoad(lowest)} to ` +
+        `${formatLoad(highest)}; the lowest was taken as the load achieved on every set.`
     );
   }
 
   if (lowest != null && !isOnEquipmentGrid(lowest, equipment)) {
     reasonCodes.push('load_off_equipment_grid');
     warnings.push(
-      `${describeLoad(lowest)} is not on this equipment's configured increment grid; ` +
+      `${formatLoad(lowest)} is not on this equipment's configured increment grid; ` +
         `the proposal was rounded onto it.`
     );
   }

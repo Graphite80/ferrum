@@ -3,6 +3,7 @@ import {
   compareLocalDate,
   describeIncomparability,
   grams,
+  groupBy,
   isComparable,
   kilograms,
   resolveLoad,
@@ -12,7 +13,6 @@ import {
   type ExerciseDefinition,
   type IndeterminateReason,
   type LoadSemantics,
-  type LocalDate,
   type WorkoutSet,
 } from '@ferrum/domain';
 import {
@@ -35,25 +35,26 @@ type Classified =
   | { readonly kind: 'excluded'; readonly exclusion: ExcludedSet };
 
 export function selectComparableHistory(input: ComparableSelectionInput): ComparableHistory {
-  const includedByDate = new Map<LocalDate, ComparableSet[]>();
-  const excludedByDate = new Map<LocalDate, ExcludedSet[]>();
+  const included: ComparableSet[] = [];
   const allExclusions: ExcludedSet[] = [];
   const indeterminateReasons = new Set<IndeterminateReason>();
 
   for (const set of input.sets) {
     const classified = classifySet(set, input);
     if (classified.kind === 'included') {
-      appendTo(includedByDate, set.localDate, classified.comparable);
+      included.push(classified.comparable);
       continue;
     }
     // A signature mismatch is not an exclusion from this exercise's history, it is a
     // different exercise entirely; recording it would drown the trail in noise.
     if (classified.exclusion.reason === 'signature_mismatch') continue;
-    appendTo(excludedByDate, set.localDate, classified.exclusion);
     allExclusions.push(classified.exclusion);
     const reason = indeterminateReasonOf(classified.exclusion);
     if (reason != null) indeterminateReasons.add(reason);
   }
+
+  const includedByDate = groupBy(included, item => item.localDate);
+  const excludedByDate = groupBy(allExclusions, item => item.set.localDate);
 
   const dates = [...new Set([...includedByDate.keys(), ...excludedByDate.keys()])].sort(
     compareLocalDate
@@ -205,12 +206,6 @@ function indeterminateReasonOf(exclusion: ExcludedSet): IndeterminateReason | nu
   return exclusion.reason === 'indeterminate_load'
     ? (exclusion.detail as IndeterminateReason)
     : null;
-}
-
-function appendTo<K, V>(map: Map<K, V[]>, key: K, value: V): void {
-  const existing = map.get(key);
-  if (existing == null) map.set(key, [value]);
-  else existing.push(value);
 }
 
 function compareIds(a: ComparableSet, b: ComparableSet): number {

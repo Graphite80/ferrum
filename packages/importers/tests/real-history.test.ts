@@ -2,7 +2,14 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { projectSession, type DeviceId, type SessionId, type UserId } from '@ferrum/domain';
+import {
+  allSets,
+  projectAll,
+  projectSession,
+  type DeviceId,
+  type SessionId,
+  type UserId,
+} from '@ferrum/domain';
 import {
   extractLifeAsCode,
   importedRecordKeysOf,
@@ -10,7 +17,6 @@ import {
   type ImportResult,
   type LifeAsCodeSetRow,
 } from '../src/index.ts';
-import { eventsBySession, projectAll } from './support/projection.ts';
 import { InMemoryExerciseResolver } from './support/resolver.ts';
 
 const FIXTURE = path.resolve(
@@ -60,7 +66,7 @@ describe('importing the real life-as-code history', () => {
   });
 
   it('carries provenance on every set that survives replay, not beside the events', () => {
-    const sets = projectAll(result);
+    const sets = allSets(result.events);
     expect(sets).toHaveLength(result.report.setsImported);
 
     const recordIds = new Set<string>();
@@ -79,7 +85,7 @@ describe('importing the real life-as-code history', () => {
   });
 
   it('hands back the untouched source row, not a reshaped copy of it', () => {
-    const sets = projectAll(result);
+    const sets = allSets(result.events);
     const byRecordId = new Map(sourceRows.map(row => [String(row.id), row]));
     for (const set of sets) {
       const provenance = set.provenance;
@@ -111,17 +117,16 @@ describe('importing the real life-as-code history', () => {
   });
 
   it('replays into projections whose set count matches the report', () => {
-    const bySession = eventsBySession(result.events);
+    const projections = projectAll(result.events);
 
     let projected = 0;
-    for (const [sessionId, events] of bySession) {
-      const projection = projectSession(sessionId, events);
+    for (const projection of projections.values()) {
       expect(projection.anomalies).toHaveLength(0);
       expect(projection.session?.status).toBe('finished');
       projected += projection.sets.length;
     }
 
-    expect(bySession.size).toBe(result.report.workoutsImported);
+    expect(projections.size).toBe(result.report.workoutsImported);
     expect(projected).toBe(result.report.setsImported);
   });
 
@@ -139,7 +144,7 @@ describe('importing the real life-as-code history', () => {
     const byRecordId = new Map(sourceRows.map(row => [String(row.id), row]));
     let withRpe = 0;
 
-    for (const set of projectAll(result)) {
+    for (const set of allSets(result.events)) {
       const original = byRecordId.get(set.provenance?.sourceRecordId ?? '');
       expect(original).toBeDefined();
 
@@ -159,7 +164,7 @@ describe('importing the real life-as-code history', () => {
   });
 
   it('records no rest time, because the source never captured one', () => {
-    for (const set of projectAll(result)) {
+    for (const set of allSets(result.events)) {
       expect(set.measurements.actualRestSeconds).toBeNull();
     }
   });
@@ -168,7 +173,7 @@ describe('importing the real life-as-code history', () => {
     const zeroRow = sourceRows.find(row => row.weight_kg === 0);
     expect(zeroRow).toBeDefined();
 
-    const set = projectAll(result).find(
+    const set = allSets(result.events).find(
       candidate => candidate.provenance?.sourceRecordId === String(zeroRow?.id ?? '')
     );
     expect(set?.measurements.enteredLoad).toBe(0);
@@ -190,7 +195,7 @@ describe('importing the real life-as-code history', () => {
     const reclassified = result.report.reclassifications;
     expect(reclassified.length).toBe(result.report.setsReclassifiedAsWarmup);
 
-    const byId = new Map(projectAll(result).map(set => [set.id, set]));
+    const byId = new Map(allSets(result.events).map(set => [set.id, set]));
     for (const item of reclassified) {
       expect(item.reason).not.toBe('');
       expect(item.from).toBeNull();

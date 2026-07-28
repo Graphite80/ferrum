@@ -1,19 +1,9 @@
 import { defineConfig } from 'vitest/config';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const root = path.dirname(fileURLToPath(import.meta.url));
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      '@ferrum/domain': path.resolve(root, 'packages/domain/src/index.ts'),
-      '@ferrum/exercise-library': path.resolve(root, 'packages/exercise-library/src/index.ts'),
-      '@ferrum/importers': path.resolve(root, 'packages/importers/src/index.ts'),
-      '@ferrum/progression-engine': path.resolve(root, 'packages/progression-engine/src/index.ts'),
-      '@ferrum/sync-protocol': path.resolve(root, 'packages/sync-protocol/src/index.ts'),
-    },
-  },
+  // tsconfig.json#paths is the single source of the @ferrum/* aliases.
+  plugins: [tsconfigPaths()],
   test: {
     include: ['packages/*/tests/**/*.test.ts', 'services/*/tests/**/*.test.ts'],
     pool: 'forks',

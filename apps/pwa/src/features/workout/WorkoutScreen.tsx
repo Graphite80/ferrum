@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  groupBy,
   type ExerciseDefinition,
   type ExerciseDefinitionId,
   type SessionExerciseId,
@@ -111,11 +112,15 @@ export function WorkoutScreen({
   }, [projection, lastTimes, sessionId]);
 
   const liveSetsByExercise = useMemo(
-    () => groupBySessionExercise(projection?.sets ?? []),
+    () => groupBy(projection?.sets ?? [], set => set.sessionExerciseId),
     [projection]
   );
   const allSetsByExercise = useMemo(
-    () => groupBySessionExercise([...(projection?.sets ?? []), ...(projection?.deletedSets ?? [])]),
+    () =>
+      groupBy(
+        [...(projection?.sets ?? []), ...(projection?.deletedSets ?? [])],
+        set => set.sessionExerciseId
+      ),
     [projection]
   );
 
@@ -320,16 +325,6 @@ export function WorkoutScreen({
       )}
     </main>
   );
-}
-
-function groupBySessionExercise(sets: readonly WorkoutSet[]): Map<SessionExerciseId, WorkoutSet[]> {
-  const map = new Map<SessionExerciseId, WorkoutSet[]>();
-  for (const set of sets) {
-    const existing = map.get(set.sessionExerciseId);
-    if (existing == null) map.set(set.sessionExerciseId, [set]);
-    else existing.push(set);
-  }
-  return map;
 }
 
 function WakeLockBanner({

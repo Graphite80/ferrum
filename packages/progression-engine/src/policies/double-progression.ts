@@ -1,5 +1,6 @@
 import {
   addLoad,
+  formatLoad,
   grams,
   sameLoad,
   scaleLoad,
@@ -10,7 +11,6 @@ import {
   commonWarnings,
   confidenceFrom,
   countTrailingSessions,
-  describeLoad,
   effortSummary,
   effortVerdict,
   evidenceTrail,
@@ -122,7 +122,7 @@ export const doubleProgressionPolicy: ProgressionPolicy<DoubleProgressionRule> =
           reasonCodes: [...shared, 'set_count_below_prescription', 'repeated_failure'],
           explanation:
             `${consecutive} sessions in a row finished ${performedSets} of ${rule.sets} ` +
-            `prescribed sets at ${describeLoad(workingLoad)}. The prescription is asking for ` +
+            `prescribed sets at ${formatLoad(workingLoad)}. The prescription is asking for ` +
             `volume that is not being done; matching it to ${performedSets} sets is honest.`,
           confidence,
           warnings,
@@ -134,7 +134,7 @@ export const doubleProgressionPolicy: ProgressionPolicy<DoubleProgressionRule> =
         reasonCodes: [...shared, 'set_count_below_prescription'],
         explanation:
           `${performedSets} of ${rule.sets} prescribed sets were completed at ` +
-          `${describeLoad(workingLoad)}. One short session is not a reason to change anything.`,
+          `${formatLoad(workingLoad)}. One short session is not a reason to change anything.`,
         confidence,
         warnings,
       });
@@ -173,7 +173,7 @@ export const doubleProgressionPolicy: ProgressionPolicy<DoubleProgressionRule> =
             ],
             explanation:
               `${consecutiveFailures} sessions in a row fell short of ${bottomOfRange} reps at ` +
-              `${describeLoad(workingLoad)}, and the available equipment cannot go lower. The ` +
+              `${formatLoad(workingLoad)}, and the available equipment cannot go lower. The ` +
               `exercise or the equipment needs a decision a load change cannot make.`,
             confidence,
             warnings,
@@ -190,11 +190,11 @@ export const doubleProgressionPolicy: ProgressionPolicy<DoubleProgressionRule> =
           ],
           explanation:
             `${consecutiveFailures} sessions in a row fell short of ${bottomOfRange} reps at ` +
-            `${describeLoad(workingLoad)}${
+            `${formatLoad(workingLoad)}${
               substantialDrop
                 ? `, and total reps dropped from ${bestPriorVolume} to ${currentVolume}`
                 : ''
-            }. Dropping to ${describeLoad(reduced)} to rebuild the range.`,
+            }. Dropping to ${formatLoad(reduced)} to rebuild the range.`,
           confidence,
           warnings,
         });
@@ -206,7 +206,7 @@ export const doubleProgressionPolicy: ProgressionPolicy<DoubleProgressionRule> =
         reasonCodes: [...shared, 'reps_below_range'],
         explanation:
           `Lowest working set was ${lowestReps} reps, under the ${bottomOfRange}-rep floor, at ` +
-          `${describeLoad(workingLoad)}. That is ${consecutiveFailures} short session in a row; ` +
+          `${formatLoad(workingLoad)}. That is ${consecutiveFailures} short session in a row; ` +
           `${threshold} are needed before this engine reduces anything.`,
         confidence,
         warnings,
@@ -220,7 +220,7 @@ export const doubleProgressionPolicy: ProgressionPolicy<DoubleProgressionRule> =
           proposedPrescription: propose(rule.sets, workingLoad, bottomOfRange, topOfRange),
           reasonCodes: [...shared, 'reps_within_range', 'effort_harder_than_target'],
           explanation:
-            `${lowestReps} reps at ${describeLoad(workingLoad)} is inside the ` +
+            `${lowestReps} reps at ${formatLoad(workingLoad)} is inside the ` +
             `${bottomOfRange}-${topOfRange} range but effort was ${effortSummary(current.sets)}, ` +
             `harder than the ${rule.targetRir[0]}-${rule.targetRir[1]} RIR target. Repeat before adding reps.`,
           confidence,
@@ -236,7 +236,7 @@ export const doubleProgressionPolicy: ProgressionPolicy<DoubleProgressionRule> =
           ...(effort === 'unknown' ? (['effort_unknown'] as const) : []),
         ],
         explanation:
-          `${lowestReps} reps at ${describeLoad(workingLoad)} is inside the ` +
+          `${lowestReps} reps at ${formatLoad(workingLoad)} is inside the ` +
           `${bottomOfRange}-${topOfRange} range. Add reps at this load before adding load.`,
         confidence,
         warnings,
@@ -252,7 +252,7 @@ export const doubleProgressionPolicy: ProgressionPolicy<DoubleProgressionRule> =
         reasonCodes: [...atTop, 'effort_unknown'],
         explanation:
           `All ${performedSets} working sets reached ${topOfRange} reps at ` +
-          `${describeLoad(workingLoad)}, but no RIR or RPE was recorded, so there is no evidence ` +
+          `${formatLoad(workingLoad)}, but no RIR or RPE was recorded, so there is no evidence ` +
           `the effort was inside the ${rule.targetRir[0]}-${rule.targetRir[1]} RIR target. ` +
           `Missing effort is not proof of easy work.`,
         confidence: 'low',
@@ -269,7 +269,7 @@ export const doubleProgressionPolicy: ProgressionPolicy<DoubleProgressionRule> =
           effort === 'harder' ? 'effort_harder_than_target' : 'effort_easier_than_target',
         ],
         explanation:
-          `All working sets reached ${topOfRange} reps at ${describeLoad(workingLoad)}, but ` +
+          `All working sets reached ${topOfRange} reps at ${formatLoad(workingLoad)}, but ` +
           `effort was ${effortSummary(current.sets)}, outside the ${rule.targetRir[0]}-` +
           `${rule.targetRir[1]} RIR target. Repeat the prescription until the two agree.`,
         confidence,
@@ -303,7 +303,7 @@ export const doubleProgressionPolicy: ProgressionPolicy<DoubleProgressionRule> =
         proposedPrescription: propose(rule.sets, workingLoad, bottomOfRange, topOfRange),
         reasonCodes: [...atTop, 'effort_inside_target_band', 'increment_unknown'],
         explanation:
-          `All working sets reached ${topOfRange} reps at ${describeLoad(workingLoad)} inside the ` +
+          `All working sets reached ${topOfRange} reps at ${formatLoad(workingLoad)} inside the ` +
           `RIR target, but no smallest available increment is known for this equipment, so there ` +
           `is no load to propose.`,
         confidence,
@@ -320,7 +320,7 @@ export const doubleProgressionPolicy: ProgressionPolicy<DoubleProgressionRule> =
         proposedPrescription: propose(rule.sets, workingLoad, bottomOfRange, topOfRange),
         reasonCodes: [...atTop, 'effort_inside_target_band', 'readiness_low'],
         explanation:
-          `All working sets reached ${topOfRange} reps at ${describeLoad(workingLoad)} inside the ` +
+          `All working sets reached ${topOfRange} reps at ${formatLoad(workingLoad)} inside the ` +
           `RIR target, but readiness was reported low. Holding the load costs one session; a ` +
           `missed jump costs three.`,
         confidence,
@@ -335,7 +335,7 @@ export const doubleProgressionPolicy: ProgressionPolicy<DoubleProgressionRule> =
         proposedPrescription: propose(rule.sets, workingLoad, bottomOfRange, topOfRange),
         reasonCodes: [...atTop, 'effort_inside_target_band', 'equipment_maximum_reached'],
         explanation:
-          `All working sets reached ${topOfRange} reps at ${describeLoad(workingLoad)} inside the ` +
+          `All working sets reached ${topOfRange} reps at ${formatLoad(workingLoad)} inside the ` +
           `RIR target, but that is the maximum this equipment offers.`,
         confidence,
         warnings,
@@ -348,9 +348,9 @@ export const doubleProgressionPolicy: ProgressionPolicy<DoubleProgressionRule> =
       reasonCodes: [...atTop, 'effort_inside_target_band'],
       explanation:
         `All ${performedSets} working sets reached ${topOfRange} reps at ` +
-        `${describeLoad(workingLoad)} at ${effortSummary(current.sets)}, inside the ` +
+        `${formatLoad(workingLoad)} at ${effortSummary(current.sets)}, inside the ` +
         `${rule.targetRir[0]}-${rule.targetRir[1]} RIR target. Adding the smallest available ` +
-        `increment (${describeLoad(step.kilograms)}, ${step.source}) gives ${describeLoad(target)}.`,
+        `increment (${formatLoad(step.kilograms)}, ${step.source}) gives ${formatLoad(target)}.`,
       confidence,
       warnings,
     });

@@ -433,6 +433,8 @@ falsifiable instead of argued.
 
 ## Round 2 — Attacker
 
+> Correction (2026-07-28): `receive()` now has production call sites — `apps/pwa/src/db/event-store.ts` `importRemoteEvents` and `services/api/src/sync.ts` `pushBatch` — so A5's "zero production call sites" premise no longer holds.
+
 Target: the emerging hybrid consensus (PWA/Mini App = gym client, bot = ambient client, phase 4 forced now). Verdict up front: the hybrid survives only after amputation — its Mini App leg is already dead by Round 1's own evidence, its write-grammar leg violates the repo's central invariant in an unfixable way, and its sequencing inverts the repo's stated priorities. What survives is much smaller than the consensus pretends.
 
 ### A1. The Mini App leg of the hybrid is already refuted by Round 1 — the consensus is quietly ignoring its own evidence

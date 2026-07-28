@@ -137,6 +137,88 @@ test.describe('sync across devices', () => {
     await deviceB.close();
   });
 
+  test('a bot import converges into the device and the folded clock keeps pushing cleanly', async ({
+    browser,
+  }) => {
+    const token = await mintToken();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await configureSync(page, token);
+    await logWorkout(page, 2);
+    await syncNowExpectDrained(page);
+
+    // A Telegram shorthand message lands server-side through the real bot
+    // import path, on a day of its own so the session is unmistakable.
+    const botDay = '2026-07-20';
+    const importResponse = await fetch(`${syncServerUrl}/dev/bot-import`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        lines: ['barbell bench press 100x5 @2'],
+        messageId: 4242,
+        date: Math.floor(Date.parse(`${botDay}T12:00:00Z`) / 1000),
+      }),
+    });
+    expect(importResponse.status).toBe(200);
+    const outcome = (await importResponse.json()) as {
+      accepted: number;
+      setsImported: number;
+      unresolved: number;
+    };
+    expect(outcome.setsImported).toBe(1);
+    expect(outcome.unresolved).toBe(0);
+    expect(outcome.accepted).toBeGreaterThan(0);
+
+    await syncNowExpectDrained(page);
+    await page.getByTestId('open-history').click();
+    await expect(page.getByTestId('history-item')).toHaveCount(2, { timeout: 15_000 });
+    const botSession = page.getByTestId('history-item').filter({ hasText: botDay });
+    await expect(botSession).toHaveCount(1);
+    await botSession.click();
+    await expect(page.getByTestId('detail-date')).toHaveText(botDay);
+    await expect(page.getByTestId('detail-exercise')).toContainText('Bench Press (Barbell)');
+    await expect(page.getByTestId('detail-set-values')).toHaveText('100 kg × 5');
+    await expect(page.getByTestId('history-detail')).toContainText('RIR 2');
+    await page.getByTestId('detail-back').click();
+    await page.getByTestId('back-home').click();
+
+    // The wire truth, not the UI: the bot envelope carries its own device id
+    // and the set says where it came from.
+    const pullResponse = await fetch(`${syncServerUrl}/sync/pull?after=0&limit=500`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(pullResponse.status).toBe(200);
+    const pulled = (await pullResponse.json()) as {
+      events: {
+        deviceId: string;
+        eventType: string;
+        payload: { provenance?: { source?: string } | null };
+      }[];
+    };
+    const botEvents = pulled.events.filter(event => event.deviceId === 'tg-import');
+    expect(botEvents.length).toBeGreaterThan(0);
+    const botSets = botEvents.filter(event => event.eventType === 'SetLogged');
+    expect(botSets).toHaveLength(1);
+    expect(botSets[0]?.payload.provenance?.source).toBe('telegram');
+
+    // After folding the bot's clock on pull, a fresh local workout must still
+    // produce an ordering the server accepts — drained, no drift, no error.
+    await logWorkout(page, 1);
+    await syncNowExpectDrained(page);
+    await page.getByTestId('open-settings').click();
+    await expect(page.getByTestId('sync-error')).toHaveCount(0);
+    await expect(page.getByTestId('sync-drift-warning')).toHaveCount(0);
+    await page.getByTestId('settings-back').click();
+
+    const afterPush = await fetch(`${syncServerUrl}/sync/pull?after=0&limit=500`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const afterEvents = (await afterPush.json()) as { events: { deviceId: string }[] };
+    expect(afterEvents.events.length).toBeGreaterThan(pulled.events.length);
+
+    await context.close();
+  });
+
   test('a dead server never touches logging; pending grows offline and drains on recovery', async ({
     browser,
   }) => {

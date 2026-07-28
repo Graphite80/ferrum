@@ -1,6 +1,8 @@
 import {
   addLoad,
+  formatLoad,
   grams,
+  isPresent,
   sameLoad,
   scaleLoad,
   type Kilograms,
@@ -10,7 +12,6 @@ import {
   commonWarnings,
   confidenceFrom,
   countTrailingSessions,
-  describeLoad,
   effortSummary,
   effortVerdict,
   evidenceTrail,
@@ -135,7 +136,7 @@ export const linearLoadPolicy: ProgressionPolicy<LinearLoadRule> = {
             ],
             explanation:
               `${failures} sessions in a row missed ${rule.sets}x${rule.reps} at ` +
-              `${describeLoad(workingLoad)} and the equipment offers nothing lighter.`,
+              `${formatLoad(workingLoad)} and the equipment offers nothing lighter.`,
             confidence,
             warnings,
           });
@@ -146,8 +147,8 @@ export const linearLoadPolicy: ProgressionPolicy<LinearLoadRule> = {
           reasonCodes: [...shared, 'reps_below_range', 'repeated_failure'],
           explanation:
             `${failures} sessions in a row missed ${rule.sets}x${rule.reps} at ` +
-            `${describeLoad(workingLoad)} (lowest set ${lowestReps} reps across ${performedSets} ` +
-            `sets). Backing off to ${describeLoad(reduced)}, ${Math.round(
+            `${formatLoad(workingLoad)} (lowest set ${lowestReps} reps across ${performedSets} ` +
+            `sets). Backing off to ${formatLoad(reduced)}, ${Math.round(
               rule.backoffFraction * 100
             )}% of the stalled load.`,
           confidence,
@@ -162,7 +163,7 @@ export const linearLoadPolicy: ProgressionPolicy<LinearLoadRule> = {
           proposedPrescription: propose(rule.sets, workingLoad),
           reasonCodes: [...shared, 'reps_below_range', 'rest_shorter_than_prescribed'],
           explanation:
-            `${rule.sets}x${rule.reps} at ${describeLoad(workingLoad)} was missed after a mean ` +
+            `${rule.sets}x${rule.reps} at ${formatLoad(workingLoad)} was missed after a mean ` +
             `rest of ${restEvidence.observedSeconds}s against ${restEvidence.prescribedSeconds}s ` +
             `prescribed. Rest is the cheapest variable to fix before touching load.`,
           confidence,
@@ -181,7 +182,7 @@ export const linearLoadPolicy: ProgressionPolicy<LinearLoadRule> = {
             : []),
         ],
         explanation:
-          `${rule.sets}x${rule.reps} at ${describeLoad(workingLoad)} was missed (lowest set ` +
+          `${rule.sets}x${rule.reps} at ${formatLoad(workingLoad)} was missed (lowest set ` +
           `${lowestReps} reps across ${performedSets} sets). That is ${failures} of the ` +
           `${required} failing sessions this engine requires before it reduces anything.`,
         confidence,
@@ -195,7 +196,7 @@ export const linearLoadPolicy: ProgressionPolicy<LinearLoadRule> = {
         proposedPrescription: propose(rule.sets, workingLoad),
         reasonCodes: [...shared, 'effort_unknown'],
         explanation:
-          `${rule.sets}x${rule.reps} at ${describeLoad(workingLoad)} was completed, but no RIR or ` +
+          `${rule.sets}x${rule.reps} at ${formatLoad(workingLoad)} was completed, but no RIR or ` +
           `RPE was recorded, so there is no evidence the effort was inside the ` +
           `${rule.targetRir[0]}-${rule.targetRir[1]} RIR target. Load stays where it is.`,
         confidence: 'low',
@@ -212,7 +213,7 @@ export const linearLoadPolicy: ProgressionPolicy<LinearLoadRule> = {
           effort === 'harder' ? 'effort_harder_than_target' : 'effort_easier_than_target',
         ],
         explanation:
-          `${rule.sets}x${rule.reps} at ${describeLoad(workingLoad)} was completed at ` +
+          `${rule.sets}x${rule.reps} at ${formatLoad(workingLoad)} was completed at ` +
           `${effortSummary(current.sets)}, outside the ${rule.targetRir[0]}-${rule.targetRir[1]} ` +
           `RIR target. Repeat the load until effort and prescription agree.`,
         confidence,
@@ -227,7 +228,7 @@ export const linearLoadPolicy: ProgressionPolicy<LinearLoadRule> = {
         proposedPrescription: propose(rule.sets, workingLoad),
         reasonCodes: [...shared, 'effort_inside_target_band', 'increment_unknown'],
         explanation:
-          `${rule.sets}x${rule.reps} at ${describeLoad(workingLoad)} was completed inside the RIR ` +
+          `${rule.sets}x${rule.reps} at ${formatLoad(workingLoad)} was completed inside the RIR ` +
           `target, but no smallest available increment is known for this equipment.`,
         confidence,
         warnings: [
@@ -243,7 +244,7 @@ export const linearLoadPolicy: ProgressionPolicy<LinearLoadRule> = {
         proposedPrescription: propose(rule.sets, workingLoad),
         reasonCodes: [...shared, 'effort_inside_target_band', 'readiness_low'],
         explanation:
-          `${rule.sets}x${rule.reps} at ${describeLoad(workingLoad)} was completed inside the RIR ` +
+          `${rule.sets}x${rule.reps} at ${formatLoad(workingLoad)} was completed inside the RIR ` +
           `target, but readiness was reported low; the jump waits one session.`,
         confidence,
         warnings,
@@ -257,7 +258,7 @@ export const linearLoadPolicy: ProgressionPolicy<LinearLoadRule> = {
         proposedPrescription: propose(rule.sets, workingLoad),
         reasonCodes: [...shared, 'effort_inside_target_band', 'equipment_maximum_reached'],
         explanation:
-          `${rule.sets}x${rule.reps} at ${describeLoad(workingLoad)} was completed inside the RIR ` +
+          `${rule.sets}x${rule.reps} at ${formatLoad(workingLoad)} was completed inside the RIR ` +
           `target, but that is the maximum this equipment offers.`,
         confidence,
         warnings,
@@ -269,10 +270,10 @@ export const linearLoadPolicy: ProgressionPolicy<LinearLoadRule> = {
       proposedPrescription: propose(rule.sets, target),
       reasonCodes: [...shared, 'effort_inside_target_band'],
       explanation:
-        `${rule.sets}x${rule.reps} at ${describeLoad(workingLoad)} was completed at ` +
+        `${rule.sets}x${rule.reps} at ${formatLoad(workingLoad)} was completed at ` +
         `${effortSummary(current.sets)}, inside the ${rule.targetRir[0]}-${rule.targetRir[1]} RIR ` +
-        `target. Adding the smallest available increment (${describeLoad(step.kilograms)}, ` +
-        `${step.source}) gives ${describeLoad(target)}.`,
+        `target. Adding the smallest available increment (${formatLoad(step.kilograms)}, ` +
+        `${step.source}) gives ${formatLoad(target)}.`,
       confidence,
       warnings,
     });
@@ -292,7 +293,7 @@ function restShortfall(
   prescribedSeconds: number | null
 ): RestShortfall | null {
   if (prescribedSeconds == null || prescribedSeconds <= 0) return null;
-  const recorded = session.sets.flatMap(set => (set.restSeconds == null ? [] : [set.restSeconds]));
+  const recorded = session.sets.map(set => set.restSeconds).filter(isPresent);
   if (recorded.length === 0 || recorded.length !== session.sets.length) return null;
   const mean = Math.round(recorded.reduce((sum, value) => sum + value, 0) / recorded.length);
   if (mean >= prescribedSeconds * SHORT_REST_FRACTION) return null;

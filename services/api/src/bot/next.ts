@@ -1,4 +1,5 @@
 import {
+  allSets,
   comparisonSignature,
   validateRule,
   type DomainEvent,
@@ -18,7 +19,6 @@ import {
   type PrescriptionContext,
   type Recommendation,
 } from '@ferrum/progression-engine';
-import { allProjectedSets } from './history.ts';
 
 export type NextOutcome =
   | { readonly kind: 'unknown_exercise'; readonly query: string }
@@ -47,7 +47,7 @@ export function nextForExercise(
   const assuming = resolved === undefined ? definition.name : null;
 
   const signature = comparisonSignature(definition, null);
-  const sets = allProjectedSets(events);
+  const sets = allSets(events);
   const history = selectComparableHistory({ signature, definition, instance: null, sets });
   const evidenced = sessionsWithEvidence(history);
   if (evidenced.length === 0) {

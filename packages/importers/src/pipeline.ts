@@ -1,6 +1,7 @@
 import {
   COMPARISON_SIGNATURE_VERSION,
   EVENT_SCHEMA_VERSION,
+  groupBy,
   instant,
   localDateToUtcMillis,
   toKilograms,
@@ -670,16 +671,6 @@ function buildEnvelope<T extends DomainEventType>(
     serverReceivedAt: null,
     serverSequence: null,
   };
-}
-
-function groupBy<T>(items: readonly T[], key: (item: T) => string): Map<string, T[]> {
-  const groups = new Map<string, T[]>();
-  for (const item of items) {
-    const bucket = groups.get(key(item)) ?? [];
-    bucket.push(item);
-    groups.set(key(item), bucket);
-  }
-  return groups;
 }
 
 export function importedRecordKeysOf(result: {

@@ -5,11 +5,12 @@ import {
   type WeightUnit,
   type WorkoutSet,
   type WorkoutSetId,
+  displayLoad,
   formatLoad,
   kilograms,
 } from '@ferrum/domain';
 import { type LastPerformance } from '../../db/history.ts';
-import { displayLoad, displayStep } from '../settings/settings-store.ts';
+import { displayStep } from '../settings/settings-store.ts';
 import { type ExercisePlan } from './exercise-plan.ts';
 import { LoggedSetRow } from './LoggedSetRow.tsx';
 import { PlateSleeve } from './PlateSleeve.tsx';
@@ -51,9 +52,9 @@ export function ExerciseSection(props: ExerciseSectionProps) {
 
   const previousLabel =
     lastLogged != null
-      ? `Previous: ${loadLabel(lastLogged.measurements.canonicalExternalLoadKg, unit)} × ${String(lastLogged.measurements.reps ?? 0)}`
+      ? `Previous: ${formatLoad(lastLogged.measurements.canonicalExternalLoadKg, { unit })} × ${String(lastLogged.measurements.reps ?? 0)}`
       : lastTime?.loadKg != null
-        ? `Last time: ${loadLabel(lastTime.loadKg, unit)} × ${String(lastTime.reps ?? 0)}`
+        ? `Last time: ${formatLoad(kilograms(lastTime.loadKg), { unit })} × ${String(lastTime.reps ?? 0)}`
         : 'no previous set';
 
   return (
@@ -125,7 +126,7 @@ export function ExerciseSection(props: ExerciseSectionProps) {
             unit={unit}
             previousLabel={previousLabel}
             targetLabel={targetLabel(plan.prescription, unit)}
-            defaultLoad={displayLoad(defaultLoadKg, unit)}
+            defaultLoad={displayLoad(kilograms(defaultLoadKg), unit)}
             defaultReps={defaultReps}
             defaultRir={defaultRir}
             incrementStep={displayStep(plan.incrementKg, unit)}
@@ -155,17 +156,14 @@ export function ExerciseSection(props: ExerciseSectionProps) {
   );
 }
 
-function loadLabel(loadKg: number | null, unit: WeightUnit): string {
-  return loadKg == null ? '—' : formatLoad(kilograms(loadKg), unit);
-}
-
 function targetLabel(
   prescription: SetPrescriptionSnapshot | null,
   unit: WeightUnit
 ): string | null {
   if (prescription == null) return null;
   const parts: string[] = [];
-  if (prescription.targetLoadKg != null) parts.push(formatLoad(prescription.targetLoadKg, unit));
+  if (prescription.targetLoadKg != null)
+    parts.push(formatLoad(prescription.targetLoadKg, { unit }));
   if (prescription.targetRepMin != null && prescription.targetRepMax != null) {
     parts.push(`${String(prescription.targetRepMin)}–${String(prescription.targetRepMax)}`);
   }

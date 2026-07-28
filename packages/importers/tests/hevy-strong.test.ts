@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { projectSession, type DeviceId, type SessionId, type UserId } from '@ferrum/domain';
+import {
+  allSets,
+  projectSession,
+  type DeviceId,
+  type SessionId,
+  type UserId,
+} from '@ferrum/domain';
 import {
   detectStrongFormat,
   extractHevy,
@@ -16,7 +22,6 @@ import {
   type ImportResult,
   type SourceExtraction,
 } from '../src/index.ts';
-import { projectAll } from './support/projection.ts';
 import { InMemoryExerciseResolver } from './support/resolver.ts';
 
 const FIXTURES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -168,7 +173,7 @@ describe('Hevy imports', () => {
 
   it('carries the raw CSV line as provenance on every projected set', () => {
     const result = importAll(extractHevy(read('hevy-kg.csv')));
-    const sets = projectAll(result);
+    const sets = allSets(result.events);
     expect(sets).toHaveLength(result.report.setsImported);
 
     for (const set of sets) {
