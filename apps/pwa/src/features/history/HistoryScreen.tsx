@@ -1,12 +1,6 @@
-import { useEffect, useState } from 'react';
-import { type SessionId, type SessionProjection } from '@ferrum/domain';
-import {
-  listSessionIds,
-  loadSession,
-  subscribe,
-  unacknowledgedCount,
-} from '../../db/event-store.ts';
-import { subscribeSyncStatus } from '../../sync/sync-client.ts';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { type SessionId } from '@ferrum/domain';
+import { listSessions, unacknowledgedCount } from '../../db/event-store.ts';
 import { BTN_QUIET, CARD, MONO } from '../../ui.ts';
 
 export function HistoryScreen({
@@ -16,27 +10,8 @@ export function HistoryScreen({
   onHome: () => void;
   onOpenSession: (sessionId: SessionId) => void;
 }) {
-  const [sessions, setSessions] = useState<SessionProjection[] | null>(null);
-  const [pending, setPending] = useState(0);
-
-  useEffect(() => {
-    const refresh = async () => {
-      const ids = await listSessionIds();
-      setSessions(await Promise.all(ids.map(id => loadSession(id))));
-      setPending(await unacknowledgedCount());
-    };
-    void refresh();
-    const unsubscribeStore = subscribe(() => {
-      void refresh();
-    });
-    const unsubscribeSync = subscribeSyncStatus(status => {
-      setPending(status.pendingCount);
-    });
-    return () => {
-      unsubscribeStore();
-      unsubscribeSync();
-    };
-  }, []);
+  const sessions = useLiveQuery(listSessions);
+  const pending = useLiveQuery(unacknowledgedCount);
 
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4">
@@ -52,9 +27,11 @@ export function HistoryScreen({
         </button>
       </header>
 
-      <p className="text-xs text-ash" data-testid="pending-events">
-        <span className={`${MONO} font-medium`}>{pending}</span> events not yet synced
-      </p>
+      {pending !== undefined && (
+        <p className="text-xs text-ash" data-testid="pending-events">
+          <span className={`${MONO} font-medium`}>{pending}</span> events not yet synced
+        </p>
+      )}
 
       {sessions == null ? (
         <p className="text-ash">Loading…</p>

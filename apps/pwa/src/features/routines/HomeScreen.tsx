@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { type SessionId, type WeightUnit, formatLoad, kilograms } from '@ferrum/domain';
-import { type RoutineRecord } from '../../db/ferrum-db.ts';
 import { startEmptySession, startSession } from '../../data/session-controller.ts';
 import { listRoutines } from '../../data/routine-store.ts';
 import { BTN_PRIMARY, BTN_QUIET, BTN_SECONDARY, CARD, EYEBROW, MONO } from '../../ui.ts';
@@ -20,12 +20,8 @@ export function HomeScreen({
   onOpenHistory: () => void;
   onOpenSettings: () => void;
 }) {
-  const [routines, setRoutines] = useState<RoutineRecord[] | null>(null);
+  const routines = useLiveQuery(listRoutines);
   const [starting, setStarting] = useState(false);
-
-  useEffect(() => {
-    void listRoutines().then(setRoutines);
-  }, []);
 
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-4 p-4">

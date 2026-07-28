@@ -26,15 +26,6 @@ export type AppendInput = {
   };
 }[DomainEventType];
 
-export type StoreListener = (aggregateId: SessionId) => void;
-
-const listeners = new Set<StoreListener>();
-
-export function subscribe(listener: StoreListener): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
 // Every append is one short read-write transaction that commits before the caller
 // is told the set was logged. WebKit bug 202705 makes an in-flight IDBTransaction
 // stop being active when the process is suspended, so a transaction held open
@@ -46,7 +37,7 @@ export async function appendEvents(
 ): Promise<DomainEvent[]> {
   if (inputs.length === 0) return [];
 
-  const written = await db.transaction('rw', db.events, db.device, async () => {
+  return db.transaction('rw', db.events, db.device, async () => {
     const existing = await db.device.get('device');
     const record = existing ?? {
       key: 'device' as const,
@@ -97,12 +88,6 @@ export async function appendEvents(
 
     return envelopes;
   });
-
-  const first = written[0];
-  if (first !== undefined) {
-    for (const listener of listeners) listener(first.aggregateId);
-  }
-  return written;
 }
 
 export async function unacknowledgedBatch(limit: number): Promise<StoredEvent[]> {
@@ -173,10 +158,6 @@ export async function importRemoteEvents(
     }
     return unseen;
   });
-  const aggregateIds = new Set(fresh.map(envelope => envelope.aggregateId));
-  for (const aggregateId of aggregateIds) {
-    for (const listener of listeners) listener(aggregateId);
-  }
   return fresh.length;
 }
 
@@ -198,6 +179,11 @@ export async function listSessionIds(): Promise<SessionId[]> {
     }
   }
   return [...byId.entries()].sort((a, b) => (a[1] < b[1] ? 1 : -1)).map(([sessionId]) => sessionId);
+}
+
+export async function listSessions(): Promise<SessionProjection[]> {
+  const sessionIds = await listSessionIds();
+  return Promise.all(sessionIds.map(sessionId => loadSession(sessionId)));
 }
 
 export async function unacknowledgedCount(): Promise<number> {

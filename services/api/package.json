@@ -3,10 +3,6 @@
   "version": "0.0.0-placeholder",
   "private": true,
   "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "types": "./src/index.ts",
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "dev:memory": "tsx src/dev-server.ts",
@@ -20,6 +16,7 @@
     "@ferrum/sync-protocol": "*",
     "@grammyjs/auto-retry": "^2.0.2",
     "@hono/node-server": "^1.19.0",
+    "drizzle-orm": "^0.45.2",
     "grammy": "^1.45.1",
     "hono": "^4.9.0",
     "pg": "^8.16.0",

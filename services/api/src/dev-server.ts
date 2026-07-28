@@ -1,13 +1,15 @@
-import { createHash } from 'node:crypto';
+import { eq } from 'drizzle-orm';
 import { serve } from '@hono/node-server';
 import { PGlite } from '@electric-sql/pglite';
 import { loadExerciseLibrary } from '@ferrum/exercise-library';
 import { extractTelegram, libraryResolver } from '@ferrum/importers';
 import { createApp } from './app.ts';
+import { hashToken } from './auth-tokens.ts';
 import { importForUser } from './bot/imports.ts';
 import { parseShorthand } from './bot/shorthand.ts';
 import { migrate } from './migrate.ts';
 import { pgliteDatabase } from './pglite-database.ts';
+import { authTokens } from './schema.ts';
 
 const port = Number(process.env.PORT ?? '3100');
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -58,13 +60,13 @@ app.post('/dev/bot-import', async c => {
     ? header.slice('bearer '.length).trim()
     : '';
   if (token.length === 0) return c.json({ error: 'unauthorized' }, 401);
-  const tokenHash = createHash('sha256').update(token).digest('hex');
-  const found = await db.query('select user_id from auth_tokens where token_hash = $1', [
-    tokenHash,
-  ]);
-  const row = found.rows[0];
+  const found = await db.orm
+    .select({ userId: authTokens.userId })
+    .from(authTokens)
+    .where(eq(authTokens.tokenHash, hashToken(token)));
+  const row = found[0];
   if (row === undefined) return c.json({ error: 'unauthorized' }, 401);
-  const userId = String(row.user_id);
+  const userId = row.userId;
 
   let raw: unknown;
   try {

@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { type WeightUnit } from '@ferrum/domain';
 import { saveUnit } from '../../data/settings-store.ts';
-import { subscribe, unacknowledgedCount } from '../../db/event-store.ts';
+import { unacknowledgedCount } from '../../db/event-store.ts';
 import {
   getSyncStatus,
   loadSyncConfig,
   requestSync,
   saveSyncConfig,
   subscribeSyncStatus,
+  type SyncConfig,
   type SyncStatus,
 } from '../../sync/sync-client.ts';
 import { BTN_PRIMARY, BTN_QUIET, BTN_SECONDARY, CARD, EYEBROW, MONO } from '../../ui.ts';
@@ -60,32 +62,36 @@ export function SettingsScreen({
   );
 }
 
+// The sync status is network state owned by the sync client's pub/sub; only the
+// database reads (config, pending count) are live queries. The remount key seeds
+// the input fields exactly once, when the stored config first arrives.
 function SyncCard() {
-  const [serverUrl, setServerUrl] = useState('');
-  const [token, setToken] = useState('');
-  const [loaded, setLoaded] = useState(false);
-  const [status, setStatus] = useState<SyncStatus>(getSyncStatus());
-  const [pending, setPending] = useState(getSyncStatus().pendingCount);
+  const config = useLiveQuery(loadSyncConfig);
+  const pending = useLiveQuery(unacknowledgedCount);
+  const status = useSyncExternalStore(subscribeSyncStatus, getSyncStatus);
 
-  useEffect(() => {
-    void loadSyncConfig().then(config => {
-      setServerUrl(config.serverUrl ?? '');
-      setToken(config.syncToken ?? '');
-      setLoaded(true);
-    });
-    void unacknowledgedCount().then(setPending);
-    const unsubscribeStatus = subscribeSyncStatus(next => {
-      setStatus(next);
-      setPending(next.pendingCount);
-    });
-    const unsubscribeStore = subscribe(() => {
-      void unacknowledgedCount().then(setPending);
-    });
-    return () => {
-      unsubscribeStatus();
-      unsubscribeStore();
-    };
-  }, []);
+  return (
+    <SyncCardBody
+      key={config === undefined ? 'loading' : 'ready'}
+      config={config}
+      pending={pending}
+      status={status}
+    />
+  );
+}
+
+function SyncCardBody({
+  config,
+  pending,
+  status,
+}: {
+  config: SyncConfig | undefined;
+  pending: number | undefined;
+  status: SyncStatus;
+}) {
+  const [serverUrl, setServerUrl] = useState(config?.serverUrl ?? '');
+  const [token, setToken] = useState(config?.syncToken ?? '');
+  const loaded = config !== undefined;
 
   const save = () => {
     const trimmedUrl = serverUrl.trim();
@@ -156,7 +162,7 @@ function SyncCard() {
       </div>
       <p className="text-xs text-ash" data-testid="sync-status-line">
         <span className={`${MONO} font-medium`} data-testid="sync-pending">
-          {pending}
+          {pending ?? status.pendingCount}
         </span>{' '}
         pending · cursor{' '}
         <span className={`${MONO} font-medium`} data-testid="sync-cursor">

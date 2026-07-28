@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import {
   type ComparisonSignature,
   type SessionId,
@@ -11,7 +11,7 @@ import {
 import { loadSession } from '../../db/event-store.ts';
 import { type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 import { type TopSet, bestPriorSets, topWorkingSet } from '../../db/history.ts';
-import { loadSessionPlan } from '../../data/routine-store.ts';
+import { loadSessionPlanSlots } from '../../data/routine-store.ts';
 import { exerciseDisplayName, formatDuration } from './session-view.ts';
 import { BTN_PRIMARY, CARD, EYEBROW, MONO } from '../../ui.ts';
 
@@ -32,21 +32,16 @@ export function WorkoutSummaryScreen({
   unit: WeightUnit;
   onHome: () => void;
 }) {
-  const [projection, setProjection] = useState<SessionProjection | null>(null);
-  const [lines, setLines] = useState<readonly ExerciseSummary[]>([]);
-
-  useEffect(() => {
-    void (async () => {
-      const [loaded, plan] = await Promise.all([
-        loadSession(sessionId),
-        loadSessionPlan(sessionId),
-      ]);
-      setLines(await summarize(loaded, plan?.slots ?? [], unit, sessionId));
-      setProjection(loaded);
-    })();
+  const view = useLiveQuery(async () => {
+    const [projection, planSlots] = await Promise.all([
+      loadSession(sessionId),
+      loadSessionPlanSlots(sessionId),
+    ]);
+    return { projection, lines: await summarize(projection, planSlots, unit, sessionId) };
   }, [sessionId, unit]);
 
-  if (projection?.session == null) {
+  const session = view?.projection.session;
+  if (view == null || session == null) {
     return (
       <main className="p-6 text-ash" data-testid="summary-loading">
         Loading…
@@ -54,7 +49,7 @@ export function WorkoutSummaryScreen({
     );
   }
 
-  const session = projection.session;
+  const { projection, lines } = view;
   const workingSets = projection.sets.filter(isWorkingSet);
   const volumeKg = workingSets.reduce(
     (sum, set) =>

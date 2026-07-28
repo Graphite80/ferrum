@@ -1,14 +1,7 @@
-import { useEffect, useState } from 'react';
-import {
-  type SessionId,
-  type SessionProjection,
-  type WeightUnit,
-  type WorkoutSet,
-  formatLoad,
-} from '@ferrum/domain';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { type SessionId, type WeightUnit, type WorkoutSet, formatLoad } from '@ferrum/domain';
 import { loadSession } from '../../db/event-store.ts';
-import { type RoutineSlotRecord } from '../../db/ferrum-db.ts';
-import { loadSessionPlan } from '../../data/routine-store.ts';
+import { loadSessionPlanSlots } from '../../data/routine-store.ts';
 import { exerciseDisplayName, formatDuration, setsForExercise } from './session-view.ts';
 import { BTN_QUIET, CARD, EYEBROW, MONO } from '../../ui.ts';
 
@@ -21,21 +14,10 @@ export function HistoryDetailScreen({
   unit: WeightUnit;
   onBack: () => void;
 }) {
-  const [projection, setProjection] = useState<SessionProjection | null>(null);
-  const [planSlots, setPlanSlots] = useState<readonly RoutineSlotRecord[]>([]);
+  const projection = useLiveQuery(() => loadSession(sessionId), [sessionId]);
+  const planSlots = useLiveQuery(() => loadSessionPlanSlots(sessionId), [sessionId]);
 
-  useEffect(() => {
-    void (async () => {
-      const [loaded, plan] = await Promise.all([
-        loadSession(sessionId),
-        loadSessionPlan(sessionId),
-      ]);
-      setPlanSlots(plan?.slots ?? []);
-      setProjection(loaded);
-    })();
-  }, [sessionId]);
-
-  if (projection?.session == null) {
+  if (projection?.session == null || planSlots === undefined) {
     return (
       <main className="p-6 text-ash" data-testid="history-detail-loading">
         Loading…

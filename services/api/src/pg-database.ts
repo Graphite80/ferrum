@@ -1,3 +1,4 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { type Pool, type PoolClient, type QueryResultRow as PgQueryResultRow } from 'pg';
 import { type Database, type QueryResult, type QueryRunner } from './db.ts';
 
@@ -20,28 +21,32 @@ function runnerFor(client: Queryable): QueryRunner {
 
 export function pgDatabase(pool: Pool): Database {
   const base = runnerFor(pool);
+  // Custom transaction handling instead of drizzle's: on a failed rollback the
+  // connection must be destroyed, not recycled into a session PgBouncer still
+  // considers mid-transaction (drizzle's own transaction() releases it as-is).
+  async function withClient<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      const result = await fn(client);
+      await client.query('commit');
+      client.release();
+      return result;
+    } catch (error) {
+      try {
+        await client.query('rollback');
+        client.release();
+      } catch {
+        client.release(error instanceof Error ? error : new Error(String(error)));
+      }
+      throw error;
+    }
+  }
   return {
+    orm: drizzle(pool),
     query: (text, params) => base.query(text, params),
     exec: sql => base.exec(sql),
-    async transaction<T>(fn: (tx: QueryRunner) => Promise<T>): Promise<T> {
-      const client = await pool.connect();
-      try {
-        await client.query('begin');
-        const result = await fn(runnerFor(client));
-        await client.query('commit');
-        client.release();
-        return result;
-      } catch (error) {
-        try {
-          await client.query('rollback');
-          client.release();
-        } catch {
-          // The connection is in an unknown state; destroy it instead of
-          // recycling a session PgBouncer still considers mid-transaction.
-          client.release(error instanceof Error ? error : new Error(String(error)));
-        }
-        throw error;
-      }
-    },
+    transaction: fn => withClient(client => fn(drizzle(client))),
+    rawTransaction: fn => withClient(client => fn(runnerFor(client))),
   };
 }

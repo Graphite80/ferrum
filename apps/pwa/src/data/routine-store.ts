@@ -106,3 +106,9 @@ export async function saveSessionPlan(plan: SessionPlanRecord): Promise<void> {
 export async function loadSessionPlan(sessionId: string): Promise<SessionPlanRecord | undefined> {
   return db.sessionPlans.get(sessionId);
 }
+
+// Resolves to [] when the session has no plan, so a live query can tell
+// "no plan" apart from "still loading" (undefined).
+export async function loadSessionPlanSlots(sessionId: string): Promise<RoutineSlotRecord[]> {
+  return (await db.sessionPlans.get(sessionId))?.slots ?? [];
+}

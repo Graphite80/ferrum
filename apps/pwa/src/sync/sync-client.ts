@@ -1,3 +1,4 @@
+import { liveQuery } from 'dexie';
 import {
   PULL_DEFAULT_LIMIT,
   isProtocolError,
@@ -9,7 +10,6 @@ import { db, withDatabaseRecovery } from '../db/ferrum-db.ts';
 import {
   importRemoteEvents,
   markAcknowledged,
-  subscribe,
   unacknowledgedBatch,
   unacknowledgedCount,
 } from '../db/event-store.ts';
@@ -170,7 +170,6 @@ async function pushAll(config: { serverUrl: string; syncToken: string }): Promis
     const parsed = parsePushResponse((await response.json()) as unknown);
     if (isProtocolError(parsed)) throw new Error(parsed.message);
     await withDatabaseRecovery(() => markAcknowledged(batch.map(row => row.eventId)));
-    publish({ pendingCount: await unacknowledgedCount() });
     if (batch.length < PUSH_BATCH_LIMIT) return;
   }
 }
@@ -226,23 +225,18 @@ async function runCycle(): Promise<void> {
       lastSuccessAtMillis: now,
       lastError: null,
       driftMessage: null,
-      pendingCount: await unacknowledgedCount(),
     });
   } catch (error) {
-    const pendingCount = await unacknowledgedCount().catch((countError: unknown) => {
-      console.error('pending count read failed', countError);
-      return status.pendingCount;
-    });
     if (error instanceof ClockDriftSyncError) {
       lastDriftAtMillis = Date.now();
       await saveSyncState({ driftMessage: error.message });
-      publish({ syncing: false, driftMessage: error.message, lastError: null, pendingCount });
+      publish({ syncing: false, driftMessage: error.message, lastError: null });
       scheduleRetry(DRIFT_RETRY_MILLIS);
       return;
     }
     failureCount += 1;
     const message = error instanceof Error ? error.message : String(error);
-    publish({ syncing: false, lastError: message, pendingCount });
+    publish({ syncing: false, lastError: message });
     // Jitter keeps a fleet of devices that failed together from retrying in
     // lockstep against a single replica the moment it recovers.
     const backoff = Math.min(BACKOFF_BASE_MILLIS * 2 ** (failureCount - 1), BACKOFF_CAP_MILLIS);
@@ -288,22 +282,36 @@ function scheduleAppendSync(): void {
   }, APPEND_DEBOUNCE_MILLIS);
 }
 
+// The unacknowledged count is the write signal: it rises only when this device
+// appends locally (pulled events land acknowledged, pushes only lower it), so
+// observing it schedules the debounced push without any listener fan-out in the
+// event store. Dexie re-runs the query on writes from any tab of this origin.
+function observePendingCount(): void {
+  let lastPendingCount: number | null = null;
+  liveQuery(() => unacknowledgedCount()).subscribe({
+    next: count => {
+      const rose = lastPendingCount !== null && count > lastPendingCount;
+      lastPendingCount = count;
+      publish({ pendingCount: count });
+      if (rose) scheduleAppendSync();
+    },
+    error: (error: unknown) => {
+      console.error('pending count observation failed', error);
+    },
+  });
+}
+
 export async function initSync(): Promise<void> {
   if (initialized) return;
   initialized = true;
-  const [state, config, pendingCount] = await Promise.all([
-    loadSyncState(),
-    loadSyncConfig(),
-    unacknowledgedCount(),
-  ]);
+  const [state, config] = await Promise.all([loadSyncState(), loadSyncConfig()]);
   publish({
     configured: config.serverUrl !== null && config.syncToken !== null,
     cursor: state.cursor,
     lastSuccessAtMillis: state.lastSuccessAtMillis,
     driftMessage: state.driftMessage,
-    pendingCount,
   });
-  subscribe(scheduleAppendSync);
+  observePendingCount();
   window.addEventListener('online', () => {
     requestSync('online');
   });

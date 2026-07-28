@@ -16,7 +16,7 @@ export async function migrate(db: Database): Promise<void> {
       throw new Error(`Migration file "${name}" must start with a number`);
     }
     const sql = await readFile(path.join(migrationsDir, name), 'utf8');
-    await db.transaction(async tx => {
+    await db.rawTransaction(async tx => {
       // Transaction-scoped advisory lock: two pods booting together must not
       // race the same file. The _xact_ variant releases at commit, which keeps
       // it safe under PgBouncer transaction pooling.

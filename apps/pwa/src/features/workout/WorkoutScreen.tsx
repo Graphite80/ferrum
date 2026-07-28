@@ -1,19 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import {
   groupBy,
   type ExerciseDefinition,
   type ExerciseDefinitionId,
   type SessionExerciseId,
   type SessionId,
-  type SessionProjection,
   type WeightUnit,
   type WorkoutSet,
 } from '@ferrum/domain';
-import { loadSession, subscribe } from '../../db/event-store.ts';
-import { type RestTimerRecord, type RoutineSlotRecord } from '../../db/ferrum-db.ts';
+import { loadSession } from '../../db/event-store.ts';
 import { type LastPerformance, lastPerformances } from '../../db/history.ts';
 import { WakeLockController, type WakeLockState } from '../../platform/wake-lock.ts';
-import { loadSessionPlan } from '../../data/routine-store.ts';
+import { loadSessionPlanSlots } from '../../data/routine-store.ts';
 import { planExercise } from './exercise-plan.ts';
 import { ExerciseSearchPanel } from './ExerciseSearchPanel.tsx';
 import { ExerciseSection } from './ExerciseSection.tsx';
@@ -44,9 +43,9 @@ export function WorkoutScreen({
   unit: WeightUnit;
   onFinished: () => void;
 }) {
-  const [projection, setProjection] = useState<SessionProjection | null>(null);
-  const [planSlots, setPlanSlots] = useState<readonly RoutineSlotRecord[] | null>(null);
-  const [timer, setTimer] = useState<RestTimerRecord | null>(null);
+  const projection = useLiveQuery(() => loadSession(sessionId), [sessionId]);
+  const planSlots = useLiveQuery(() => loadSessionPlanSlots(sessionId), [sessionId]);
+  const timer = useLiveQuery(() => loadRestTimer(sessionId), [sessionId]);
   const [nowMillis, setNowMillis] = useState(() => Date.now());
   const [wakeLock, setWakeLock] = useState<WakeLockState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -58,27 +57,13 @@ export function WorkoutScreen({
   if (wakeLockRef.current == null) wakeLockRef.current = new WakeLockController(setWakeLock);
   const controller = wakeLockRef.current;
 
-  const refresh = useCallback(async () => {
-    setProjection(await loadSession(sessionId));
-    setTimer(await loadRestTimer(sessionId));
-  }, [sessionId]);
-
-  useEffect(() => {
-    void refresh();
-    void loadSessionPlan(sessionId).then(plan => {
-      setPlanSlots(plan?.slots ?? []);
-    });
-    return subscribe(changed => {
-      if (changed === sessionId) void refresh();
-    });
-  }, [refresh, sessionId]);
-
+  // Only the wake lock and the timer's "now" need hand-wired visibility events;
+  // the projection, plan and timer records repaint through their live queries.
   useEffect(() => {
     setWakeLock(controller.state);
     const onVisible = () => {
       controller.handleVisibilityChange();
       setNowMillis(Date.now());
-      void refresh();
     };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
@@ -86,7 +71,7 @@ export function WorkoutScreen({
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
     };
-  }, [controller, refresh]);
+  }, [controller]);
 
   useEffect(() => {
     const handle = window.setInterval(() => {
@@ -126,8 +111,10 @@ export function WorkoutScreen({
 
   // The plan snapshot must be resolved before the first entry row mounts: SetRow
   // captures its defaults in state at mount, so a plan arriving late would leave
-  // the prefill at the generic fallback instead of the routine's target.
-  if (projection?.session == null || planSlots == null) {
+  // the prefill at the generic fallback instead of the routine's target. The
+  // slots query resolves to [] when there is no plan, so undefined here always
+  // means "still loading", never "planless session".
+  if (projection?.session == null || planSlots === undefined) {
     return (
       <main className="p-6 text-ash" data-testid="loading-workout">
         Loading workout…
@@ -204,7 +191,7 @@ export function WorkoutScreen({
                   },
                   now
                 );
-                setTimer(await startRestTimer(sessionId, plan.restSeconds, now));
+                await startRestTimer(sessionId, plan.restSeconds, now);
                 setNowMillis(now);
               })();
             }}
@@ -312,10 +299,7 @@ export function WorkoutScreen({
               className="tap-target rounded-md px-4 text-sm text-ash"
               data-testid="dismiss-timer"
               onClick={() => {
-                void (async () => {
-                  await dismissRestTimer(sessionId);
-                  setTimer(null);
-                })();
+                void dismissRestTimer(sessionId);
               }}
             >
               Skip

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { type WeightUnit, fromKilograms, kilograms, toKilograms } from '@ferrum/domain';
 import { type RoutineRecord, type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 import { ExerciseSearchPanel } from '../workout/ExerciseSearchPanel.tsx';
@@ -22,27 +23,43 @@ export function RoutineBuilderScreen({
   unit: WeightUnit;
   onDone: () => void;
 }) {
-  const [draft, setDraft] = useState<RoutineRecord | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const stored = useLiveQuery(
+    async () => (routineId == null ? null : ((await getRoutine(routineId)) ?? null)),
+    [routineId]
+  );
 
-  useEffect(() => {
-    if (routineId == null) {
-      setDraft(newRoutine(Date.now()));
-      return;
-    }
-    void getRoutine(routineId).then(found => {
-      setDraft(found ?? newRoutine(Date.now()));
-    });
-  }, [routineId]);
-
-  if (draft == null) {
+  if (stored === undefined) {
     return (
       <main className="p-6 text-ash" data-testid="builder-loading">
         Loading…
       </main>
     );
   }
+
+  return (
+    <RoutineEditor
+      routineId={routineId}
+      initial={stored ?? newRoutine(Date.now())}
+      unit={unit}
+      onDone={onDone}
+    />
+  );
+}
+
+function RoutineEditor({
+  routineId,
+  initial,
+  unit,
+  onDone,
+}: {
+  routineId: string | null;
+  initial: RoutineRecord;
+  unit: WeightUnit;
+  onDone: () => void;
+}) {
+  const [draft, setDraft] = useState(initial);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const patchSlot = (index: number, patch: Partial<RoutineSlotRecord>) => {
     setDraft({
