@@ -30,6 +30,7 @@ export interface ExerciseLibrary {
   readonly movements: ReadonlyMap<MovementId, Movement>;
   readonly muscles: ReadonlyMap<MuscleId, Muscle>;
   resolveAlias(name: string): ExerciseDefinition | undefined;
+  search(query: string): readonly ExerciseDefinition[];
 }
 
 export class LibraryValidationError extends Error {
@@ -136,6 +137,7 @@ function buildLibrary(
   const byName = new Map<string, ExerciseDefinition>();
   const byNormalizedName = new Map<string, ExerciseDefinition>();
   const all: ExerciseDefinition[] = [];
+  const searchEntries: SearchEntry[] = [];
 
   for (const raw of rawExercises) {
     const definition = buildDefinition(raw, movements, muscles);
@@ -169,6 +171,13 @@ function buildLibrary(
       }
       byNormalizedName.set(key, definition);
     }
+
+    const labels = [definition.name, ...definition.aliases];
+    searchEntries.push({
+      definition,
+      labelWords: labels.map(labelTokens),
+      joinedKeys: labels.map(normalizeExerciseName),
+    });
   }
 
   return {
@@ -178,7 +187,64 @@ function buildLibrary(
     movements,
     muscles,
     resolveAlias: name => byNormalizedName.get(normalizeExerciseName(name)),
+    search: query => searchLibrary(searchEntries, query),
   };
+}
+
+interface SearchEntry {
+  readonly definition: ExerciseDefinition;
+  readonly labelWords: readonly (readonly string[])[];
+  readonly joinedKeys: readonly string[];
+}
+
+function labelTokens(label: string): readonly string[] {
+  return label
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+// Ranked, not fuzzy: an exact name or alias beats a per-word prefix match, which beats a
+// bare substring hit, and a query that matches nothing returns nothing rather than a guess.
+function searchLibrary(
+  entries: readonly SearchEntry[],
+  query: string
+): readonly ExerciseDefinition[] {
+  const normalizedQuery = normalizeExerciseName(query);
+  if (normalizedQuery.length === 0) {
+    return [];
+  }
+  const tokens = labelTokens(query);
+
+  const ranked: { definition: ExerciseDefinition; score: number }[] = [];
+  for (const entry of entries) {
+    const score = scoreEntry(entry, tokens, normalizedQuery);
+    if (score > 0) {
+      ranked.push({ definition: entry.definition, score });
+    }
+  }
+  ranked.sort((a, b) => b.score - a.score || a.definition.name.localeCompare(b.definition.name));
+  return ranked.map(item => item.definition);
+}
+
+function scoreEntry(
+  entry: SearchEntry,
+  tokens: readonly string[],
+  normalizedQuery: string
+): number {
+  let best = 0;
+  for (const [index, joined] of entry.joinedKeys.entries()) {
+    if (joined === normalizedQuery) {
+      return 3;
+    }
+    const words = entry.labelWords[index] ?? [];
+    if (tokens.every(token => words.some(word => word.startsWith(token)))) {
+      best = Math.max(best, 2);
+    } else if (tokens.every(token => joined.includes(token))) {
+      best = Math.max(best, 1);
+    }
+  }
+  return best;
 }
 
 function buildMovements(rawMovements: readonly RawMovement[]): ReadonlyMap<MovementId, Movement> {

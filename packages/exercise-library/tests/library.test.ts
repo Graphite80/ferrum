@@ -192,3 +192,40 @@ describe('alias resolution', () => {
     expect(library.resolveAlias('')).toBeUndefined();
   });
 });
+
+describe('ranked search', () => {
+  const library = loadExerciseLibrary();
+
+  it('puts an exact alias hit above prefix and substring matches', () => {
+    const results = library.search('bench press');
+    expect(results.length).toBeGreaterThan(1);
+    expect(results[0]?.name).toBe('Bench Press (Barbell)');
+  });
+
+  it('matches every query token as a word prefix', () => {
+    const results = library.search('lat pull');
+    expect(results.some(definition => definition.name === 'Lat Pulldown (Cable)')).toBe(true);
+    expect(results[0]?.name).toContain('Lat');
+  });
+
+  it('finds all variants for a shared movement word', () => {
+    const names = library.search('press').map(definition => definition.name);
+    expect(names.length).toBeGreaterThan(3);
+    expect(names).toContain('Bench Press (Barbell)');
+  });
+
+  it('is robust to case and punctuation in the query', () => {
+    expect(library.search('  LAT-pull  ')).toStrictEqual(library.search('lat pull'));
+  });
+
+  it('returns nothing rather than guessing', () => {
+    expect(library.search('')).toStrictEqual([]);
+    expect(library.search('zercher sandbag carry')).toStrictEqual([]);
+  });
+
+  it('ranks every library name so its own definition comes first', () => {
+    for (const definition of library.all) {
+      expect(library.search(definition.name)[0]?.id).toBe(definition.id);
+    }
+  });
+});
