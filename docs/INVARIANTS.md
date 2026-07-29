@@ -40,6 +40,21 @@ Consequences, all intended:
 **Enforced by** `comparisonSignature()` in `packages/domain/src/comparison.ts`; signature version
 is `COMPARISON_SIGNATURE_VERSION` and any change to the facet list is a breaking version bump.
 
+### 1a. Which equipment has to be identified
+
+`equipmentIdentityMatters(equipmentType)` names the equipment types whose number is meaningless
+without knowing the machine: `machine_stack`, `machine_plate_loaded`, `smith_machine`, `cable`,
+`sled`. A stack marking depends on the plate mass and the pulley ratio the manufacturer chose, so
+"50" on two machines is two different loads. A barbell, a dumbbell and a kettlebell are the same
+kilograms in every gym and are never asked about.
+
+The UI must ask for an instance on exactly those types, and history from a different instance may
+be shown but must be labelled as such rather than presented as this machine's last time.
+
+**Enforced by** `equipmentIdentityMatters()` in `packages/domain/src/equipment.ts` and
+`packages/domain/tests/equipment-identity.test.ts`; the labelling by
+`apps/pwa/tests/e2e/equipment.spec.ts`.
+
 ---
 
 ## 2. Revision versus new definition

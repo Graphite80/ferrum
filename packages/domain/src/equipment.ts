@@ -1,4 +1,4 @@
-import { type ExerciseDefinitionId } from './exercise.ts';
+import { type EquipmentType, type ExerciseDefinitionId } from './exercise.ts';
 import { addLoad, grams, kilograms, scaleLoad, type Kilograms } from './units.ts';
 
 export type EquipmentInstanceId = string & { readonly __brand: 'EquipmentInstanceId' };
@@ -22,6 +22,23 @@ export interface EquipmentInstance {
   // Until then every instance is its own comparison bucket.
   readonly equivalenceGroupId: EquivalenceGroupId | null;
   readonly notes: string | null;
+}
+
+// A 20 kg dumbbell is 20 kg in every gym on earth. A stack marked "50" is a number that
+// belongs to one machine: it depends on the plate mass the manufacturer chose and on the
+// pulley ratio between the stack and the handle, so the same marking on two machines is
+// two different loads. These are the equipment types whose identity therefore has to be
+// part of the comparison bucket, and the ones the UI has to ask about.
+const IDENTITY_BEARING_EQUIPMENT: readonly EquipmentType[] = [
+  'machine_stack',
+  'machine_plate_loaded',
+  'smith_machine',
+  'cable',
+  'sled',
+];
+
+export function equipmentIdentityMatters(equipmentType: EquipmentType): boolean {
+  return IDENTITY_BEARING_EQUIPMENT.includes(equipmentType);
 }
 
 export type LoadIncrementSource = 'stack' | 'dumbbell' | 'plate_pair' | 'definition_default';

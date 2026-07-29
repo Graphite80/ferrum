@@ -19,7 +19,7 @@ Read `docs/INVARIANTS.md` before changing anything in `packages/domain`. It is t
 
 ```text
 packages/domain              zero-dependency core: events, projection, load semantics, HLC, time
-packages/exercise-library    80 curated definitions (YAML -> generated TS), ranked search
+packages/exercise-library    93 curated definitions (YAML -> generated TS), ranked search
 packages/exercise-media      technique diagrams: stick rig + IK, per-movement poses, muscle map
 packages/importers           life-as-code JSON, Hevy CSV, Strong CSV, Telegram shorthand
 packages/progression-engine  three versioned deterministic policies + historical replay harness
@@ -114,11 +114,14 @@ source of truth.
 Work on `main`, commit and push directly. Conventional commits, sentence-case subject, scope from
 `commitlint.config.js`. `pre-commit` runs fast checks; `pre-push` runs tsc, eslint and vitest.
 
-## Deployment (phase 4, not wired yet)
+## Deployment (live)
 
-The recipe is known — do not re-derive it. Apps in this cluster contain **no CI config at all**. The
-whole contract is a root `Dockerfile` plus a Forgejo push webhook; everything else lives in
-`~/gitops`:
+Running at `ferrum.nikolay-eremeev.com`; ArgoCD app `ferrum-production`, namespace
+`ferrum-production`, image `git.nikolay-eremeev.com/nikolay-e/ferrum:main-<sha7>`. Push to `main`,
+Argo Workflows builds, the `ferrum-production` ImageUpdater CRD bumps the tag, ArgoCD syncs; the
+whole loop takes about ten minutes. Apps in this cluster contain **no CI config at all**: the
+contract is a root `Dockerfile` plus a Forgejo push webhook. The pieces, for when one needs
+repairing — all of them already exist in `~/gitops`:
 
 1. Push to `https://git.nikolay-eremeev.com/nikolay-e/ferrum.git`, create the push webhook (Gitea
    type) to `http://forgejo-eventsource-svc.argo-events.svc.cluster.local:12000/push`.
@@ -141,8 +144,6 @@ cluster, not a new instance.
 
 ## Open work
 
-- Wire the deployment: Forgejo repo + webhook, gitops sensor/chart/ImageUpdater/DNS per the
-  recipe above. The Dockerfile side is done and smoke-tested.
 - e1RM with uncertainty; the muscle credit policy.
 - Telegram bot v2 gated on measured usage (ANALYSIS protocol, Final Synthesis step 5): live
   rest-timer pushes need workout events flowing server-side mid-session; the current bot is

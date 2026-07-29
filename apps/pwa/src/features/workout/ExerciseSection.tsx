@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  type ExerciseDefinition,
   type SessionExercise,
   type SetPrescriptionSnapshot,
   type WeightUnit,
@@ -9,7 +10,9 @@ import {
   formatLoad,
   kilograms,
 } from '@ferrum/domain';
-import { loadExerciseLibrary } from '@ferrum/exercise-library';
+import { type EquipmentRecord } from '../../db/ferrum-db.ts';
+import { describeEquipment } from '../../data/equipment-store.ts';
+import { EquipmentPickerSheet } from './EquipmentPickerSheet.tsx';
 import { type LastPerformance } from '../../db/history.ts';
 import { displayStep } from '../../data/settings-store.ts';
 import { ExerciseDemoSheet } from './ExerciseDemoSheet.tsx';
@@ -23,8 +26,12 @@ import { button, mono } from '../../ui.ts';
 
 export interface ExerciseSectionProps {
   readonly exercise: SessionExercise;
+  // Resolved once by the screen so the plan, the machine and the diagram cannot
+  // disagree about which library definition this exercise is.
+  readonly definition: ExerciseDefinition | null;
   readonly plan: ExercisePlan;
   readonly unit: WeightUnit;
+  readonly machine: EquipmentRecord | null;
   readonly liveSets: readonly WorkoutSet[];
   // undefined = history lookup still running; null = looked up, nothing found
   readonly lastTime: LastPerformance | null | undefined;
@@ -39,13 +46,8 @@ export function ExerciseSection(props: ExerciseSectionProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [extraOpen, setExtraOpen] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
-  // Same resolution order as planExercise: a session recorded before an id was canonical
-  // still points at the definition through its aliases.
-  const library = loadExerciseLibrary();
-  const definition =
-    library.byId.get(props.exercise.exerciseDefinitionId) ??
-    library.resolveAlias(props.exercise.exerciseDefinitionId) ??
-    null;
+  const [machineOpen, setMachineOpen] = useState(false);
+  const definition = props.definition;
 
   const lastLogged = liveSets.at(-1) ?? null;
   const lastTimeResolved = liveSets.length > 0 || lastTime !== undefined;
@@ -65,7 +67,7 @@ export function ExerciseSection(props: ExerciseSectionProps) {
     lastLogged != null
       ? `Previous: ${formatLoad(lastLogged.measurements.canonicalExternalLoadKg, { unit })} × ${String(lastLogged.measurements.reps ?? 0)}`
       : lastTime?.loadKg != null
-        ? `Last time: ${formatLoad(kilograms(lastTime.loadKg), { unit })} × ${String(lastTime.reps ?? 0)}`
+        ? `${lastTime.sameEquipment ? 'Last time' : 'Other machine'}: ${formatLoad(kilograms(lastTime.loadKg), { unit })} × ${String(lastTime.reps ?? 0)}`
         : 'no previous set';
 
   return (
@@ -132,6 +134,27 @@ export function ExerciseSection(props: ExerciseSectionProps) {
         </button>
       )}
 
+      {plan.needsEquipment && definition != null && (
+        <button
+          type="button"
+          className={button({
+            intent: 'quiet',
+            className: 'flex items-center justify-between gap-2 px-3 text-left',
+          })}
+          data-testid="open-equipment-picker"
+          onClick={() => {
+            setMachineOpen(true);
+          }}
+        >
+          <span className="truncate">
+            {props.machine == null ? 'Which machine?' : describeEquipment(props.machine)}
+          </span>
+          <span className="shrink-0 text-xs text-ash">
+            {props.machine == null ? 'not set' : 'change'}
+          </span>
+        </button>
+      )}
+
       <ul className="flex flex-col gap-2">
         {liveSets.map((set, index) => (
           <LoggedSetRow
@@ -180,6 +203,16 @@ export function ExerciseSection(props: ExerciseSectionProps) {
             + Add set
           </button>
         </>
+      )}
+
+      {machineOpen && definition != null && (
+        <EquipmentPickerSheet
+          definition={definition}
+          selectedId={props.machine?.id ?? null}
+          onClose={() => {
+            setMachineOpen(false);
+          }}
+        />
       )}
 
       {demoOpen && definition != null && (

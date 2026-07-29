@@ -72,6 +72,18 @@ export interface SessionPlanRecord {
   slots: RoutineSlotRecord[];
 }
 
+// One physical machine. It carries the gym in its name rather than in a separate gym
+// entity: what the comparison signature needs is a stable identity per machine, and a
+// second table of gyms would add a screen without adding a fact.
+export interface EquipmentRecord {
+  id: string;
+  exerciseDefinitionId: string;
+  name: string;
+  manufacturer: string | null;
+  stackIncrementKg: number | null;
+  lastUsedAtMillis: number;
+}
+
 export type SettingsRecord =
   | { key: 'settings'; unit: WeightUnit }
   | { key: 'syncConfig'; serverUrl: string | null; syncToken: string | null };
@@ -95,6 +107,7 @@ export class FerrumDb extends Dexie {
   routines!: EntityTable<RoutineRecord, 'id'>;
   sessionPlans!: EntityTable<SessionPlanRecord, 'sessionId'>;
   purges!: EntityTable<PurgeRecord, 'aggregateId'>;
+  equipment!: EntityTable<EquipmentRecord, 'id'>;
   // Table rather than EntityTable: EntityTable's InsertType collapses a
   // discriminated union to its common keys, rejecting every variant's own fields.
   settings!: Table<SettingsRecord, SettingsRecord['key'], SettingsRecord>;
@@ -124,6 +137,9 @@ export class FerrumDb extends Dexie {
     });
     this.version(4).stores({
       purges: '&aggregateId, pushed',
+    });
+    this.version(5).stores({
+      equipment: '&id, exerciseDefinitionId',
     });
   }
 }

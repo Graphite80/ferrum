@@ -2,18 +2,20 @@ import { useLiveData } from '../../components/live-data.ts';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   groupBy,
+  type ComparisonSignature,
   type ExerciseDefinition,
-  type ExerciseDefinitionId,
   type SessionExerciseId,
   type SessionId,
   type WeightUnit,
   type WorkoutSet,
 } from '@ferrum/domain';
+import { type EquipmentRecord } from '../../db/ferrum-db.ts';
 import { loadSession } from '../../db/event-store.ts';
 import { type LastPerformance, lastPerformances } from '../../db/history.ts';
 import { WakeLockController, type WakeLockState } from '../../platform/wake-lock.ts';
+import { listAllEquipment, toEquipmentInstance } from '../../data/equipment-store.ts';
 import { loadSessionPlanSlots } from '../../data/routine-store.ts';
-import { planExercise } from './exercise-plan.ts';
+import { planExercise, resolveDefinition } from './exercise-plan.ts';
 import { ExerciseSearchPanel } from './ExerciseSearchPanel.tsx';
 import { ExerciseSection } from './ExerciseSection.tsx';
 import {
@@ -47,11 +49,12 @@ export function WorkoutScreen({
   const projection = useLiveData(() => loadSession(sessionId), [sessionId]);
   const planSlots = useLiveData(() => loadSessionPlanSlots(sessionId), [sessionId]);
   const timer = useLiveData(() => loadRestTimer(sessionId), [sessionId]);
+  const equipment = useLiveData(() => listAllEquipment(), []);
   const [nowMillis, setNowMillis] = useState(() => Date.now());
   const [wakeLock, setWakeLock] = useState<WakeLockState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [lastTimes, setLastTimes] = useState<
-    ReadonlyMap<ExerciseDefinitionId, LastPerformance | null>
+    ReadonlyMap<ComparisonSignature, LastPerformance | null>
   >(new Map());
 
   const wakeLockRef = useRef<WakeLockController | null>(null);
@@ -83,19 +86,18 @@ export function WorkoutScreen({
     };
   }, []);
 
-  useEffect(() => {
-    const wanted = (projection?.exercises ?? [])
-      .map(exercise => exercise.exerciseDefinitionId)
-      .filter(definitionId => !lastTimes.has(definitionId));
-    if (wanted.length === 0) return;
-    void lastPerformances(wanted, sessionId).then(found => {
-      setLastTimes(previous => {
-        const next = new Map(previous);
-        for (const [definitionId, performance] of found) next.set(definitionId, performance);
-        return next;
-      });
-    });
-  }, [projection, lastTimes, sessionId]);
+  // The machine the user last touched for an exercise is the one they are standing at,
+  // so it is what the plan is built against.
+  const equipmentByDefinition = useMemo(() => {
+    const newest = new Map<string, EquipmentRecord>();
+    for (const record of equipment ?? []) {
+      const held = newest.get(record.exerciseDefinitionId);
+      if (held == null || record.lastUsedAtMillis > held.lastUsedAtMillis) {
+        newest.set(record.exerciseDefinitionId, record);
+      }
+    }
+    return newest;
+  }, [equipment]);
 
   const liveSetsByExercise = useMemo(
     () => groupBy(projection?.sets ?? [], set => set.sessionExerciseId),
@@ -109,6 +111,44 @@ export function WorkoutScreen({
       ),
     [projection]
   );
+
+  const plans = useMemo(
+    () =>
+      (projection?.exercises ?? []).map(exercise => {
+        const definition = resolveDefinition(exercise.exerciseDefinitionId);
+        const machine =
+          definition == null ? null : (equipmentByDefinition.get(definition.id) ?? null);
+        return {
+          exercise,
+          definition,
+          machine,
+          plan: planExercise(
+            exercise,
+            allSetsByExercise.get(exercise.id) ?? [],
+            planSlots ?? [],
+            machine == null ? null : toEquipmentInstance(machine)
+          ),
+        };
+      }),
+    [projection, allSetsByExercise, planSlots, equipmentByDefinition]
+  );
+
+  useEffect(() => {
+    const wanted = plans
+      .filter(entry => !lastTimes.has(entry.plan.comparisonSignature))
+      .map(entry => ({
+        definitionId: entry.exercise.exerciseDefinitionId,
+        signature: entry.plan.comparisonSignature,
+      }));
+    if (wanted.length === 0) return;
+    void lastPerformances(wanted, sessionId).then(found => {
+      setLastTimes(previous => {
+        const next = new Map(previous);
+        for (const [signature, performance] of found) next.set(signature, performance);
+        return next;
+      });
+    });
+  }, [plans, lastTimes, sessionId]);
 
   // The plan snapshot must be resolved before the first entry row mounts: SetRow
   // captures its defaults in state at mount, so a plan arriving late would leave
@@ -166,16 +206,17 @@ export function WorkoutScreen({
         }}
       />
 
-      {projection.exercises.map(exercise => {
-        const plan = planExercise(exercise, allSetsByExercise.get(exercise.id) ?? [], planSlots);
+      {plans.map(({ exercise, plan, machine, definition }) => {
         return (
           <ExerciseSection
             key={exercise.id}
             exercise={exercise}
+            definition={definition}
             plan={plan}
             unit={unit}
+            machine={machine}
             liveSets={liveSetsByExercise.get(exercise.id) ?? []}
-            lastTime={lastTimes.get(exercise.exerciseDefinitionId)}
+            lastTime={lastTimes.get(plan.comparisonSignature)}
             onLog={values => {
               void (async () => {
                 const now = Date.now();

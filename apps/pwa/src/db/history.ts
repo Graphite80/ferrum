@@ -10,17 +10,32 @@ import { listSessionIds, loadSession } from './event-store.ts';
 export interface LastPerformance {
   readonly loadKg: number | null;
   readonly reps: number | null;
+  // False when the newest set for this exercise was logged under a different
+  // comparison signature — a different machine, or before any machine was named.
+  // The number is still worth showing; calling it "last time" without saying so
+  // would be the lie.
+  readonly sameEquipment: boolean;
+}
+
+export interface PerformanceQuery {
+  readonly definitionId: ExerciseDefinitionId;
+  readonly signature: ComparisonSignature;
 }
 
 // Sessions are ~40 events each, so replaying them newest-first until every
 // exercise is resolved is cheaper than maintaining a second index that could
 // drift from the log.
 export async function lastPerformances(
-  definitionIds: readonly ExerciseDefinitionId[],
+  queries: readonly PerformanceQuery[],
   excludeSessionId: SessionId
-): Promise<Map<ExerciseDefinitionId, LastPerformance | null>> {
-  const found = new Map<ExerciseDefinitionId, LastPerformance | null>();
-  const unresolved = new Set(definitionIds);
+  // Keyed by signature, not by exercise: naming a machine changes the bucket, and a
+  // cache keyed by exercise would keep serving the number from the old one.
+): Promise<Map<ComparisonSignature, LastPerformance | null>> {
+  const found = new Map<ComparisonSignature, LastPerformance | null>();
+  const unresolved = new Map(queries.map(query => [query.definitionId, query.signature]));
+  // Held back rather than returned immediately: a set from another machine is only
+  // the answer once every older session has failed to produce a matching one.
+  const fallbacks = new Map<ComparisonSignature, LastPerformance>();
   if (unresolved.size === 0) return found;
 
   for (const sessionId of await listSessionIds()) {
@@ -29,7 +44,7 @@ export async function lastPerformances(
     const projection = await loadSession(sessionId);
     if (projection.session?.status !== 'finished' || projection.session.deleted) continue;
 
-    for (const definitionId of [...unresolved]) {
+    for (const [definitionId, signature] of [...unresolved]) {
       const exerciseIds = new Set(
         projection.exercises
           .filter(exercise => exercise.exerciseDefinitionId === definitionId)
@@ -37,18 +52,32 @@ export async function lastPerformances(
       );
       if (exerciseIds.size === 0) continue;
       const sets = projection.sets.filter(set => exerciseIds.has(set.sessionExerciseId));
-      const source = sets.filter(isWorkingSet).at(-1) ?? sets.at(-1);
+      const matching = sets.filter(set => set.comparisonSignature === signature);
+      const source = pickSource(matching) ?? pickSource(sets);
       if (source == null) continue;
-      found.set(definitionId, {
+
+      const performance: LastPerformance = {
         loadKg: source.measurements.canonicalExternalLoadKg,
         reps: source.measurements.reps,
-      });
-      unresolved.delete(definitionId);
+        sameEquipment: source.comparisonSignature === signature,
+      };
+      if (performance.sameEquipment) {
+        found.set(signature, performance);
+        unresolved.delete(definitionId);
+      } else if (!fallbacks.has(signature)) {
+        fallbacks.set(signature, performance);
+      }
     }
   }
 
-  for (const definitionId of unresolved) found.set(definitionId, null);
+  for (const signature of unresolved.values()) {
+    found.set(signature, fallbacks.get(signature) ?? null);
+  }
   return found;
+}
+
+function pickSource(sets: readonly WorkoutSet[]): WorkoutSet | null {
+  return sets.filter(isWorkingSet).at(-1) ?? sets.at(-1) ?? null;
 }
 
 export interface TopSet {

@@ -1,12 +1,16 @@
 import {
   type ComparisonSignature,
+  type ExerciseDefinition,
+  type EquipmentInstance,
   type ExerciseDefinitionId,
   type Kilograms,
   type SessionExercise,
   type SetPrescriptionSnapshot,
   type WorkoutSet,
   comparisonSignature,
+  equipmentIdentityMatters,
   kilograms,
+  smallestAvailableIncrement,
 } from '@ferrum/domain';
 import { loadExerciseLibrary } from '@ferrum/exercise-library';
 import { type RoutineSlotRecord } from '../../db/ferrum-db.ts';
@@ -18,6 +22,22 @@ export interface ExercisePlan {
   readonly comparisonSignature: ComparisonSignature;
   readonly incrementKg: Kilograms;
   readonly restSeconds: number;
+  // True when the number the user types only means something on one machine, so the
+  // UI has to ask which one it is.
+  readonly needsEquipment: boolean;
+}
+
+// A session records whatever exercise id it was created with, and the seeded routine
+// uses hyphenated ids that predate the library's canonical ones. Everything that keys
+// off an exercise — the plan, the machine, the diagram — has to agree on which
+// definition that is, so the resolution lives in one place.
+export function resolveDefinition(
+  exerciseDefinitionId: ExerciseDefinitionId
+): ExerciseDefinition | null {
+  const library = loadExerciseLibrary();
+  return (
+    library.byId.get(exerciseDefinitionId) ?? library.resolveAlias(exerciseDefinitionId) ?? null
+  );
 }
 
 // Everything needed to render and log against an exercise, resolved from the
@@ -26,12 +46,10 @@ export interface ExercisePlan {
 export function planExercise(
   exercise: SessionExercise,
   recordedSets: readonly WorkoutSet[],
-  planSlots: readonly RoutineSlotRecord[]
+  planSlots: readonly RoutineSlotRecord[],
+  instance: EquipmentInstance | null = null
 ): ExercisePlan {
-  const library = loadExerciseLibrary();
-  const definition =
-    library.byId.get(exercise.exerciseDefinitionId) ??
-    library.resolveAlias(exercise.exerciseDefinitionId);
+  const definition = resolveDefinition(exercise.exerciseDefinitionId);
   const slot =
     planSlots.find(s => s.exerciseDefinitionId === exercise.exerciseDefinitionId) ?? null;
   const lastRecorded = recordedSets.at(-1) ?? null;
@@ -44,17 +62,24 @@ export function planExercise(
         ? prescriptionFromSlot(slot)
         : (recordedSets.findLast(set => set.prescriptionSnapshot != null)?.prescriptionSnapshot ??
           null),
+    // A set already logged pins the bucket: one exercise in one session happened on
+    // one machine. Naming a machine is otherwise an explicit act of re-bucketing and
+    // outranks the routine's stored signature; without one, nothing changes.
     comparisonSignature:
       lastRecorded?.comparisonSignature ??
-      (slot?.comparisonSignature as ComparisonSignature | undefined) ??
-      (definition != null
-        ? comparisonSignature(definition, null)
-        : fallbackSignature(exercise.exerciseDefinitionId)),
+      (instance != null && definition != null
+        ? comparisonSignature(definition, instance)
+        : ((slot?.comparisonSignature as ComparisonSignature | undefined) ??
+          (definition != null
+            ? comparisonSignature(definition, null)
+            : fallbackSignature(exercise.exerciseDefinitionId)))),
     incrementKg:
-      slot != null
+      smallestAvailableIncrement(instance, null)?.kilograms ??
+      (slot != null
         ? kilograms(slot.incrementKg)
-        : (definition?.defaultIncrementKg ?? kilograms(2.5)),
+        : (definition?.defaultIncrementKg ?? kilograms(2.5))),
     restSeconds: slot?.restSeconds ?? definition?.defaultRestSeconds ?? 120,
+    needsEquipment: definition != null && equipmentIdentityMatters(definition.equipmentType),
   };
 }
 

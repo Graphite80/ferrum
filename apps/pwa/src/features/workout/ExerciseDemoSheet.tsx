@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type ExerciseDefinition, type MuscleRole } from '@ferrum/domain';
+import { type ExerciseDefinition, type MuscleRole, equipmentIdentityMatters } from '@ferrum/domain';
 import { loadExerciseLibrary } from '@ferrum/exercise-library';
 import { resolveAnimation } from '@ferrum/exercise-media';
 import { ExerciseFigure } from '../../components/ExerciseFigure.tsx';
@@ -89,6 +89,14 @@ export function ExerciseDemoSheet(props: ExerciseDemoSheetProps) {
       <p className="text-sm text-chalk" data-testid="exercise-cue">
         {spec.cue}
       </p>
+
+      {equipmentIdentityMatters(definition.equipmentType) && (
+        <p className="text-xs text-ash" data-testid="equipment-warning">
+          The number on this machine is a marking, not kilograms at the hands: it depends on the
+          plate mass and pulley ratio its manufacturer chose. Ferrum compares it only against the
+          same machine.
+        </p>
+      )}
 
       <section className={card({ className: 'flex items-center gap-3 p-3' })}>
         <MuscleMap definition={definition} side="front" height={150} />
