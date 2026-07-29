@@ -44,6 +44,7 @@ export function SetRow(props: SetRowProps) {
       <div className="flex items-stretch gap-2">
         <button
           type="button"
+          aria-label="Load"
           className={mono({
             className:
               'tap-target flex-1 rounded-md border border-seam bg-ingot px-2 text-lg font-medium whitespace-nowrap text-chalk',
@@ -57,6 +58,7 @@ export function SetRow(props: SetRowProps) {
         </button>
         <button
           type="button"
+          aria-label="Reps"
           className={mono({
             className:
               'tap-target flex-1 rounded-md border border-seam bg-ingot px-2 text-lg font-medium whitespace-nowrap text-chalk',
@@ -70,28 +72,33 @@ export function SetRow(props: SetRowProps) {
         </button>
         <button
           type="button"
+          aria-label="Reps in reserve"
           className={mono({
             className:
-              'tap-target w-16 rounded-md border border-seam bg-ingot text-lg font-medium text-chalk',
+              'tap-target flex-1 rounded-md border border-seam bg-ingot px-2 text-lg font-medium whitespace-nowrap text-chalk',
           })}
           onClick={() => {
             setExpanded(true);
           }}
           data-testid={`set-${String(props.index)}-rir`}
         >
-          {rir}
-        </button>
-        <button
-          type="button"
-          className={button({ className: 'flex-[1.4] px-3 font-semibold' })}
-          onClick={() => {
-            props.onComplete({ load, reps, rir });
-          }}
-          data-testid={`set-${String(props.index)}-done`}
-        >
-          Done
+          {rir} <span className="text-xs text-ash">RIR</span>
         </button>
       </div>
+
+      {/* Done spans the row rather than sharing it with the values: three labelled
+          fields plus a button do not fit a 390px screen once a load reads 137.5 kg,
+          and the primary action earns the wider target. */}
+      <button
+        type="button"
+        className={button({ className: 'mt-2 w-full px-3 font-semibold' })}
+        onClick={() => {
+          props.onComplete({ load, reps, rir });
+        }}
+        data-testid={`set-${String(props.index)}-done`}
+      >
+        Done
+      </button>
 
       {expanded && (
         <div className="mt-3 flex flex-col gap-2" data-testid={`set-${String(props.index)}-editor`}>
