@@ -56,12 +56,16 @@ const MOVEMENT_PATTERNS: readonly MovementPattern[] = [
   'elbow_flexion',
   'elbow_extension',
   'shoulder_abduction',
+  'shoulder_elevation',
+  'shoulder_external_rotation',
+  'wrist_flexion',
   'knee_flexion',
   'knee_extension',
   'ankle_plantarflexion',
   'trunk_flexion',
   'trunk_antiextension',
   'hip_abduction',
+  'hip_adduction',
 ];
 
 const EQUIPMENT_TYPES: readonly EquipmentType[] = [

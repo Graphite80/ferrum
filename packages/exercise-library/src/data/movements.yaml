@@ -70,3 +70,24 @@ trunk_flexion:
 anti_extension:
   name: Anti-Extension
   pattern: trunk_antiextension
+shrug:
+  name: Shrug
+  pattern: shoulder_elevation
+upright_row:
+  name: Upright Row
+  pattern: shoulder_abduction
+external_rotation:
+  name: Shoulder External Rotation
+  pattern: shoulder_external_rotation
+hip_adduction:
+  name: Hip Adduction
+  pattern: hip_adduction
+wrist_flexion:
+  name: Wrist Flexion
+  pattern: wrist_flexion
+loaded_carry:
+  name: Loaded Carry
+  pattern: carry
+step_up:
+  name: Step Up
+  pattern: lunge

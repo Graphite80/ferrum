@@ -2343,3 +2343,346 @@ exercises:
     defaultIncrementKg: 2.5
     userCreated: false
     revision: 1
+
+  # --- Added to close gaps found by the coverage audit: eight muscles had no exercise
+  # that trains them as a primary mover, and the `carry` movement pattern had no
+  # exercise at all. ---
+
+  - id: shrug_barbell
+    movementId: shrug
+    name: 'Shrug (Barbell)'
+    aliases:
+      - 'Barbell Shrug'
+    equipmentType: barbell
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: trapezius_upper
+        role: primary
+      - muscleId: trapezius_middle
+        role: secondary
+      - muscleId: forearm_flexors
+        role: stabilizer
+      - muscleId: erector_spinae
+        role: stabilizer
+    defaultRestSeconds: 90
+    defaultIncrementKg: 2.5
+    userCreated: false
+    revision: 1
+  - id: shrug_dumbbell
+    movementId: shrug
+    name: 'Shrug (Dumbbell)'
+    aliases:
+      - 'Dumbbell Shrug'
+    equipmentType: dumbbell
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: per_hand
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: trapezius_upper
+        role: primary
+      - muscleId: trapezius_middle
+        role: secondary
+      - muscleId: forearm_flexors
+        role: stabilizer
+    defaultRestSeconds: 90
+    defaultIncrementKg: 2
+    userCreated: false
+    revision: 1
+  - id: upright_row_cable
+    movementId: upright_row
+    name: 'Upright Row (Cable)'
+    aliases:
+      - 'Cable Upright Row'
+    equipmentType: cable
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: lateral_deltoid
+        role: primary
+      - muscleId: trapezius_upper
+        role: primary
+      - muscleId: biceps_brachii
+        role: secondary
+      - muscleId: rotator_cuff
+        role: stabilizer
+    defaultRestSeconds: 75
+    defaultIncrementKg: 2.5
+    userCreated: false
+    revision: 1
+  - id: face_pull_rope_seated
+    movementId: face_pull
+    name: 'Seated Face Pull (Cable)'
+    aliases:
+      - 'Seated Rope Face Pull'
+    equipmentType: cable
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: rhomboids
+        role: primary
+      - muscleId: trapezius_middle
+        role: primary
+      - muscleId: posterior_deltoid
+        role: secondary
+      - muscleId: rotator_cuff
+        role: secondary
+    defaultRestSeconds: 75
+    defaultIncrementKg: 2.5
+    userCreated: false
+    revision: 1
+  - id: external_rotation_cable
+    movementId: external_rotation
+    name: 'External Rotation (Cable)'
+    aliases:
+      - 'Cable External Rotation'
+      - 'Cuban Rotation'
+    equipmentType: cable
+    laterality: unilateral_isolated
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: rotator_cuff
+        role: primary
+      - muscleId: posterior_deltoid
+        role: secondary
+    defaultRestSeconds: 60
+    defaultIncrementKg: 1.25
+    userCreated: false
+    revision: 1
+  - id: hip_adduction_machine
+    movementId: hip_adduction
+    name: 'Hip Adduction (Machine)'
+    aliases:
+      - 'Adductor Machine'
+      - 'Seated Hip Adduction'
+    equipmentType: machine_stack
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: adductors
+        role: primary
+      - muscleId: hip_flexors
+        role: secondary
+    defaultRestSeconds: 75
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: wrist_curl_dumbbell
+    movementId: wrist_flexion
+    name: 'Wrist Curl (Dumbbell)'
+    aliases:
+      - 'Dumbbell Wrist Curl'
+      - 'Seated Wrist Curl'
+    equipmentType: dumbbell
+    laterality: unilateral_isolated
+    loadSemantics: external
+    loadEntryMode: per_hand
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: forearm_flexors
+        role: primary
+      - muscleId: brachioradialis
+        role: secondary
+    defaultRestSeconds: 60
+    defaultIncrementKg: 1
+    userCreated: false
+    revision: 1
+  # A carry is loaded in kilograms but counted in steps. There is no distance rep mode,
+  # and a definition the logger cannot enter would be worse than a stated convention:
+  # reps are steps, and the load per hand is what makes two carries comparable.
+  - id: farmers_carry_dumbbell
+    movementId: loaded_carry
+    name: "Farmer's Carry (Dumbbell)"
+    aliases:
+      - 'Farmers Walk'
+      - "Farmer's Walk (Dumbbell)"
+    equipmentType: dumbbell
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: per_hand
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: forearm_flexors
+        role: primary
+      - muscleId: trapezius_upper
+        role: primary
+      - muscleId: obliques
+        role: secondary
+      - muscleId: erector_spinae
+        role: secondary
+      - muscleId: gluteus_medius
+        role: stabilizer
+    defaultRestSeconds: 120
+    defaultIncrementKg: 2
+    userCreated: false
+    revision: 1
+  - id: ab_wheel_rollout
+    movementId: anti_extension
+    name: 'Ab Wheel Rollout'
+    aliases:
+      - 'Ab Rollout'
+      - 'Wheel Rollout'
+    equipmentType: other
+    laterality: bilateral
+    loadSemantics: bodyweight
+    loadEntryMode: added_only
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0.55
+    muscleRoles:
+      - muscleId: rectus_abdominis
+        role: primary
+      - muscleId: serratus_anterior
+        role: primary
+      - muscleId: obliques
+        role: secondary
+      - muscleId: latissimus_dorsi
+        role: secondary
+      - muscleId: erector_spinae
+        role: stabilizer
+    defaultRestSeconds: 90
+    defaultIncrementKg: null
+    userCreated: false
+    revision: 1
+  - id: step_up_dumbbell
+    movementId: step_up
+    name: 'Step Up (Dumbbell)'
+    aliases:
+      - 'Dumbbell Step Up'
+      - 'Box Step Up'
+    equipmentType: dumbbell
+    laterality: unilateral_isolated
+    loadSemantics: bodyweight_plus_external
+    loadEntryMode: per_hand
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 1
+    muscleRoles:
+      - muscleId: quadriceps
+        role: primary
+      - muscleId: gluteus_maximus
+        role: primary
+      - muscleId: hamstrings
+        role: secondary
+      - muscleId: gluteus_medius
+        role: stabilizer
+    defaultRestSeconds: 120
+    defaultIncrementKg: 2
+    userCreated: false
+    revision: 1
+  - id: pullover_dumbbell
+    movementId: straight_arm_pulldown
+    name: 'Pullover (Dumbbell)'
+    aliases:
+      - 'Dumbbell Pullover'
+    equipmentType: dumbbell
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: latissimus_dorsi
+        role: primary
+      - muscleId: serratus_anterior
+        role: primary
+      - muscleId: pectoralis_major
+        role: secondary
+      - muscleId: triceps_brachii
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 2.5
+    userCreated: false
+    revision: 1
+  - id: kettlebell_swing
+    movementId: hinge
+    name: 'Kettlebell Swing'
+    aliases:
+      - 'Russian Kettlebell Swing'
+      - 'Two Handed Swing'
+    equipmentType: kettlebell
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: gluteus_maximus
+        role: primary
+      - muscleId: hamstrings
+        role: secondary
+      - muscleId: erector_spinae
+        role: secondary
+      - muscleId: forearm_flexors
+        role: stabilizer
+      - muscleId: rectus_abdominis
+        role: stabilizer
+    defaultRestSeconds: 90
+    defaultIncrementKg: 4
+    userCreated: false
+    revision: 1
+  - id: standing_calf_raise_dumbbell
+    movementId: calf_raise
+    name: 'Standing Calf Raise (Dumbbell)'
+    aliases:
+      - 'Dumbbell Calf Raise'
+    equipmentType: dumbbell
+    laterality: bilateral
+    loadSemantics: bodyweight_plus_external
+    loadEntryMode: per_hand
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 1
+    muscleRoles:
+      - muscleId: gastrocnemius
+        role: primary
+      - muscleId: soleus
+        role: secondary
+      - muscleId: forearm_flexors
+        role: stabilizer
+    defaultRestSeconds: 75
+    defaultIncrementKg: 2
+    userCreated: false
+    revision: 1

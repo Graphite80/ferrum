@@ -181,10 +181,24 @@ export function normalizePose(spec: PoseSpec, view: View): NormalizedPose {
     head: spec.head ?? spec.torso,
     hands: mirror ? [resolvedHands[0], mirrorAbout(spec.hip[0], resolvedHands[1])] : resolvedHands,
     feet: mirrorFeet ? [resolvedFeet[0], mirrorAbout(spec.hip[0], resolvedFeet[1])] : resolvedFeet,
-    elbow: pair(spec.elbow ?? -1),
-    knee: pair(spec.knee ?? 1),
+    // A bend direction is a screen-space choice, so the far limb of a symmetric front-view
+    // pose has to take the opposite one. Sharing the sign bends both knees to the same
+    // side of the body and the lifter looks broken.
+    elbow: bendPair(spec.elbow ?? -1, view),
+    knee: bendPair(spec.knee ?? 1, view),
     toe: pair(spec.toe ?? 0),
   };
+}
+
+function bendPair(
+  value: number | readonly [number, number],
+  view: View
+): readonly [number, number] {
+  if (Array.isArray(value)) {
+    return value as unknown as readonly [number, number];
+  }
+  const sign = value as number;
+  return view === 'front' ? [sign, -sign] : [sign, sign];
 }
 
 // Discrete fields (which way a joint bends) come from the start pose: interpolating them

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { LibraryValidationError, loadExerciseLibrary } from '../src/index.ts';
 
-const LIBRARY_SIZE = 80;
+const LIBRARY_SIZE = 93;
 
 // The names the imported Hevy history uses. They must keep resolving forever: the moment
 // one of them stops matching, an import silently creates a second exercise and splits a
@@ -226,6 +226,46 @@ describe('ranked search', () => {
   it('ranks every library name so its own definition comes first', () => {
     for (const definition of library.all) {
       expect(library.search(definition.name)[0]?.id).toBe(definition.id);
+    }
+  });
+});
+
+// The library is curated, not exhaustive, but "curated" has to mean somebody decided
+// rather than nobody noticed. These two tests are the audit: they fail when a muscle or
+// a movement pattern the vocabulary declares has nothing that actually trains it.
+describe('exercise library coverage', () => {
+  // Two muscles have no exercise that trains them as a primary mover, and neither is an
+  // oversight. Teres major only ever assists the lats — there is no isolation for it.
+  // Lower trapezius is trained primarily by prone Y raises, which need a movement pattern
+  // of their own for one niche exercise. Both are decisions; delete an entry here only
+  // when the exercise exists.
+  const NO_PRIMARY_BY_DESIGN = new Set(['teres_major', 'trapezius_lower']);
+
+  it('trains every muscle it names as a primary mover', () => {
+    const primaries = new Set(
+      library.all.flatMap(definition =>
+        definition.muscleRoles.filter(role => role.role === 'primary').map(role => role.muscleId)
+      )
+    );
+    for (const muscleId of library.muscles.keys()) {
+      if (NO_PRIMARY_BY_DESIGN.has(muscleId)) continue;
+      expect(primaries.has(muscleId), `${muscleId} has no primary exercise`).toBe(true);
+    }
+  });
+
+  it('leaves no declared movement pattern without an exercise', () => {
+    const covered = new Set(
+      library.all.map(definition => library.movements.get(definition.movementId)?.pattern)
+    );
+    for (const movement of library.movements.values()) {
+      expect(covered.has(movement.pattern), `${movement.pattern} has no exercise`).toBe(true);
+    }
+  });
+
+  it('gives every movement family at least one exercise', () => {
+    const used = new Set(library.all.map(definition => definition.movementId));
+    for (const movementId of library.movements.keys()) {
+      expect(used.has(movementId), `movement ${movementId} is unused`).toBe(true);
     }
   });
 });
