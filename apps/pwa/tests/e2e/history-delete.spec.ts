@@ -95,3 +95,28 @@ test.describe('workout deletion', () => {
     await expect(page.getByTestId('session-title')).toHaveCount(0);
   });
 });
+
+test.describe('a deleted workout stops counting', () => {
+  test('its sets no longer prefill the next session', async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('start-routine').click();
+    await expect(page.getByTestId('session-title')).toBeVisible();
+
+    // Log a deliberately wrong load, the reason someone deletes a workout.
+    await page.getByTestId('set-0-load').first().click();
+    await page.getByTestId('set-0-load-stepper-input').first().fill('200');
+    await page.getByTestId('set-0-done').first().click();
+    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await page.getByTestId('finish-session').click();
+    await expect(page.getByTestId('workout-summary')).toBeVisible();
+    await page.getByTestId('summary-home').click();
+
+    await deleteFromDetail(page);
+    await page.getByTestId('back-home').click();
+
+    await page.getByTestId('start-routine').click();
+    await expect(page.getByTestId('session-title')).toBeVisible();
+    await expect(page.getByTestId('previous-label').first()).toHaveText('no previous set');
+    await expect(page.getByTestId('set-0-load').first()).toContainText('80');
+  });
+});

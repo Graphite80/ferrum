@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { type SessionId, type WeightUnit, formatLoad, kilograms } from '@ferrum/domain';
 import { startEmptySession, startSession } from '../../data/session-controller.ts';
 import { listRoutines } from '../../data/routine-store.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
 import { button, card, eyebrow, mono } from '../../ui.ts';
+import { useLiveData } from '../../components/live-data.ts';
 
 export function HomeScreen({
   unit,
@@ -21,7 +21,7 @@ export function HomeScreen({
   onOpenHistory: () => void;
   onOpenSettings: () => void;
 }) {
-  const routines = useLiveQuery(listRoutines);
+  const routines = useLiveData(listRoutines);
   const [starting, setStarting] = useState(false);
 
   return (

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { type SessionId, type WeightUnit, type WorkoutSet, formatLoad } from '@ferrum/domain';
 import { loadSession } from '../../db/event-store.ts';
 import { deleteSession } from '../../data/session-controller.ts';
@@ -7,6 +6,7 @@ import { loadSessionPlanSlots } from '../../data/routine-store.ts';
 import { exerciseDisplayName, formatDuration, setsForExercise } from './session-view.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
 import { button, card, eyebrow, mono } from '../../ui.ts';
+import { useLiveData } from '../../components/live-data.ts';
 
 export function HistoryDetailScreen({
   sessionId,
@@ -17,8 +17,8 @@ export function HistoryDetailScreen({
   unit: WeightUnit;
   onBack: () => void;
 }) {
-  const projection = useLiveQuery(() => loadSession(sessionId), [sessionId]);
-  const planSlots = useLiveQuery(() => loadSessionPlanSlots(sessionId), [sessionId]);
+  const projection = useLiveData(() => loadSession(sessionId), [sessionId]);
+  const planSlots = useLiveData(() => loadSessionPlanSlots(sessionId), [sessionId]);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   if (projection?.session == null || planSlots === undefined) {

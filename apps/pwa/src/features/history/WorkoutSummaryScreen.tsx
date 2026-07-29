@@ -1,4 +1,4 @@
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useLiveData } from '../../components/live-data.ts';
 import {
   type ComparisonSignature,
   type SessionId,
@@ -34,7 +34,7 @@ export function WorkoutSummaryScreen({
   unit: WeightUnit;
   onHome: () => void;
 }) {
-  const view = useLiveQuery(async () => {
+  const view = useLiveData(async () => {
     const [projection, planSlots] = await Promise.all([
       loadSession(sessionId),
       loadSessionPlanSlots(sessionId),

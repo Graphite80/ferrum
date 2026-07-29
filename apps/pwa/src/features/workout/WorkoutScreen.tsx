@@ -1,5 +1,5 @@
+import { useLiveData } from '../../components/live-data.ts';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import {
   groupBy,
   type ExerciseDefinition,
@@ -44,9 +44,9 @@ export function WorkoutScreen({
   unit: WeightUnit;
   onFinished: () => void;
 }) {
-  const projection = useLiveQuery(() => loadSession(sessionId), [sessionId]);
-  const planSlots = useLiveQuery(() => loadSessionPlanSlots(sessionId), [sessionId]);
-  const timer = useLiveQuery(() => loadRestTimer(sessionId), [sessionId]);
+  const projection = useLiveData(() => loadSession(sessionId), [sessionId]);
+  const planSlots = useLiveData(() => loadSessionPlanSlots(sessionId), [sessionId]);
+  const timer = useLiveData(() => loadRestTimer(sessionId), [sessionId]);
   const [nowMillis, setNowMillis] = useState(() => Date.now());
   const [wakeLock, setWakeLock] = useState<WakeLockState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);

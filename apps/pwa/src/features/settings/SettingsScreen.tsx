@@ -1,5 +1,5 @@
+import { useLiveData } from '../../components/live-data.ts';
 import { useState, useSyncExternalStore } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { type WeightUnit } from '@ferrum/domain';
 import { saveUnit } from '../../data/settings-store.ts';
 import { unacknowledgedCount } from '../../db/event-store.ts';
@@ -70,8 +70,8 @@ export function SettingsScreen({
 // database reads (config, pending count) are live queries. The remount key seeds
 // the input fields exactly once, when the stored config first arrives.
 function SyncCard() {
-  const config = useLiveQuery(loadSyncConfig);
-  const pending = useLiveQuery(unacknowledgedCount);
+  const config = useLiveData(loadSyncConfig);
+  const pending = useLiveData(unacknowledgedCount);
   const status = useSyncExternalStore(subscribeSyncStatus, getSyncStatus);
 
   return (

@@ -99,8 +99,12 @@ describe('projecting a mixed multi-session log', () => {
     fc.assert(
       fc.property(multiSessionArbitrary, fc.integer({ min: 1, max: 1_000_000 }), (events, seed) => {
         const sets = allSets(events);
+        // A tombstoned session's sets stop counting: they stay in the log and in
+        // projectAll, but never in the training record allSets describes.
         expect(sets).toStrictEqual(
-          [...projectAll(events).values()].flatMap(projection => projection.sets)
+          [...projectAll(events).values()]
+            .filter(projection => projection.session?.deleted !== true)
+            .flatMap(projection => projection.sets)
         );
         const shuffledSets = allSets(permute(events, seed));
         const serialize = (items: readonly unknown[]) =>

@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { type SessionId, type SessionProjection } from '@ferrum/domain';
 import { listSessions, unacknowledgedCount } from '../../db/event-store.ts';
 import { restoreSession } from '../../data/session-controller.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
 import { button, card, mono } from '../../ui.ts';
+import { useLiveData } from '../../components/live-data.ts';
 
 export function HistoryScreen({
   onHome,
@@ -13,8 +13,8 @@ export function HistoryScreen({
   onHome: () => void;
   onOpenSession: (sessionId: SessionId) => void;
 }) {
-  const sessions = useLiveQuery(listSessions);
-  const pending = useLiveQuery(unacknowledgedCount);
+  const sessions = useLiveData(listSessions);
+  const pending = useLiveData(unacknowledgedCount);
   const [showDeleted, setShowDeleted] = useState(false);
 
   const live = sessions?.filter(projection => projection.session?.deleted !== true);

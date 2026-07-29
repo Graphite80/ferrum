@@ -1,5 +1,5 @@
+import { useLiveData } from '../../components/live-data.ts';
 import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { type WeightUnit, fromKilograms, kilograms, toKilograms } from '@ferrum/domain';
 import { type RoutineRecord, type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 import { ExerciseSearchPanel } from '../workout/ExerciseSearchPanel.tsx';
@@ -24,7 +24,7 @@ export function RoutineBuilderScreen({
   unit: WeightUnit;
   onDone: () => void;
 }) {
-  const stored = useLiveQuery(
+  const stored = useLiveData(
     async () => (routineId == null ? null : ((await getRoutine(routineId)) ?? null)),
     [routineId]
   );

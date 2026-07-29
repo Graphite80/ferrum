@@ -27,7 +27,7 @@ export async function lastPerformances(
     if (unresolved.size === 0) break;
     if (sessionId === excludeSessionId) continue;
     const projection = await loadSession(sessionId);
-    if (projection.session?.status !== 'finished') continue;
+    if (projection.session?.status !== 'finished' || projection.session.deleted) continue;
 
     for (const definitionId of [...unresolved]) {
       const exerciseIds = new Set(
@@ -83,7 +83,7 @@ export async function bestPriorSets(
   for (const sessionId of await listSessionIds()) {
     if (sessionId === excludeSessionId) continue;
     const projection = await loadSession(sessionId);
-    if (projection.session?.status !== 'finished') continue;
+    if (projection.session?.status !== 'finished' || projection.session.deleted) continue;
 
     for (const signature of signatures) {
       const candidate = topWorkingSet(

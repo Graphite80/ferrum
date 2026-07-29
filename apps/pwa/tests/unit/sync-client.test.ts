@@ -215,15 +215,16 @@ describe('sync gating logic', () => {
     expect(harness.client.getStatus().syncing).toBe(false);
   });
 
-  test('a rising pending count schedules one debounced append sync', async () => {
+  test('any pending work schedules one debounced append sync', async () => {
     const harness = new Harness();
     harness.serveEmptyPull();
 
     harness.client.notePendingCount(3);
-    expect(harness.armedTimers()).toHaveLength(0);
     expect(harness.client.getStatus().pendingCount).toBe(3);
 
-    harness.client.notePendingCount(4);
+    // Dexie collapses an append that lands mid-recount into one emission, so a
+    // count that did not rise still means unsynced local work.
+    harness.client.notePendingCount(2);
     harness.client.notePendingCount(5);
     const timers = harness.armedTimers();
     expect(timers).toHaveLength(1);
@@ -233,7 +234,7 @@ describe('sync gating logic', () => {
     await harness.settle();
     expect(harness.fetchCalls).toHaveLength(1);
 
-    // A falling count (acknowledged pushes) never schedules another cycle.
+    // Nothing pending is the only state that schedules nothing.
     harness.client.notePendingCount(0);
     expect(harness.armedTimers()).toHaveLength(0);
   });

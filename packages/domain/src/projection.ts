@@ -151,8 +151,14 @@ export function projectAll(
   return projections;
 }
 
+// Sets of a tombstoned session are excluded: deletion exists so a bad record
+// stops counting, and every consumer here asks "what did the athlete actually
+// do". The events themselves stay in the log, and projectAll still exposes the
+// deleted session for anything that needs to show or restore it.
 export function allSets(events: readonly DomainEvent[]): WorkoutSet[] {
-  return [...projectAll(events).values()].flatMap(projection => projection.sets);
+  return [...projectAll(events).values()]
+    .filter(projection => projection.session?.deleted !== true)
+    .flatMap(projection => projection.sets);
 }
 
 function apply(state: MutableState, event: DomainEvent): void {

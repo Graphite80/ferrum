@@ -106,7 +106,6 @@ export class SyncClient {
   private lastDriftAtMillis = 0;
   private retryTimer: TimerHandle | null = null;
   private appendTimer: TimerHandle | null = null;
-  private lastPendingCount: number | null = null;
 
   constructor(private readonly deps: SyncClientDeps) {}
 
@@ -126,15 +125,16 @@ export class SyncClient {
     });
   }
 
-  // The unacknowledged count is the write signal: it rises only when this device
-  // appends locally (pulled events land acknowledged, pushes only lower it), so
-  // feeding it here schedules the debounced push without any listener fan-out in
-  // the event store.
+  // The unacknowledged count is the write signal: pulled events land already
+  // acknowledged, so anything still pending was appended by this device. Arming
+  // on any non-zero count rather than on a rise is deliberate: Dexie collapses a
+  // mutation that lands mid-query into a single emission, so an append that
+  // coalesces with the recount after an acknowledgement would otherwise never
+  // schedule its push. The debounce and the single-flight guard absorb the extra
+  // calls this costs.
   notePendingCount(count: number): void {
-    const rose = this.lastPendingCount !== null && count > this.lastPendingCount;
-    this.lastPendingCount = count;
     this.publish({ pendingCount: count });
-    if (rose) this.scheduleAppendSync();
+    if (count > 0) this.scheduleAppendSync();
   }
 
   async start(): Promise<void> {
@@ -371,18 +371,27 @@ export function requestSync(trigger: SyncTrigger): void {
 
 let initialized = false;
 
-export async function initSync(): Promise<void> {
-  if (initialized) return;
-  initialized = true;
+// An observable error ends the subscription for good, and on iOS an IndexedDB
+// read fails often enough that losing it would silently strand local appends
+// until the next visibility or manual trigger. Recover the read, and re-arm the
+// stream if it dies anyway.
+function observePendingCount(): void {
   // Dexie re-runs the query on writes from any tab of this origin.
-  liveQuery(() => unacknowledgedCount()).subscribe({
+  liveQuery(() => withDatabaseRecovery(unacknowledgedCount)).subscribe({
     next: count => {
       syncClient.notePendingCount(count);
     },
     error: (error: unknown) => {
-      console.error('pending count observation failed', error);
+      console.error('pending count observation failed, re-arming', error);
+      setTimeout(observePendingCount, 5_000);
     },
   });
+}
+
+export async function initSync(): Promise<void> {
+  if (initialized) return;
+  initialized = true;
+  observePendingCount();
   window.addEventListener('online', () => {
     syncClient.requestSync('online');
   });
