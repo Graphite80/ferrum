@@ -42,3 +42,20 @@ test`. The sync spec spawns `services/api` `dev:memory` (PGlite) itself.
   container `minio`). A green run still requires reading the crawler/monkey findings.
 - Monkey seed 1337 previously caught: Stepper `-Infinity` overflow via pasted huge negatives —
   every Stepper exit must stay finite and non-negative.
+- The crawler will always report "Pages visited: 1". Every screen lives at `/` (the typed
+  `Screen` union in `App.tsx`; a router was considered and rejected), so link-following cannot
+  reach them. UI coverage comes from the monkey run and the Playwright suite, not the crawler.
+- Observatory sits at B+ (threshold B). The single failing test is `unsafe-inline`/`unsafe-eval`
+  in `script-src`, which comes from the cluster-wide `kube-system-security-headers` middleware
+  shared by every app on the domain — a ferrum-only fix would mean a ferrum-only middleware.
+  Re-evaluate if the score drops below the gate; do not silently accept a worse grade.
+- ZAP stays off in the sensor: the autoqa image drives it as a Docker container that does not
+  exist in-cluster, so enabling it produces a permanent blocking gate-fail (same reason as the
+  yay-tsa sensor).
+- Live reads go through `useLiveData` (`src/components/live-data.ts`), never `useLiveQuery`
+  directly: the raw hook rethrows an IndexedDB failure during render and, with no boundary in
+  its path, unmounts the app mid-workout. The same applies to the `liveQuery` observer in the
+  sync client — an Observable error is terminal, so it re-arms itself.
+- Deletion is a tombstone that must stop the workout counting everywhere, not just in list
+  views: `allSets` (domain) excludes deleted sessions, and `db/history.ts` guards both the
+  prefill and the PR baseline. A new reader over sessions needs the same filter.
