@@ -14,12 +14,15 @@ describe('generator coverage', () => {
         deleted: p.deletedSets.length,
         ex: p.exercises.length,
         amend: p.amendments.length,
+        sessionDeletes: s.events.filter(e => e.eventType === 'SessionDeleted').length,
+        sessionRestores: s.events.filter(e => e.eventType === 'SessionRestored').length,
+        endsDeleted: p.session?.deleted === true ? 1 : 0,
       };
     });
     const total = (k: keyof (typeof stats)[number]) => stats.reduce((a, b) => a + b[k], 0);
     const maxOf = (k: keyof (typeof stats)[number]) => Math.max(...stats.map(s => s[k]));
     console.log(
-      'samples=%d events=%d sets=%d deleted=%d exercises=%d amendments=%d maxSets=%d maxEvents=%d withDeleted=%d',
+      'samples=%d events=%d sets=%d deleted=%d exercises=%d amendments=%d maxSets=%d maxEvents=%d withDeleted=%d sessionDeletes=%d sessionRestores=%d endsDeleted=%d withDeleteAndRestore=%d',
       samples.length,
       total('events'),
       total('sets'),
@@ -28,10 +31,20 @@ describe('generator coverage', () => {
       total('amend'),
       maxOf('sets'),
       maxOf('events'),
-      stats.filter(s => s.deleted > 0).length
+      stats.filter(s => s.deleted > 0).length,
+      total('sessionDeletes'),
+      total('sessionRestores'),
+      total('endsDeleted'),
+      stats.filter(s => s.sessionDeletes > 0 && s.sessionRestores > 0).length
     );
     expect(total('sets')).toBeGreaterThan(200);
     expect(total('deleted')).toBeGreaterThan(20);
     expect(total('amend')).toBeGreaterThan(50);
+    expect(total('sessionDeletes')).toBeGreaterThan(50);
+    expect(total('sessionRestores')).toBeGreaterThan(50);
+    expect(total('endsDeleted')).toBeGreaterThan(20);
+    expect(stats.filter(s => s.sessionDeletes > 0 && s.sessionRestores > 0).length).toBeGreaterThan(
+      20
+    );
   });
 });

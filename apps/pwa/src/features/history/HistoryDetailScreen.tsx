@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { type SessionId, type WeightUnit, type WorkoutSet, formatLoad } from '@ferrum/domain';
 import { loadSession } from '../../db/event-store.ts';
+import { deleteSession } from '../../data/session-controller.ts';
 import { loadSessionPlanSlots } from '../../data/routine-store.ts';
 import { exerciseDisplayName, formatDuration, setsForExercise } from './session-view.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
@@ -17,6 +19,7 @@ export function HistoryDetailScreen({
 }) {
   const projection = useLiveQuery(() => loadSession(sessionId), [sessionId]);
   const planSlots = useLiveQuery(() => loadSessionPlanSlots(sessionId), [sessionId]);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   if (projection?.session == null || planSlots === undefined) {
     return (
@@ -89,6 +92,49 @@ export function HistoryDetailScreen({
           </section>
         );
       })}
+
+      {/* Destructive but quiet on purpose: plate-red is reserved for the primary action,
+          and deleting a workout is a tombstone the History list can restore. */}
+      {!session.deleted &&
+        (confirmingDelete ? (
+          <div className={card({ className: 'flex items-center gap-3 p-3' })}>
+            <span className="min-w-0 flex-1 text-sm text-chalk">Delete this workout?</span>
+            <button
+              type="button"
+              className={button({
+                intent: 'secondary',
+                className: 'shrink-0 px-4',
+              })}
+              data-testid="confirm-delete-workout"
+              onClick={() => {
+                void deleteSession(sessionId, null, Date.now()).then(onBack);
+              }}
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              className={button({ intent: 'quiet', className: 'shrink-0 px-4' })}
+              data-testid="cancel-delete-workout"
+              onClick={() => {
+                setConfirmingDelete(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className={button({ intent: 'quiet', className: 'self-start px-4' })}
+            data-testid="delete-workout"
+            onClick={() => {
+              setConfirmingDelete(true);
+            }}
+          >
+            Delete workout
+          </button>
+        ))}
     </ScreenShell>
   );
 }

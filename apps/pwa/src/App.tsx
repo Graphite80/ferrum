@@ -71,7 +71,9 @@ export function App() {
       if (window.location.hash !== '#spike') {
         for (const sessionId of await listSessionIds()) {
           const projection = await loadSession(sessionId);
-          if (projection.session?.status === 'active') {
+          // A deleted-but-unfinished session must never hijack boot: its tombstone
+          // makes it not-active for resume purposes, however its status reads.
+          if (projection.session?.status === 'active' && !projection.session.deleted) {
             // Pushed, not replaced: back from a resumed workout lands on Home
             // instead of exiting, and the session stays active either way.
             const resumed: Screen = { name: 'workout', sessionId };

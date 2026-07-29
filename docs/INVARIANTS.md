@@ -145,9 +145,14 @@ Training activity is an append-only event log. Configuration is versioned rows w
 LWW. The split is not stylistic: training data must never be lost to a merge, configuration must
 converge without user intervention.
 
-Event-producing (13 types): `SessionStarted`, `SessionMetadataChanged`, `ExerciseAddedToSession`,
+Event-producing (15 types): `SessionStarted`, `SessionMetadataChanged`, `ExerciseAddedToSession`,
 `ExerciseRemovedFromSession`, `ExerciseReordered`, `ExerciseSubstituted`, `SupersetGroupChanged`,
-`SetLogged`, `SetAmended`, `SetDeleted`, `SetRestored`, `SessionFinished`, `SessionReopened`.
+`SetLogged`, `SetAmended`, `SetDeleted`, `SetRestored`, `SessionFinished`, `SessionReopened`,
+`SessionDeleted`, `SessionRestored`.
+
+Additions to this vocabulary keep `EVENT_SCHEMA_VERSION` unchanged but require clients to update
+before pulling: an old bundle rejects the unknown type at wire validation and its sync stalls
+until the service-worker update is applied.
 
 Two of these are additions to the original plan's list, and both are load-bearing:
 

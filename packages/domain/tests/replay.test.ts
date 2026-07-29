@@ -1,14 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
+  type DeviceId,
   type DomainEvent,
+  type EventId,
   type SessionProjection,
   type WorkoutSetId,
+  EVENT_SCHEMA_VERSION,
+  buildEvent,
+  instant,
   projectSession,
+  sortEvents,
 } from '../src/index.ts';
-import { SESSION_ID, scriptedSessionArbitrary } from '../src/testing/factories.ts';
+import { SESSION_ID, USER_ID, scriptedSessionArbitrary } from '../src/testing/factories.ts';
 
-function substantive(projection: SessionProjection): unknown {
+function substantive(projection: SessionProjection) {
   return {
     session: projection.session,
     exercises: projection.exercises,
@@ -99,6 +105,71 @@ describe('session replay determinism', () => {
           expect(exercise.orderIndex).toBe(index);
         });
       }),
+      { numRuns: 200 }
+    );
+  });
+
+  it('keeps every logged set in the projection after the whole session is deleted', () => {
+    fc.assert(
+      fc.property(scriptedSessionArbitrary, session => {
+        const lastWall = Math.max(0, ...session.events.map(event => event.hlc.wallMillis));
+        const tombstone = buildEvent(
+          'SessionDeleted',
+          { sessionId: SESSION_ID, reason: 'mislogged' },
+          {
+            eventId: 'evt-session-delete' as EventId,
+            aggregateId: SESSION_ID,
+            userId: USER_ID,
+            deviceId: 'phone' as DeviceId,
+            schemaVersion: EVENT_SCHEMA_VERSION,
+            hlc: { wallMillis: lastWall + 1, counter: 0, nodeId: 'phone' },
+            clientCreatedAt: instant(lastWall + 1),
+            serverReceivedAt: null,
+            serverSequence: null,
+          }
+        );
+        const projection = projectSession(SESSION_ID, [...session.events, tombstone]);
+        expect(projection.session?.deleted).toBe(true);
+        const surfaced = new Set<WorkoutSetId>([
+          ...projection.sets.map(set => set.id),
+          ...projection.deletedSets.map(set => set.id),
+        ]);
+        const logged = session.events
+          .filter(event => event.eventType === 'SetLogged')
+          .map(event => event.payload.setId);
+        for (const setId of logged) {
+          expect(surfaced.has(setId)).toBe(true);
+        }
+        // The tombstone flips exactly one flag; sets, exercises and set tombstones are untouched.
+        const withoutTombstone = projectSession(SESSION_ID, session.events);
+        expect({ ...substantive(projection), session: null }).toStrictEqual({
+          ...substantive(withoutTombstone),
+          session: null,
+        });
+      }),
+      { numRuns: 200 }
+    );
+  });
+
+  it('converges delete → restore → delete on the last tombstone in total order, under permutation', () => {
+    fc.assert(
+      fc.property(
+        scriptedSessionArbitrary,
+        fc.integer({ min: 1, max: 1_000_000 }),
+        (session, seed) => {
+          const canonical = projectSession(SESSION_ID, session.events);
+          const shuffled = projectSession(SESSION_ID, permute(session.events, seed));
+          expect(shuffled.session?.deleted).toBe(canonical.session?.deleted);
+
+          if (canonical.session == null) return;
+          const lastTombstone = sortEvents(session.events)
+            .filter(
+              event => event.eventType === 'SessionDeleted' || event.eventType === 'SessionRestored'
+            )
+            .pop();
+          expect(canonical.session.deleted).toBe(lastTombstone?.eventType === 'SessionDeleted');
+        }
+      ),
       { numRuns: 200 }
     );
   });

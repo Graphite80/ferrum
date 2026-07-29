@@ -54,5 +54,9 @@ export function buildDomainEvent(body: DomainEventBody, rest: EventEnvelopeRest)
       return buildEvent(body.eventType, body.payload, rest);
     case 'SessionReopened':
       return buildEvent(body.eventType, body.payload, rest);
+    case 'SessionDeleted':
+      return buildEvent(body.eventType, body.payload, rest);
+    case 'SessionRestored':
+      return buildEvent(body.eventType, body.payload, rest);
   }
 }

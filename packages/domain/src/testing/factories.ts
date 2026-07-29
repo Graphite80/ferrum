@@ -109,7 +109,9 @@ type Step =
   | { kind: 'superset' }
   | { kind: 'substitute' }
   | { kind: 'finish' }
-  | { kind: 'reopen' };
+  | { kind: 'reopen' }
+  | { kind: 'deleteSession'; reason: string | null }
+  | { kind: 'restoreSession' };
 
 const stepArbitrary: fc.Arbitrary<Step> = fc.oneof(
   fc.constant<Step>({ kind: 'addExercise' }),
@@ -122,7 +124,11 @@ const stepArbitrary: fc.Arbitrary<Step> = fc.oneof(
   fc.constant<Step>({ kind: 'superset' }),
   fc.constant<Step>({ kind: 'substitute' }),
   fc.constant<Step>({ kind: 'finish' }),
-  fc.constant<Step>({ kind: 'reopen' })
+  fc.constant<Step>({ kind: 'reopen' }),
+  fc
+    .option(fc.constantFrom('mislogged', 'duplicate day'), { nil: null })
+    .map<Step>(reason => ({ kind: 'deleteSession', reason })),
+  fc.constant<Step>({ kind: 'restoreSession' })
 );
 
 // fast-check's default `size` keeps generated arrays around a dozen elements, which
@@ -315,6 +321,21 @@ function buildSession(
 
       case 'reopen': {
         events.push(makeEvent(state, device, wall, 'SessionReopened', { sessionId: SESSION_ID }));
+        break;
+      }
+
+      case 'deleteSession': {
+        events.push(
+          makeEvent(state, device, wall, 'SessionDeleted', {
+            sessionId: SESSION_ID,
+            reason: step.reason,
+          })
+        );
+        break;
+      }
+
+      case 'restoreSession': {
+        events.push(makeEvent(state, device, wall, 'SessionRestored', { sessionId: SESSION_ID }));
         break;
       }
     }

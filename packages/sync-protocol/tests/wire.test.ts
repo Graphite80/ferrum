@@ -78,8 +78,8 @@ describe('wire round-trip', () => {
     expect(parsePushResponse(overWire(serializePushResponse(response)))).toEqual(response);
   });
 
-  it('covers all 13 event types', () => {
-    expect(DOMAIN_EVENT_TYPES).toHaveLength(13);
+  it('covers all 15 event types', () => {
+    expect(DOMAIN_EVENT_TYPES).toHaveLength(15);
   });
 });
 

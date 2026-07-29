@@ -117,6 +117,15 @@ export interface SessionReopenedPayload {
   readonly sessionId: SessionId;
 }
 
+export interface SessionDeletedPayload {
+  readonly sessionId: SessionId;
+  readonly reason: string | null;
+}
+
+export interface SessionRestoredPayload {
+  readonly sessionId: SessionId;
+}
+
 export type DomainEventPayloadMap = {
   SessionStarted: SessionStartedPayload;
   SessionMetadataChanged: SessionMetadataChangedPayload;
@@ -131,6 +140,8 @@ export type DomainEventPayloadMap = {
   SetRestored: SetRestoredPayload;
   SessionFinished: SessionFinishedPayload;
   SessionReopened: SessionReopenedPayload;
+  SessionDeleted: SessionDeletedPayload;
+  SessionRestored: SessionRestoredPayload;
 };
 
 export type DomainEventType = keyof DomainEventPayloadMap;

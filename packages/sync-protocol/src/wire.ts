@@ -59,6 +59,8 @@ const EVENT_TYPE_FLAGS: Record<DomainEventType, true> = {
   SetRestored: true,
   SessionFinished: true,
   SessionReopened: true,
+  SessionDeleted: true,
+  SessionRestored: true,
 };
 
 export const DOMAIN_EVENT_TYPES = Object.keys(EVENT_TYPE_FLAGS) as readonly DomainEventType[];

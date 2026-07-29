@@ -446,6 +446,58 @@ describe('/summary', () => {
     await bot.handleUpdate(textUpdate(557, '/summary'));
     expect(lastText()).toContain('No finished workout yet');
   });
+
+  it('skips a tombstoned session and reports it after restore', async () => {
+    await bot.handleUpdate(textUpdate(559, '/start'));
+    const userId = await chatUser(559);
+    const sessionId = 'ses-tombstone-1' as SessionId;
+    const day = localDate('2026-07-27');
+    const base = Date.parse('2026-07-27T10:00:00Z');
+    const envelope = (eventId: string, tick: number) => ({
+      eventId: eventId as EventId,
+      aggregateId: sessionId,
+      userId: userId as UserId,
+      deviceId: 'seed' as DeviceId,
+      schemaVersion: EVENT_SCHEMA_VERSION,
+      hlc: { wallMillis: base + tick, counter: 0, nodeId: 'seed' },
+      clientCreatedAt: instant(base + tick),
+      serverReceivedAt: null,
+      serverSequence: null,
+    });
+    const push = (events: DomainEvent[]) =>
+      db.transaction(tx => pushBatch(tx, userId, { deviceId: 'seed', events }, Date.now()));
+
+    await push([
+      buildEvent(
+        'SessionStarted',
+        {
+          sessionId,
+          startedAt: instant(base),
+          localDate: day,
+          tzOffsetMinutes: 0,
+          title: 'Ghost Day',
+        },
+        envelope('evt-t1', 0)
+      ),
+      buildEvent(
+        'SessionFinished',
+        { sessionId, finishedAt: instant(base + 1) },
+        envelope('evt-t2', 1)
+      ),
+    ]);
+    await bot.handleUpdate(textUpdate(559, '/summary'));
+    expect(lastText()).toContain('Ghost Day');
+
+    await push([
+      buildEvent('SessionDeleted', { sessionId, reason: 'mislogged' }, envelope('evt-t3', 2)),
+    ]);
+    await bot.handleUpdate(textUpdate(559, '/summary'));
+    expect(lastText()).toContain('No finished workout yet');
+
+    await push([buildEvent('SessionRestored', { sessionId }, envelope('evt-t4', 3))]);
+    await bot.handleUpdate(textUpdate(559, '/summary'));
+    expect(lastText()).toContain('Ghost Day');
+  });
 });
 
 describe('/next', () => {

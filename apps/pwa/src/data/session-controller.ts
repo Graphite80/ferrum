@@ -254,6 +254,24 @@ export async function restoreSet(
   );
 }
 
+export async function deleteSession(
+  sessionId: SessionId,
+  reason: string | null,
+  nowMillis: number
+): Promise<void> {
+  await appendEvents(
+    [{ aggregateId: sessionId, eventType: 'SessionDeleted', payload: { sessionId, reason } }],
+    nowMillis
+  );
+}
+
+export async function restoreSession(sessionId: SessionId, nowMillis: number): Promise<void> {
+  await appendEvents(
+    [{ aggregateId: sessionId, eventType: 'SessionRestored', payload: { sessionId } }],
+    nowMillis
+  );
+}
+
 export async function finishSession(sessionId: SessionId, nowMillis: number): Promise<void> {
   await appendEvents(
     [

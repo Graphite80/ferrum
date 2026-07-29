@@ -8,7 +8,7 @@ import {
 export function existingHistoryOf(events: readonly DomainEvent[]): ExistingHistory {
   const sessions: ExistingSessionSummary[] = [];
   for (const [sessionId, projection] of projectAll(events)) {
-    if (projection.session == null) continue;
+    if (projection.session == null || projection.session.deleted) continue;
     sessions.push({
       sessionId,
       localDate: projection.session.localDate,
@@ -21,7 +21,7 @@ export function existingHistoryOf(events: readonly DomainEvent[]): ExistingHisto
 export function latestFinishedSession(events: readonly DomainEvent[]): SessionProjection | null {
   let latest: SessionProjection | null = null;
   for (const projection of projectAll(events).values()) {
-    if (projection.session?.status !== 'finished') continue;
+    if (projection.session?.status !== 'finished' || projection.session.deleted) continue;
     if (latest?.session == null || projection.session.startedAt > latest.session.startedAt) {
       latest = projection;
     }

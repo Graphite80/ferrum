@@ -106,6 +106,7 @@ export interface Session {
   readonly title: string | null;
   readonly note: string | null;
   readonly amendedAfterFinish: boolean;
+  readonly deleted: boolean;
 }
 
 export function isWorkingSet(set: WorkoutSet): boolean {

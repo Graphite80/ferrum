@@ -28,6 +28,8 @@ export interface ProjectionAnomaly {
     | 'amend_of_unknown_set'
     | 'delete_of_unknown_set'
     | 'restore_of_unknown_set'
+    | 'delete_of_unknown_session'
+    | 'restore_of_unknown_session'
     | 'reorder_lists_unknown_exercise'
     | 'duplicate_event_id';
   readonly eventId: EventId;
@@ -167,6 +169,7 @@ function apply(state: MutableState, event: DomainEvent): void {
         title: payload.title,
         note: null,
         amendedAfterFinish: false,
+        deleted: false,
       };
       return;
     }
@@ -401,6 +404,35 @@ function apply(state: MutableState, event: DomainEvent): void {
     case 'SessionReopened': {
       if (state.session == null) return;
       state.session = { ...state.session, status: 'active', finishedAt: null };
+      return;
+    }
+
+    // A session tombstone, mirroring the set tombstone of INVARIANTS §7: deletion is a
+    // flag flip, never a removal. Every exercise, set and amendment stays in the
+    // projection, and delete → restore → delete converges through the total event order.
+    case 'SessionDeleted': {
+      if (state.session == null) {
+        state.anomalies.push({
+          kind: 'delete_of_unknown_session',
+          eventId: event.eventId,
+          detail: `Session ${event.payload.sessionId} has no SessionStarted in this log`,
+        });
+        return;
+      }
+      state.session = { ...state.session, deleted: true };
+      return;
+    }
+
+    case 'SessionRestored': {
+      if (state.session == null) {
+        state.anomalies.push({
+          kind: 'restore_of_unknown_session',
+          eventId: event.eventId,
+          detail: `Session ${event.payload.sessionId} has no SessionStarted in this log`,
+        });
+        return;
+      }
+      state.session = { ...state.session, deleted: false };
       return;
     }
   }

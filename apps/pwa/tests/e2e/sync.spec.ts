@@ -141,6 +141,41 @@ test.describe('sync across devices', () => {
     await deviceB.close();
   });
 
+  test('a deletion on device A reaches device B and hides the workout there too', async ({
+    browser,
+  }) => {
+    const token = await mintToken();
+
+    const deviceA = await browser.newContext();
+    const pageA = await deviceA.newPage();
+    await configureSync(pageA, token);
+    await logWorkout(pageA, 1);
+    await syncNowExpectDrained(pageA);
+
+    const deviceB = await browser.newContext();
+    const pageB = await deviceB.newPage();
+    await configureSync(pageB, token);
+    await pageB.getByTestId('open-history').click();
+    await expect(pageB.getByTestId('history-item')).toHaveCount(1);
+    await pageB.getByTestId('back-home').click();
+
+    await pageA.getByTestId('open-history').click();
+    await pageA.getByTestId('history-item').click();
+    await pageA.getByTestId('delete-workout').click();
+    await pageA.getByTestId('confirm-delete-workout').click();
+    await expect(pageA.getByTestId('history-item')).toHaveCount(0);
+    await pageA.getByTestId('back-home').click();
+    await syncNowExpectDrained(pageA);
+
+    await syncNowExpectDrained(pageB);
+    await pageB.getByTestId('open-history').click();
+    await expect(pageB.getByTestId('history-item')).toHaveCount(0);
+    await expect(pageB.getByTestId('show-deleted-toggle')).toHaveText('Show deleted (1)');
+
+    await deviceA.close();
+    await deviceB.close();
+  });
+
   test('a bot import converges into the device and the folded clock keeps pushing cleanly', async ({
     browser,
   }) => {
