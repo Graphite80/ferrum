@@ -133,7 +133,13 @@ export function WorkoutScreen({
     [projection, allSetsByExercise, planSlots, equipmentByDefinition]
   );
 
+  // Every plan input has to have resolved first. Looking up history against a signature
+  // that is about to change replays every stored session for an answer that is thrown
+  // away, and on a phone that is the most expensive thing this screen does.
+  const plansSettled = planSlots !== undefined && equipment !== undefined;
+
   useEffect(() => {
+    if (!plansSettled) return;
     const wanted = plans
       .filter(entry => !lastTimes.has(entry.plan.comparisonSignature))
       .map(entry => ({
@@ -148,14 +154,18 @@ export function WorkoutScreen({
         return next;
       });
     });
-  }, [plans, lastTimes, sessionId]);
+  }, [plans, plansSettled, lastTimes, sessionId]);
 
   // The plan snapshot must be resolved before the first entry row mounts: SetRow
   // captures its defaults in state at mount, so a plan arriving late would leave
   // the prefill at the generic fallback instead of the routine's target. The
   // slots query resolves to [] when there is no plan, so undefined here always
   // means "still loading", never "planless session".
-  if (projection?.session == null || planSlots === undefined) {
+  //
+  // The machine list is in the same gate for a harder reason: it feeds the comparison
+  // signature. A set logged in the gap would be filed against no machine at all and
+  // land in a bucket the user never chose (INVARIANTS §1a).
+  if (projection?.session == null || !plansSettled) {
     return (
       <main className="p-6 text-ash" data-testid="loading-workout">
         Loading workout…

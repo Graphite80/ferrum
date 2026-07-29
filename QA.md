@@ -13,6 +13,8 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
 - Postgres: role/db `ferrum_production` on shared CNPG via pooler; password secret
   `shared-postgres-ferrum-production` (shared-database ns) → ExternalSecret `ferrum-postgres`.
 - SonarCloud: no project configured — skip, note as N/A.
+- Schemathesis: N/A — the API publishes no OpenAPI document, so the autoqa gate is correctly
+  disabled. Cover the routes with `services/api/tests/api.test.ts` and the manual smoke below.
 - Health: `/health` = liveness (static); `/ready` = readiness (checks Postgres).
 
 ## Invariants that bite
@@ -59,3 +61,16 @@ test`. The sync spec spawns `services/api` `dev:memory` (PGlite) itself.
 - Deletion is a tombstone that must stop the workout counting everywhere, not just in list
   views: `allSets` (domain) excludes deleted sessions, and `db/history.ts` guards both the
   prefill and the PR baseline. A new reader over sessions needs the same filter.
+- Post-deploy autoqa races the rollout it is named for: the sensor submits the autoqa
+  workflow in PARALLEL with the image build, so its wait budget has to cover build +
+  Image Updater poll + ArgoCD sync + rollout (~12.2m measured). It was 12m and silently
+  QA'd the PREVIOUS release while reporting success; raised to 20m in gitops
+  `workflow-templates/autoqa.yaml`. Always read the first two lines of the autoqa log:
+  "Live site serves main-<sha>" means the run is trustworthy, the `::warning::` line
+  means it tested something else.
+- A QA browser profile holds a service worker from whatever build it last loaded, and
+  `registerType: 'prompt'` keeps it there until "Restart" is tapped. A cache-busting query
+  string does not help. Unregister the worker and clear `caches` before believing anything
+  the browser shows, or an old bundle will fake a regression that production does not have.
+- Smoke the write path with a well-formed body: `{"deviceId":...,"events":[],"idempotencyKey":...}`.
+  An empty `{}` returns a 400 protocol error, which proves validation but not the write.

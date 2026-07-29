@@ -24,3 +24,7 @@ SECURITY_AUDIT.md
 
 # packages/exercise-library/src/generated/ is deliberately committed: it is the compiled
 # form of src/data/*.yaml (npm run generate) and the only thing the browser bundle reads.
+
+# QA scratch: screenshots taken while checking a fix belong in the session scratchpad,
+# not in the repo root (rir-check.png was committed by accident in 4ac27df).
+/*.png

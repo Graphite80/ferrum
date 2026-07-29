@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { type ExerciseDefinition } from '@ferrum/domain';
 import { useLiveData } from '../../components/live-data.ts';
 import {
@@ -9,6 +9,24 @@ import {
   removeEquipment,
 } from '../../data/equipment-store.ts';
 import { button, card, eyebrow } from '../../ui.ts';
+
+const FIELD_CLASS =
+  'tap-target rounded-md border border-seam bg-ingot px-3 text-base text-chalk outline-none placeholder:text-ash';
+
+function Field(props: {
+  readonly label: string;
+  readonly hint: string;
+  readonly children: ReactNode;
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-xs text-ash">
+        {props.label} <span className="text-frame-lit">{props.hint}</span>
+      </span>
+      {props.children}
+    </label>
+  );
+}
 
 export interface EquipmentPickerSheetProps {
   readonly definition: ExerciseDefinition;
@@ -95,39 +113,46 @@ export function EquipmentPickerSheet(props: EquipmentPickerSheetProps) {
 
       <section className={card({ className: 'flex flex-col gap-2 p-3' })}>
         <h3 className={eyebrow()}>Add a machine</h3>
-        <input
-          type="text"
-          className="tap-target rounded-md border border-seam bg-ingot px-3 text-base text-chalk outline-none placeholder:text-ash"
-          placeholder="Name, e.g. City Gym chest press"
-          value={name}
-          data-testid="equipment-name"
-          onChange={event => {
-            setName(event.target.value);
-          }}
-        />
-        <input
-          type="text"
-          className="tap-target rounded-md border border-seam bg-ingot px-3 text-base text-chalk outline-none placeholder:text-ash"
-          placeholder="Manufacturer, e.g. Technogym"
-          value={manufacturer}
-          data-testid="equipment-manufacturer"
-          onChange={event => {
-            setManufacturer(event.target.value);
-          }}
-        />
-        <input
-          type="number"
-          inputMode="decimal"
-          min={0}
-          step={0.5}
-          className="tap-target rounded-md border border-seam bg-ingot px-3 text-base text-chalk outline-none placeholder:text-ash"
-          placeholder="Plate increment in kg (optional)"
-          value={increment}
-          data-testid="equipment-increment"
-          onChange={event => {
-            setIncrement(event.target.value);
-          }}
-        />
+        {/* A placeholder is not a label: it disappears the moment the field has content,
+            which is exactly when a screen reader user needs to know what they typed. */}
+        <Field label="Name" hint="e.g. City Gym chest press">
+          <input
+            type="text"
+            className={FIELD_CLASS}
+            placeholder="City Gym chest press"
+            value={name}
+            data-testid="equipment-name"
+            onChange={event => {
+              setName(event.target.value);
+            }}
+          />
+        </Field>
+        <Field label="Manufacturer" hint="e.g. Technogym">
+          <input
+            type="text"
+            className={FIELD_CLASS}
+            placeholder="Technogym"
+            value={manufacturer}
+            data-testid="equipment-manufacturer"
+            onChange={event => {
+              setManufacturer(event.target.value);
+            }}
+          />
+        </Field>
+        <Field label="Plate increment in kg" hint="optional">
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step={0.5}
+            className={FIELD_CLASS}
+            value={increment}
+            data-testid="equipment-increment"
+            onChange={event => {
+              setIncrement(event.target.value);
+            }}
+          />
+        </Field>
         <button
           type="button"
           className={button({ intent: 'primary' })}

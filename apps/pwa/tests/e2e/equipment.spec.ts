@@ -74,3 +74,48 @@ test.describe('machine identity', () => {
     await expect(barbell.getByTestId('open-equipment-picker')).toHaveCount(0);
   });
 });
+
+// The production case the first two tests missed: history logged BEFORE any machine was
+// named carries the routine's signature, and naming a machine afterwards must surface
+// that history as another machine's rather than hiding it.
+test('history logged before any machine existed is still surfaced', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('start-routine').click();
+  await expect(page.getByTestId('session-title')).toBeVisible();
+  await page.getByTestId('set-0-done').first().click();
+  await expect(page.getByTestId('rest-timer')).toBeVisible();
+  await page.getByTestId('finish-session').click();
+  await expect(page.getByTestId('workout-summary')).toBeVisible();
+  await page.getByTestId('summary-home').click();
+
+  await page.getByTestId('start-routine').click();
+  await expect(page.getByTestId('session-title')).toBeVisible();
+  await expect(page.getByTestId('previous-label').first()).toContainText('Last time');
+
+  await page.getByTestId('open-equipment-picker').first().click();
+  await page.getByTestId('equipment-name').fill('Named later');
+  await page.getByTestId('save-equipment').click();
+  await expect(page.getByTestId('equipment-picker')).toBeHidden();
+
+  await expect(page.getByTestId('previous-label').first()).toContainText('Other machine');
+});
+
+// A placeholder is not an accessible name once the field has content. The repo has
+// already shipped this bug once on the RIR field (4ac27df); this is the guard.
+test('every field in the machine form is labelled, not just placeholdered', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('start-routine').click();
+  await page.getByTestId('open-equipment-picker').first().click();
+  const picker = page.getByTestId('equipment-picker');
+  await expect(picker).toBeVisible();
+
+  for (const testId of ['equipment-name', 'equipment-manufacturer', 'equipment-increment']) {
+    const field = picker.getByTestId(testId);
+    await field.fill('7');
+    const named = await field.evaluate(input => {
+      const label = input.closest('label');
+      return (input.getAttribute('aria-label') ?? label?.textContent ?? '').trim().length > 0;
+    });
+    expect(named, `${testId} has no label`).toBe(true);
+  }
+});
