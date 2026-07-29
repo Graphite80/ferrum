@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { serve, type ServerType } from '@hono/node-server';
 import { PGlite } from '@electric-sql/pglite';
 import fc from 'fast-check';
@@ -39,7 +41,11 @@ let baseUrl = '';
 beforeAll(async () => {
   const db = pgliteDatabase(new PGlite());
   await migrate(db);
-  const app = createApp({ db, enableDevRoutes: true });
+  const app = createApp({
+    db,
+    enableDevRoutes: true,
+    staticDir: path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/static'),
+  });
   await new Promise<void>(resolve => {
     server = serve({ fetch: app.fetch, port: 0, hostname: '127.0.0.1' }, info => {
       baseUrl = `http://127.0.0.1:${info.port}`;
@@ -323,5 +329,31 @@ describe('replay on the server output', () => {
     const pulled = await pullAll(token);
     expect(pulled).toHaveLength(sample.events.length);
     expect(projectSession(SESSION_ID, pulled)).toEqual(projectSession(SESSION_ID, sample.events));
+  });
+});
+
+describe('single-page fallback', () => {
+  it('serves the app shell for an unknown document path', async () => {
+    const response = await fetch(`${baseUrl}/history`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('text/html');
+  });
+
+  it('refuses a write to a path no route claims instead of answering with the shell', async () => {
+    const response = await fetch(`${baseUrl}/nope`, { method: 'POST' });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toStrictEqual({ error: 'not_found' });
+  });
+
+  it('never lets an API namespace fall through to the shell', async () => {
+    const wrongMethod = await fetch(`${baseUrl}/auth/bootstrap`);
+    expect(wrongMethod.status).toBe(404);
+    expect(wrongMethod.headers.get('content-type')).toContain('application/json');
+
+    // The guarded namespaces answer 401 before path matching, which is stricter
+    // than 404: an unauthenticated caller learns nothing about which paths exist.
+    const unknownApi = await fetch(`${baseUrl}/sync/nope`);
+    expect(unknownApi.status).toBe(401);
+    expect(unknownApi.headers.get('content-type')).toContain('application/json');
   });
 });
