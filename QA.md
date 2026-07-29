@@ -16,6 +16,10 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
 - Schemathesis: N/A — the API publishes no OpenAPI document, so the autoqa gate is correctly
   disabled. Cover the routes with `services/api/tests/api.test.ts` and the manual smoke below.
 - Health: `/health` = liveness (static); `/ready` = readiness (checks Postgres).
+- Telegram bot: N/A while unmounted. The deployment carries no `TELEGRAM_*` env, so
+  `POST /telegram/webhook` answers 404 and no user receives a bot message — the chat
+  communication review has nothing to read. Re-check the env every pass; the moment those
+  variables appear the review becomes mandatory and `services/api/src/bot/` is its subject.
 
 ## Invariants that bite
 
@@ -74,3 +78,13 @@ test`. The sync spec spawns `services/api` `dev:memory` (PGlite) itself.
   the browser shows, or an old bundle will fake a regression that production does not have.
 - Smoke the write path with a well-formed body: `{"deviceId":...,"events":[],"idempotencyKey":...}`.
   An empty `{}` returns a 400 protocol error, which proves validation but not the write.
+- The API logs failures, and only failures: one JSON line per 4xx/5xx on an API path and
+  per failed write anywhere, successes and asset reads stay silent (`app.ts`). So an empty
+  pod log over the autoqa window is now evidence rather than the absence of logging it used
+  to be, and `grep '"level":"error"'` is the 5xx check. An `OPTIONS /` 404 appears
+  occasionally from an outside prober and is not an app fault.
+- Before bumping the autoqa pin in gitops `workflow-templates/autoqa.yaml`, confirm the
+  candidate tag was actually published: `gh api user/packages/container/autoqa/versions`
+  lists real tags. autoqa main can be ahead of the newest image (a Dependabot CI-action
+  merge lands without producing one), and pinning a tag that does not exist breaks the QA
+  gate for every consumer, not just this app.
