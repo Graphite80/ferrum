@@ -28,6 +28,7 @@
       "@ferrum/domain/testing": ["./packages/domain/src/testing.ts"],
       "@ferrum/domain/*": ["./packages/domain/src/*"],
       "@ferrum/exercise-library": ["./packages/exercise-library/src/index.ts"],
+      "@ferrum/exercise-media": ["./packages/exercise-media/src/index.ts"],
       "@ferrum/importers": ["./packages/importers/src/index.ts"],
       "@ferrum/progression-engine": ["./packages/progression-engine/src/index.ts"],
       "@ferrum/sync-protocol": ["./packages/sync-protocol/src/index.ts"],

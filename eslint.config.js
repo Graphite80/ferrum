@@ -40,6 +40,7 @@ export default [
       'boundaries/elements': [
         { type: 'domain', pattern: 'packages/domain/src/**/*' },
         { type: 'exercise-library', pattern: 'packages/exercise-library/src/**/*' },
+        { type: 'exercise-media', pattern: 'packages/exercise-media/src/**/*' },
         { type: 'progression-engine', pattern: 'packages/progression-engine/src/**/*' },
         { type: 'importers', mode: 'full', pattern: 'packages/importers/src/**/*' },
         { type: 'sync-protocol', pattern: 'packages/sync-protocol/src/**/*' },
@@ -102,6 +103,7 @@ export default [
           rules: [
             { from: 'domain', allow: ['domain'] },
             { from: 'exercise-library', allow: ['domain', 'exercise-library'] },
+            { from: 'exercise-media', allow: ['domain', 'exercise-media'] },
             { from: 'progression-engine', allow: ['domain', 'progression-engine'] },
             { from: 'importers', allow: ['domain', 'exercise-library', 'importers'] },
             { from: 'sync-protocol', allow: ['domain', 'sync-protocol'] },
@@ -118,7 +120,14 @@ export default [
             },
             {
               from: 'app-ui',
-              allow: ['domain', 'exercise-library', 'app-ui', 'app-data', 'app-platform'],
+              allow: [
+                'domain',
+                'exercise-library',
+                'exercise-media',
+                'app-ui',
+                'app-data',
+                'app-platform',
+              ],
             },
             {
               from: 'app-data',
@@ -149,6 +158,7 @@ export default [
   {
     files: [
       'packages/domain/src/**/*.ts',
+      'packages/exercise-media/src/**/*.ts',
       'packages/progression-engine/src/**/*.ts',
       'packages/sync-protocol/src/**/*.ts',
     ],

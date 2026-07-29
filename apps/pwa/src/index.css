@@ -15,6 +15,12 @@
   --color-plate-red: #d22c2c;
   --color-plate-red-pressed: #b02525;
   --color-plate-green: #3f8a46;
+  --color-plate-amber: #d2762c;
+  /* Technique diagrams: gym hardware sits behind the lifter, the far limb behind the near
+     one. Three tones between seam and chalk is what keeps a stick figure readable. */
+  --color-frame: #3b4552;
+  --color-frame-lit: #5b6675;
+  --color-limb-far: #5a6474;
   --font-display: 'Saira Condensed', 'Arial Narrow', sans-serif;
   --font-sans: 'Saira', system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;

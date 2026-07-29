@@ -9,8 +9,11 @@ import {
   formatLoad,
   kilograms,
 } from '@ferrum/domain';
+import { loadExerciseLibrary } from '@ferrum/exercise-library';
 import { type LastPerformance } from '../../db/history.ts';
 import { displayStep } from '../../data/settings-store.ts';
+import { ExerciseDemoSheet } from './ExerciseDemoSheet.tsx';
+import { ExerciseFigure } from '../../components/ExerciseFigure.tsx';
 import { type ExercisePlan } from './exercise-plan.ts';
 import { LoggedSetRow } from './LoggedSetRow.tsx';
 import { PlateSleeve } from './PlateSleeve.tsx';
@@ -35,6 +38,14 @@ export function ExerciseSection(props: ExerciseSectionProps) {
   const { plan, unit, liveSets, lastTime } = props;
   const [menuOpen, setMenuOpen] = useState(false);
   const [extraOpen, setExtraOpen] = useState(false);
+  const [demoOpen, setDemoOpen] = useState(false);
+  // Same resolution order as planExercise: a session recorded before an id was canonical
+  // still points at the definition through its aliases.
+  const library = loadExerciseLibrary();
+  const definition =
+    library.byId.get(props.exercise.exerciseDefinitionId) ??
+    library.resolveAlias(props.exercise.exerciseDefinitionId) ??
+    null;
 
   const lastLogged = liveSets.at(-1) ?? null;
   const lastTimeResolved = liveSets.length > 0 || lastTime !== undefined;
@@ -64,7 +75,22 @@ export function ExerciseSection(props: ExerciseSectionProps) {
           className="min-w-0 font-display text-lg leading-tight font-semibold uppercase"
           data-testid="exercise-title"
         >
-          {plan.name}
+          {definition == null ? (
+            plan.name
+          ) : (
+            <button
+              type="button"
+              className="flex min-h-11 items-center gap-2 text-left uppercase"
+              aria-label={`How to do ${plan.name}`}
+              data-testid="open-exercise-demo"
+              onClick={() => {
+                setDemoOpen(true);
+              }}
+            >
+              <ExerciseFigure definition={definition} size={48} variant="thumbnail" />
+              <span className="min-w-0">{plan.name}</span>
+            </button>
+          )}
         </h2>
         <div className="flex shrink-0 items-center gap-2">
           <PlateSleeve completed={liveSets.length} target={plan.targetSets} />
@@ -154,6 +180,15 @@ export function ExerciseSection(props: ExerciseSectionProps) {
             + Add set
           </button>
         </>
+      )}
+
+      {demoOpen && definition != null && (
+        <ExerciseDemoSheet
+          definition={definition}
+          onClose={() => {
+            setDemoOpen(false);
+          }}
+        />
       )}
     </section>
   );

@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { type ExerciseDefinition } from '@ferrum/domain';
 import { loadExerciseLibrary } from '@ferrum/exercise-library';
+import { ExerciseDemoSheet } from './ExerciseDemoSheet.tsx';
+import { ExerciseFigure } from '../../components/ExerciseFigure.tsx';
 import { button, card } from '../../ui.ts';
 
 export interface ExerciseSearchPanelProps {
@@ -10,6 +12,7 @@ export interface ExerciseSearchPanelProps {
 
 export function ExerciseSearchPanel(props: ExerciseSearchPanelProps) {
   const [query, setQuery] = useState('');
+  const [demo, setDemo] = useState<ExerciseDefinition | null>(null);
   const results = useMemo(
     () => (query.trim().length === 0 ? [] : loadExerciseLibrary().search(query).slice(0, 30)),
     [query]
@@ -55,23 +58,48 @@ export function ExerciseSearchPanel(props: ExerciseSearchPanelProps) {
           </li>
         )}
         {results.map(definition => (
-          <li key={definition.id}>
+          <li key={definition.id} className="flex items-stretch gap-2">
             <button
               type="button"
-              className={card({ className: 'tap-target w-full px-4 py-2 text-left' })}
+              className={card({
+                className: 'tap-target flex flex-1 items-center gap-3 px-3 py-2 text-left',
+              })}
               data-testid="exercise-search-result"
               onClick={() => {
                 props.onPick(definition);
               }}
             >
-              <span className="block text-sm font-medium text-chalk">{definition.name}</span>
-              <span className="block text-xs text-ash">
-                {definition.equipmentType.replaceAll('_', ' ')}
+              <ExerciseFigure definition={definition} size={44} variant="thumbnail" />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-chalk">{definition.name}</span>
+                <span className="block text-xs text-ash">
+                  {definition.equipmentType.replaceAll('_', ' ')}
+                </span>
               </span>
+            </button>
+            <button
+              type="button"
+              className={button({ intent: 'quiet', className: 'px-4' })}
+              aria-label={`How to do ${definition.name}`}
+              data-testid="open-exercise-demo"
+              onClick={() => {
+                setDemo(definition);
+              }}
+            >
+              How
             </button>
           </li>
         ))}
       </ul>
+
+      {demo != null && (
+        <ExerciseDemoSheet
+          definition={demo}
+          onClose={() => {
+            setDemo(null);
+          }}
+        />
+      )}
     </div>
   );
 }

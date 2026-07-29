@@ -20,6 +20,7 @@ Read `docs/INVARIANTS.md` before changing anything in `packages/domain`. It is t
 ```text
 packages/domain              zero-dependency core: events, projection, load semantics, HLC, time
 packages/exercise-library    80 curated definitions (YAML -> generated TS), ranked search
+packages/exercise-media      technique diagrams: stick rig + IK, per-movement poses, muscle map
 packages/importers           life-as-code JSON, Hevy CSV, Strong CSV, Telegram shorthand
 packages/progression-engine  three versioned deterministic policies + historical replay harness
 packages/sync-protocol       push/pull wire format: validation, cursors, idempotency keys
@@ -48,6 +49,9 @@ cd apps/pwa && npx vite preview --port 4173 --strictPort --host 127.0.0.1
 cd apps/pwa && CI=1 BASE_URL=http://127.0.0.1:4173 npx playwright test   # workout-loss drills
 
 npm run generate --workspace @ferrum/exercise-library   # after editing src/data/*.yaml
+
+# Judge a pose by eye, not by trigonometry: renders every animation to one static page.
+npx tsx packages/exercise-media/scripts/render-gallery.mjs /tmp/gallery.html   # or `0:10` to page
 
 npm run dev --workspace @ferrum/api                     # needs DATABASE_URL; bot needs
                                                         # TELEGRAM_BOT_TOKEN + TELEGRAM_WEBHOOK_SECRET
@@ -78,6 +82,11 @@ Two suites carry the product's core promises and must never be weakened:
 suite. The first version of that generator produced ~12-event sessions and every property passed
 while barely exercising delete, reorder or superset. If you touch the arbitrary, that test is what
 stops the suite from going quietly vacuous.
+
+`packages/exercise-media/tests/coverage.test.ts` plays the same role for the technique diagrams:
+it asserts every exercise resolves to a pose, stays inside its canvas, actually moves, and shades
+every primary mover. It cannot see whether a pose looks _right_ — that is what the gallery script
+is for, and a new movement family is not done until it has been looked at.
 
 ## Platform constraints that shaped the code
 
