@@ -28,6 +28,7 @@ import {
 import {
   addExercise,
   amendSet,
+  deleteSession,
   deleteSet,
   finishSession,
   logSet,
@@ -41,10 +42,12 @@ export function WorkoutScreen({
   sessionId,
   unit,
   onFinished,
+  onDiscarded,
 }: {
   sessionId: SessionId;
   unit: WeightUnit;
   onFinished: () => void;
+  onDiscarded: () => void;
 }) {
   const projection = useLiveData(() => loadSession(sessionId), [sessionId]);
   const planSlots = useLiveData(() => loadSessionPlanSlots(sessionId), [sessionId]);
@@ -53,6 +56,7 @@ export function WorkoutScreen({
   const [nowMillis, setNowMillis] = useState(() => Date.now());
   const [wakeLock, setWakeLock] = useState<WakeLockState | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [lastTimes, setLastTimes] = useState<
     ReadonlyMap<ComparisonSignature, LastPerformance | null>
   >(new Map());
@@ -169,6 +173,28 @@ export function WorkoutScreen({
     return (
       <main className="p-6 text-ash" data-testid="loading-workout">
         Loading workout…
+      </main>
+    );
+  }
+
+  // Reachable without discarding here: another tab, or another device through sync, can
+  // tombstone the session while this screen is open. Logging into it would file sets under
+  // a workout that no list shows, so the screen stops being an entry surface.
+  if (projection.session.deleted) {
+    return (
+      <main className="flex flex-col gap-3 p-6" data-testid="workout-discarded">
+        <p className="text-chalk">This workout was discarded.</p>
+        <p className="text-sm text-ash">
+          Its sets are kept — History under Show deleted can restore the whole session.
+        </p>
+        <button
+          type="button"
+          className={button({ intent: 'secondary', className: 'self-start px-4' })}
+          data-testid="leave-discarded-workout"
+          onClick={onDiscarded}
+        >
+          Home
+        </button>
       </main>
     );
   }
@@ -313,6 +339,62 @@ export function WorkoutScreen({
           }}
         >
           Restore deleted set ({projection.deletedSets.length})
+        </button>
+      )}
+
+      {/* Last in the column and quiet, because it sits under a thumb that is aiming at
+          Finish. It is a tombstone, not an erasure: the sets stay in the log and History
+          can restore the whole session, which is what the confirm step says out loud. */}
+      {confirmingDiscard ? (
+        <div className={card({ className: 'flex flex-col gap-2 p-3' })}>
+          <span className="text-sm text-chalk" data-testid="discard-warning">
+            {projection.sets.length === 0
+              ? 'Discard this workout?'
+              : `Discard this workout and its ${String(projection.sets.length)} logged ${
+                  projection.sets.length === 1 ? 'set' : 'sets'
+                }?`}{' '}
+            <span className="text-ash">
+              Nothing is erased — it moves to History under Show deleted, where Restore brings it
+              back.
+            </span>
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className={button({ intent: 'secondary', className: 'flex-1' })}
+              data-testid="confirm-discard-session"
+              onClick={() => {
+                void (async () => {
+                  await deleteSession(sessionId, null, Date.now());
+                  await dismissRestTimer(sessionId);
+                  onDiscarded();
+                })();
+              }}
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              className={button({ intent: 'quiet', className: 'shrink-0 px-4' })}
+              data-testid="cancel-discard-session"
+              onClick={() => {
+                setConfirmingDiscard(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={button({ intent: 'quiet', className: 'self-start px-4' })}
+          data-testid="discard-session"
+          onClick={() => {
+            setConfirmingDiscard(true);
+          }}
+        >
+          Discard workout
         </button>
       )}
 

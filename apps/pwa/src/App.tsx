@@ -50,6 +50,13 @@ export function App() {
     history.pushState({ screen: next }, '', urlFor(next));
   };
 
+  // For a screen that must not be reachable again by going back — the entry it sits on
+  // describes a session that no longer accepts sets.
+  const replace = (next: Screen) => {
+    setScreen(next);
+    history.replaceState({ screen: next }, '', urlFor(next));
+  };
+
   useEffect(() => {
     history.replaceState({ screen: initialScreen() }, '', urlFor(initialScreen()));
     const onPopState = (event: PopStateEvent) => {
@@ -106,7 +113,13 @@ export function App() {
 
   return (
     <>
-      <CurrentScreen screen={screen} unit={unit} onNavigate={navigate} onUnitChanged={setUnit} />
+      <CurrentScreen
+        screen={screen}
+        unit={unit}
+        onNavigate={navigate}
+        onReplace={replace}
+        onUnitChanged={setUnit}
+      />
       {showUpdateToast && (
         <div
           className="fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md items-center justify-between gap-3 border-t border-seam bg-forged p-4"
@@ -131,11 +144,13 @@ function CurrentScreen({
   screen,
   unit,
   onNavigate,
+  onReplace,
   onUnitChanged,
 }: {
   screen: Screen;
   unit: WeightUnit;
   onNavigate: (screen: Screen) => void;
+  onReplace: (screen: Screen) => void;
   onUnitChanged: (unit: WeightUnit) => void;
 }) {
   switch (screen.name) {
@@ -167,6 +182,12 @@ function CurrentScreen({
           unit={unit}
           onFinished={() => {
             onNavigate({ name: 'summary', sessionId: screen.sessionId });
+          }}
+          // A discarded workout has no summary worth showing, and back must not walk
+          // into the tombstoned session either: replace the workout entry instead of
+          // pushing Home on top of it.
+          onDiscarded={() => {
+            onReplace({ name: 'home' });
           }}
         />
       );

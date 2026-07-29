@@ -96,6 +96,72 @@ test.describe('workout deletion', () => {
   });
 });
 
+test.describe('discarding a workout in progress', () => {
+  test('the confirm step names the cost, cancelling changes nothing, and the sets come back', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await page.getByTestId('start-routine').click();
+    await expect(page.getByTestId('session-title')).toBeVisible();
+    await page.getByTestId('set-0-done').first().click();
+    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+
+    // Cancelling leaves the workout exactly as it was, still accepting sets.
+    await page.getByTestId('discard-session').click();
+    await expect(page.getByTestId('discard-warning')).toContainText('1 logged set');
+    await page.getByTestId('cancel-discard-session').click();
+    await expect(page.getByTestId('confirm-discard-session')).toHaveCount(0);
+    await page.getByTestId('set-0-done').first().click();
+    await expect(page.getByTestId('set-count')).toContainText('2 sets');
+
+    await page.getByTestId('discard-session').click();
+    await expect(page.getByTestId('discard-warning')).toContainText('2 logged sets');
+    await page.getByTestId('confirm-discard-session').click();
+
+    // No summary for a discarded workout, and back must not walk into it again.
+    await expect(page.getByTestId('start-routine')).toBeVisible();
+    await expect(page.getByTestId('workout-summary')).toHaveCount(0);
+    await page.goBack();
+    await expect(page.getByTestId('session-title')).toHaveCount(0);
+
+    // A discarded session is not resumable, and it is not in the live history either.
+    await page.reload();
+    await expect(page.getByTestId('booting')).toHaveCount(0);
+    await expect(page.getByTestId('start-routine')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('session-title')).toHaveCount(0);
+
+    // Discard is a tombstone: restore hands both sets back.
+    await page.getByTestId('open-history').click();
+    await expect(page.getByTestId('history-item')).toHaveCount(0);
+    await page.getByTestId('show-deleted-toggle').click();
+    await page.getByTestId('restore-session').click();
+    await page.getByTestId('history-item').click();
+    await expect(page.getByTestId('detail-set-values')).toHaveCount(2);
+  });
+
+  test('a workout discarded in another tab stops accepting sets in this one', async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('start-routine').click();
+    await expect(page.getByTestId('session-title')).toBeVisible();
+    await page.getByTestId('set-0-done').first().click();
+    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+
+    const other = await page.context().newPage();
+    await other.goto('/');
+    // The other tab resumes the same active session and discards it there.
+    await expect(other.getByTestId('session-title')).toBeVisible({ timeout: 15_000 });
+    await other.getByTestId('discard-session').click();
+    await other.getByTestId('confirm-discard-session').click();
+    await expect(other.getByTestId('start-routine')).toBeVisible();
+
+    await expect(page.getByTestId('workout-discarded')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('set-0-done')).toHaveCount(0);
+    await page.getByTestId('leave-discarded-workout').click();
+    await expect(page.getByTestId('start-routine')).toBeVisible();
+    await other.close();
+  });
+});
+
 test.describe('erasing a deleted workout for good', () => {
   test('the confirm step is cancellable, and erasing survives a reload', async ({ page }) => {
     await finishWorkout(page, 2);
