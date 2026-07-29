@@ -109,13 +109,40 @@ test('every field in the machine form is labelled, not just placeholdered', asyn
   const picker = page.getByTestId('equipment-picker');
   await expect(picker).toBeVisible();
 
-  for (const testId of ['equipment-name', 'equipment-manufacturer', 'equipment-increment']) {
-    const field = picker.getByTestId(testId);
+  // getByLabel resolves the accessible name the way the platform does, so this fails if
+  // the label is decorative markup that no assistive technology would associate.
+  for (const [testId, label] of [
+    ['equipment-name', 'Name'],
+    ['equipment-manufacturer', 'Manufacturer'],
+    ['equipment-increment', 'Plate increment in kg'],
+  ] as const) {
+    const field = picker.getByLabel(label);
+    await expect(field, `${testId} is not reachable by its label`).toHaveAttribute(
+      'data-testid',
+      testId
+    );
     await field.fill('7');
-    const named = await field.evaluate(input => {
-      const label = input.closest('label');
-      return (input.getAttribute('aria-label') ?? label?.textContent ?? '').trim().length > 0;
-    });
-    expect(named, `${testId} has no label`).toBe(true);
+    await expect(field).toHaveValue('7');
   }
+});
+
+test('forgetting a machine takes two taps and says what it costs', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('start-routine').click();
+  await page.getByTestId('open-equipment-picker').first().click();
+  await page.getByTestId('equipment-name').fill('Mis-tap rig');
+  await page.getByTestId('save-equipment').click();
+  await expect(page.getByTestId('equipment-picker')).toBeHidden();
+
+  await page.getByTestId('open-equipment-picker').first().click();
+  await expect(page.getByTestId('equipment-option')).toHaveCount(1);
+
+  // One tap must not destroy anything: the machine id is inside every signature logged
+  // against it, and a re-added machine gets a new id that never rejoins those sets.
+  await page.getByTestId('forget-equipment').click();
+  await expect(page.getByTestId('equipment-option')).toHaveCount(1);
+  await expect(page.getByTestId('forget-warning')).toBeVisible();
+
+  await page.getByTestId('confirm-forget-equipment').click();
+  await expect(page.getByTestId('equipment-empty')).toBeVisible();
 });

@@ -19,6 +19,9 @@ export interface AppOptions {
   readonly bootstrapKey?: string;
   readonly telegram?: TelegramMount;
   readonly staticDir?: string;
+  // Injected so a test can assert on what would reach the pod log instead of
+  // scraping stderr.
+  readonly log?: (message: string) => void;
 }
 
 // Namespaces the single-page fallback must never answer for. Without this list a
@@ -36,8 +39,48 @@ export function createApp({
   bootstrapKey,
   telegram,
   staticDir,
+  log = message => {
+    globalThis.console.error(message);
+  },
 }: AppOptions): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
+
+  // Only failures, and only for API paths. Logging every request would drown the one
+  // line that matters in asset fetches; logging nothing — which is what this service did
+  // — means a 5xx in production leaves no trace at all, and the QA pass that reads these
+  // logs after every deploy has nothing to read.
+  app.use('/*', async (c, next) => {
+    const startedAt = Date.now();
+    await next();
+    const isRead = c.req.method === 'GET' || c.req.method === 'HEAD';
+    // A failed write is worth a line whatever path it was aimed at: it means a client
+    // believes an endpoint exists that does not.
+    if (c.res.status < 400 || (isRead && !isApiPath(c.req.path))) return;
+    log(
+      JSON.stringify({
+        level: c.res.status >= 500 ? 'error' : 'warn',
+        method: c.req.method,
+        path: c.req.path,
+        status: c.res.status,
+        durationMs: Date.now() - startedAt,
+      })
+    );
+  });
+
+  // Hono's default handler answers text/plain, so an unhandled exception was the one
+  // response in this API that a JSON client could not parse.
+  app.onError((error, c) => {
+    log(
+      JSON.stringify({
+        level: 'error',
+        method: c.req.method,
+        path: c.req.path,
+        status: 500,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    );
+    return c.json({ error: 'internal_error' }, 500);
+  });
 
   app.get('/health', c => c.json({ ok: true }));
 

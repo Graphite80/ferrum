@@ -40,6 +40,11 @@ export function EquipmentPickerSheet(props: EquipmentPickerSheetProps) {
   const [name, setName] = useState('');
   const [manufacturer, setManufacturer] = useState('');
   const [increment, setIncrement] = useState('');
+  // Forgetting a machine is not cosmetic: its id is baked into the comparison signature
+  // of every set logged on it, and a re-added machine gets a new id that will never match
+  // them again. One stray tap beside the row you meant to select would fork that
+  // exercise's history with no undo, so it takes two.
+  const [confirming, setConfirming] = useState<string | null>(null);
 
   const canAdd = name.trim().length > 0;
 
@@ -91,19 +96,40 @@ export function EquipmentPickerSheet(props: EquipmentPickerSheetProps) {
                   : `${String(machine.stackIncrementKg)} kg per plate`}
               </span>
             </button>
-            <button
-              type="button"
-              className={button({ intent: 'quiet', className: 'px-4' })}
-              aria-label={`Forget ${describeEquipment(machine)}`}
-              data-testid="forget-equipment"
-              onClick={() => {
-                void removeEquipment(machine.id);
-              }}
-            >
-              Forget
-            </button>
+            {confirming === machine.id ? (
+              <button
+                type="button"
+                className={button({ intent: 'primary', className: 'px-4' })}
+                aria-label={`Confirm forgetting ${describeEquipment(machine)}`}
+                data-testid="confirm-forget-equipment"
+                onClick={() => {
+                  setConfirming(null);
+                  void removeEquipment(machine.id);
+                }}
+              >
+                Sure?
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={button({ intent: 'quiet', className: 'px-4' })}
+                aria-label={`Forget ${describeEquipment(machine)}`}
+                data-testid="forget-equipment"
+                onClick={() => {
+                  setConfirming(machine.id);
+                }}
+              >
+                Forget
+              </button>
+            )}
           </li>
         ))}
+        {confirming != null && (
+          <li className="text-xs text-ash" data-testid="forget-warning">
+            Forgetting a machine unlinks the sets already logged on it: they stay in the log but
+            stop matching this exercise, and re-adding the machine will not rejoin them.
+          </li>
+        )}
         {machines?.length === 0 && (
           <li className="text-sm text-ash" data-testid="equipment-empty">
             No machine recorded yet for this exercise.

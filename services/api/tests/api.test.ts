@@ -40,14 +40,18 @@ import {
 
 let server: ServerType;
 let baseUrl = '';
+// Hoisted so a test can build a second app against the same migrated database instead
+// of standing up another Postgres for one assertion.
+let db: ReturnType<typeof pgliteDatabase>;
+const staticDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/static');
 
 beforeAll(async () => {
-  const db = pgliteDatabase(new PGlite());
+  db = pgliteDatabase(new PGlite());
   await migrate(db);
   const app = createApp({
     db,
     enableDevRoutes: true,
-    staticDir: path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/static'),
+    staticDir,
   });
   await new Promise<void>(resolve => {
     server = serve({ fetch: app.fetch, port: 0, hostname: '127.0.0.1' }, info => {
@@ -434,6 +438,50 @@ describe('replay on the server output', () => {
     const pulled = await pullAll(token);
     expect(pulled).toHaveLength(sample.events.length);
     expect(projectSession(SESSION_ID, pulled)).toEqual(projectSession(SESSION_ID, sample.events));
+  });
+});
+
+// A deploy is verified by reading the service's own logs over the QA window. That read
+// is worthless if a failing request says nothing, which is what this service used to do.
+describe('failure logging', () => {
+  it('records API failures and stays silent for successes and assets', async () => {
+    const lines: string[] = [];
+    const app = createApp({
+      db,
+      enableDevRoutes: false,
+      staticDir,
+      log: message => lines.push(message),
+    });
+
+    await app.request('/health');
+    await app.request('/history');
+    await app.request('/sync/pull');
+    await app.request('/nope', { method: 'POST' });
+
+    const logged = lines.map(line => JSON.parse(line) as Record<string, unknown>);
+    expect(logged.map(entry => entry.path)).toStrictEqual(['/sync/pull', '/nope']);
+    expect(logged[0]).toMatchObject({ level: 'warn', status: 401, method: 'GET' });
+    expect(typeof logged[0]?.durationMs).toBe('number');
+  });
+
+  it('answers an unhandled exception as JSON and logs it', async () => {
+    const lines: string[] = [];
+    const app = createApp({
+      db,
+      enableDevRoutes: false,
+      log: message => lines.push(message),
+    });
+    app.get('/boom', () => {
+      throw new Error('kaboom');
+    });
+
+    const response = await app.request('/boom');
+    expect(response.status).toBe(500);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    expect(await response.json()).toStrictEqual({ error: 'internal_error' });
+
+    const entry = JSON.parse(lines[0] ?? '{}') as Record<string, unknown>;
+    expect(entry).toMatchObject({ level: 'error', status: 500, error: 'kaboom' });
   });
 });
 
