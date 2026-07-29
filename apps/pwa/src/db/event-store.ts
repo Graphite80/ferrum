@@ -116,9 +116,24 @@ export async function importRemoteEvents(
   nowMillis: number
 ): Promise<number> {
   if (envelopes.length === 0) return 0;
-  const fresh = await db.transaction('rw', db.events, db.device, async () => {
-    const existing = await db.events.bulkGet(envelopes.map(envelope => envelope.eventId));
-    const unseen = envelopes.filter((_, index) => existing[index] === undefined);
+  const fresh = await db.transaction('rw', db.events, db.device, db.purges, async () => {
+    // A purge this device requested but has not delivered yet still has its events
+    // on the server; importing them back would undo the deletion on every sync
+    // until the request lands.
+    const purged = new Set(
+      (
+        await db.purges
+          .where('aggregateId')
+          .anyOf([...new Set(envelopes.map(envelope => envelope.aggregateId))])
+          .toArray()
+      ).map(record => record.aggregateId)
+    );
+    const admissible =
+      purged.size === 0
+        ? envelopes
+        : envelopes.filter(envelope => !purged.has(envelope.aggregateId));
+    const existing = await db.events.bulkGet(admissible.map(envelope => envelope.eventId));
+    const unseen = admissible.filter((_, index) => existing[index] === undefined);
     await db.events.bulkAdd(
       unseen.map(envelope => ({
         eventId: envelope.eventId,
@@ -159,6 +174,71 @@ export async function importRemoteEvents(
     return unseen;
   });
   return fresh.length;
+}
+
+// Purge is the only path that removes training data instead of tombstoning it
+// (INVARIANTS §7), so it takes everything the session owns in one transaction and
+// leaves a local tombstone behind to keep sync from re-importing it.
+async function purge(
+  aggregateIds: readonly string[],
+  nowMillis: number,
+  pushed: 0 | 1
+): Promise<void> {
+  if (aggregateIds.length === 0) return;
+  await db.transaction(
+    'rw',
+    db.events,
+    db.purges,
+    db.sessionPlans,
+    db.restTimers,
+    db.snapshots,
+    async () => {
+      await db.purges.bulkPut(
+        aggregateIds.map(aggregateId => ({
+          aggregateId,
+          requestedAtMillis: nowMillis,
+          pushed,
+        }))
+      );
+      await db.events
+        .where('aggregateId')
+        .anyOf([...aggregateIds])
+        .delete();
+      await db.sessionPlans.bulkDelete([...aggregateIds]);
+      await db.restTimers.bulkDelete([...aggregateIds]);
+      await db.snapshots.bulkDelete([...aggregateIds]);
+    }
+  );
+}
+
+export async function purgeSession(sessionId: SessionId, nowMillis: number): Promise<void> {
+  await purge([sessionId], nowMillis, 0);
+}
+
+export async function applyRemotePurges(
+  aggregateIds: readonly string[],
+  nowMillis: number
+): Promise<void> {
+  await purge(aggregateIds, nowMillis, 1);
+}
+
+export async function pendingPurges(limit: number): Promise<string[]> {
+  const rows = await db.purges.where('pushed').equals(0).limit(limit).toArray();
+  return rows.map(row => row.aggregateId);
+}
+
+export async function pendingPurgeCount(): Promise<number> {
+  return db.purges.where('pushed').equals(0).count();
+}
+
+export async function markPurgesPushed(aggregateIds: readonly string[]): Promise<void> {
+  if (aggregateIds.length === 0) return;
+  await db.transaction('rw', db.purges, async () => {
+    await db.purges
+      .where('aggregateId')
+      .anyOf([...aggregateIds])
+      .modify({ pushed: 1 });
+  });
 }
 
 export async function loadSession(sessionId: SessionId): Promise<SessionProjection> {

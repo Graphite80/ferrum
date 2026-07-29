@@ -163,7 +163,8 @@ Two of these are additions to the original plan's list, and both are load-bearin
   sets one by one.
 
 Not event-producing: routines, programs, equipment profiles, aliases, preferences, unit settings.
-Those are versioned records.
+Those are versioned records. Purging a session (§7a) is not event-producing either, and for a
+different reason: it destroys log entries rather than adding one.
 
 ---
 
@@ -183,6 +184,32 @@ deleted stays gone until they explicitly say otherwise.
 
 **Enforced by** `packages/domain/src/projection.ts`; the never-lost property is asserted in
 `replay.test.ts` — "never loses a logged set".
+
+### 7a. Purge: the one operation that leaves the log
+
+A user who deletes a workout must also be able to destroy it. Purge does that, and it is
+deliberately **not** an event type: it removes rows instead of adding them, nothing about it
+converges, and replaying it is meaningless. The domain layer therefore does not know it exists —
+it lives in storage and sync, and the projection's never-lost property is untouched.
+
+What it costs, and what it buys:
+
+- Only a **deleted** session can be purged. The destructive path is two decisions deep, and the
+  irreversible one is never adjacent to Restore in its confirmed state.
+- Locally it takes the events, the plan snapshot, the rest timer and the snapshot row in one
+  transaction, and writes a **local tombstone** in `purges`. Without that tombstone the next pull
+  re-imports the workout and "delete forever" lasts until the next sync.
+- Server-side the rows are deleted and one row per aggregate is written to `purged_aggregates`.
+  That journal is what other replicas read: it has its own cursor (`purgedAfter`), because the
+  events it refers to no longer exist to carry the news.
+- A device that has not read the journal yet still holds the session and will push it back. The
+  server counts those events as `purged` and refuses them, so the tombstone outranks the push for
+  as long as it exists.
+
+**Enforced by** the purge suite in `services/api/tests/api.test.ts`, the purge-propagation tests in
+`apps/pwa/tests/unit/sync-client.test.ts`, and end-to-end by
+`apps/pwa/tests/e2e/history-delete.spec.ts` and `apps/pwa/tests/e2e/sync.spec.ts` — "erasing on
+device A destroys the workout on the server and on device B".
 
 ---
 

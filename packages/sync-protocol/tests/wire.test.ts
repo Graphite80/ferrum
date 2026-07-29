@@ -66,15 +66,26 @@ describe('wire round-trip', () => {
     );
   });
 
-  it('pull response round-trips including cursor and hasMore', () => {
+  it('pull response round-trips including cursor, hasMore and the purge journal', () => {
     const events = sortEvents(sampleEvents());
-    const response = { events, cursor: 42, hasMore: true };
+    const response = {
+      events,
+      cursor: 42,
+      hasMore: true,
+      purges: [{ aggregateId: 'ses_erased', sequence: 7 }],
+      purgeCursor: 7,
+    };
     const parsed = parsePullResponse(overWire(serializePullResponse(response)));
     expect(parsed).toEqual(response);
   });
 
+  it('reads a pull response from a server that predates the purge journal', () => {
+    const parsed = parsePullResponse({ events: [], cursor: 9, hasMore: false });
+    expect(parsed).toEqual({ events: [], cursor: 9, hasMore: false, purges: [], purgeCursor: 0 });
+  });
+
   it('push response round-trips', () => {
-    const response = { accepted: 3, duplicates: 2, cursor: 17 };
+    const response = { accepted: 3, duplicates: 2, purged: 1, cursor: 17 };
     expect(parsePushResponse(overWire(serializePushResponse(response)))).toEqual(response);
   });
 
@@ -159,6 +170,7 @@ describe('malformed input rejection', () => {
     expect(isProtocolError(parsePullRequest({ afterSequence: -1, limit: 10 }))).toBe(true);
     expect(parsePullRequest({ afterSequence: 0, limit: 10 })).toEqual({
       afterSequence: 0,
+      afterPurgeSequence: 0,
       limit: 10,
     });
   });

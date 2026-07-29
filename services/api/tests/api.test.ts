@@ -16,9 +16,12 @@ import {
 import {
   isProtocolError,
   parsePullResponse,
+  parsePurgeResponse,
   parsePushResponse,
+  serializePurgeRequest,
   serializePushRequest,
   type PullResponse,
+  type PurgeResponse,
   type PushResponse,
 } from '@ferrum/sync-protocol';
 import { createApp } from '../src/app.ts';
@@ -82,13 +85,30 @@ async function push(
   return parsed;
 }
 
-async function pull(token: string, after: number, limit?: number): Promise<PullResponse> {
+async function pull(
+  token: string,
+  after: number,
+  limit?: number,
+  purgedAfter = 0
+): Promise<PullResponse> {
   const query = limit === undefined ? `after=${after}` : `after=${after}&limit=${limit}`;
-  const response = await fetch(`${baseUrl}/sync/pull?${query}`, {
+  const response = await fetch(`${baseUrl}/sync/pull?${query}&purgedAfter=${purgedAfter}`, {
     headers: { authorization: `Bearer ${token}` },
   });
   expect(response.status).toBe(200);
   const parsed = parsePullResponse(await response.json());
+  if (isProtocolError(parsed)) throw new Error(parsed.message);
+  return parsed;
+}
+
+async function purge(token: string, aggregateIds: readonly string[]): Promise<PurgeResponse> {
+  const response = await fetch(`${baseUrl}/sync/purge`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify(serializePurgeRequest({ aggregateIds })),
+  });
+  expect(response.status).toBe(200);
+  const parsed = parsePurgeResponse(await response.json());
   if (isProtocolError(parsed)) throw new Error(parsed.message);
   return parsed;
 }
@@ -211,7 +231,7 @@ describe('push and pull', () => {
     const { userId, token } = await createToken();
     const events = smallSession(newBuilderState());
     const pushed = await push(token, 'phone', events);
-    expect(pushed).toEqual({ accepted: 5, duplicates: 0, cursor: pushed.cursor });
+    expect(pushed).toEqual({ accepted: 5, duplicates: 0, purged: 0, cursor: pushed.cursor });
 
     const pulled = await pull(token, 0);
     expect(pulled.hasMore).toBe(false);
@@ -313,6 +333,91 @@ describe('push and pull', () => {
 
     const pulled = await pull(token, 0);
     expect(pulled.events).toHaveLength(0);
+  });
+});
+
+describe('purge', () => {
+  it('destroys the events, journals the tombstone, and refuses to take them back', async () => {
+    const { token } = await createToken();
+    const events = smallSession(newBuilderState());
+    await push(token, 'phone', events);
+    expect((await pull(token, 0)).events).toHaveLength(5);
+
+    const purged = await purge(token, [SESSION_ID]);
+    expect(purged.purgedEvents).toBe(5);
+    expect(purged.purgeCursor).toBeGreaterThan(0);
+
+    // Gone from the log, and announced in the journal so other devices forget too.
+    const afterPurge = await pull(token, 0);
+    expect(afterPurge.events).toHaveLength(0);
+    expect(afterPurge.purges).toEqual([{ aggregateId: SESSION_ID, sequence: purged.purgeCursor }]);
+    expect(afterPurge.purgeCursor).toBe(purged.purgeCursor);
+
+    // A device that has not seen the journal yet re-pushes what it still holds.
+    // The tombstone outranks it; nothing is resurrected.
+    const rePushed = await push(token, 'phone', events);
+    expect(rePushed).toEqual({
+      accepted: 0,
+      duplicates: 0,
+      purged: 5,
+      cursor: rePushed.cursor,
+    });
+    expect((await pull(token, 0)).events).toHaveLength(0);
+  });
+
+  it('is idempotent and leaves the journal at one entry per aggregate', async () => {
+    const { token } = await createToken();
+    await push(token, 'phone', smallSession(newBuilderState()));
+
+    const first = await purge(token, [SESSION_ID]);
+    const second = await purge(token, [SESSION_ID, SESSION_ID]);
+    expect(second.purgedEvents).toBe(0);
+    expect(second.purgeCursor).toBe(first.purgeCursor);
+    expect((await pull(token, 0)).purges).toHaveLength(1);
+  });
+
+  it('hands a caller that already saw the journal an empty page', async () => {
+    const { token } = await createToken();
+    await push(token, 'phone', smallSession(newBuilderState()));
+    const purged = await purge(token, [SESSION_ID]);
+
+    const caughtUp = await pull(token, 0, undefined, purged.purgeCursor);
+    expect(caughtUp.purges).toHaveLength(0);
+    expect(caughtUp.purgeCursor).toBe(purged.purgeCursor);
+    expect(caughtUp.hasMore).toBe(false);
+  });
+
+  it('never reaches across users', async () => {
+    const mine = await createToken();
+    const theirs = await createToken();
+    await push(mine.token, 'phone', smallSession(newBuilderState()));
+    await push(theirs.token, 'tablet', smallSession(newBuilderState()));
+
+    const purged = await purge(mine.token, [SESSION_ID]);
+    expect(purged.purgedEvents).toBe(5);
+
+    const untouched = await pull(theirs.token, 0);
+    expect(untouched.events).toHaveLength(5);
+    expect(untouched.purges).toHaveLength(0);
+  });
+
+  it('rejects a malformed request instead of destroying something adjacent', async () => {
+    const { token } = await createToken();
+    for (const body of ['{"aggregateIds":[]}', '{"aggregateIds":""}', 'not json']) {
+      const response = await fetch(`${baseUrl}/sync/purge`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body,
+      });
+      expect(response.status).toBe(400);
+    }
+
+    const unauthenticated = await fetch(`${baseUrl}/sync/purge`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ aggregateIds: [SESSION_ID] }),
+    });
+    expect(unauthenticated.status).toBe(401);
   });
 });
 

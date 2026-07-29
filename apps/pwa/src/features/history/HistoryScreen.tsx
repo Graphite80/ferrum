@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { type SessionId, type SessionProjection } from '@ferrum/domain';
 import { listSessions, unacknowledgedCount } from '../../db/event-store.ts';
-import { restoreSession } from '../../data/session-controller.ts';
+import { purgeSession, restoreSession } from '../../data/session-controller.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
 import { button, card, mono } from '../../ui.ts';
 import { useLiveData } from '../../components/live-data.ts';
@@ -83,31 +83,79 @@ export function HistoryScreen({
           {showDeleted && deleted.length > 0 && (
             <ul className="flex flex-col gap-2" data-testid="deleted-history-list">
               {deleted.map(projection => (
-                <li
-                  key={projection.sessionId}
-                  className={card({ className: 'flex items-center gap-3 p-3' })}
-                  data-testid="deleted-history-item"
-                >
-                  <div className="min-w-0 flex-1 line-through opacity-60">
-                    <SessionSummary projection={projection} />
-                  </div>
-                  <button
-                    type="button"
-                    className={button({ intent: 'quiet', className: 'shrink-0 px-4' })}
-                    data-testid="restore-session"
-                    onClick={() => {
-                      void restoreSession(projection.sessionId, Date.now());
-                    }}
-                  >
-                    Restore
-                  </button>
-                </li>
+                <DeletedSessionRow key={projection.sessionId} projection={projection} />
               ))}
             </ul>
           )}
         </>
       )}
     </ScreenShell>
+  );
+}
+
+// Restore is one tap because it is safe; erasing is two, and the second one says
+// what it costs. This is the only action in the app that data cannot come back from,
+// so it never sits one mis-tap away from Restore in its confirmed state.
+function DeletedSessionRow({ projection }: { projection: SessionProjection }) {
+  const [confirmingPurge, setConfirmingPurge] = useState(false);
+
+  return (
+    <li
+      className={card({ className: 'flex items-center gap-3 p-3' })}
+      data-testid="deleted-history-item"
+    >
+      <div className="min-w-0 flex-1 line-through opacity-60">
+        <SessionSummary projection={projection} />
+      </div>
+      {confirmingPurge ? (
+        <>
+          <span className="shrink-0 text-xs text-ash">Erase permanently?</span>
+          <button
+            type="button"
+            className={button({ intent: 'secondary', className: 'shrink-0 px-4' })}
+            data-testid="confirm-purge-session"
+            onClick={() => {
+              void purgeSession(projection.sessionId, Date.now());
+            }}
+          >
+            Erase
+          </button>
+          <button
+            type="button"
+            className={button({ intent: 'quiet', className: 'shrink-0 px-4' })}
+            data-testid="cancel-purge-session"
+            onClick={() => {
+              setConfirmingPurge(false);
+            }}
+          >
+            Cancel
+          </button>
+        </>
+      ) : (
+        <>
+          <button
+            type="button"
+            className={button({ intent: 'quiet', className: 'shrink-0 px-4' })}
+            data-testid="restore-session"
+            onClick={() => {
+              void restoreSession(projection.sessionId, Date.now());
+            }}
+          >
+            Restore
+          </button>
+          <button
+            type="button"
+            className={button({ intent: 'quiet', className: 'shrink-0 px-4' })}
+            data-testid="purge-session"
+            onClick={() => {
+              setConfirmingPurge(true);
+            }}
+          >
+            Delete forever
+          </button>
+        </>
+      )}
+    </li>
   );
 }
 

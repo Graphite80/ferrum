@@ -16,6 +16,15 @@ export interface SessionSnapshot {
   payload: unknown;
 }
 
+// A local tombstone for a session the user destroyed. It outlives the events it
+// replaces: without it, the very next pull re-imports the workout from the server
+// and the "delete forever" the user asked for lasts until the next sync.
+export interface PurgeRecord {
+  aggregateId: string;
+  requestedAtMillis: number;
+  pushed: 0 | 1;
+}
+
 export interface DeviceRecord {
   key: 'device';
   deviceId: string;
@@ -72,6 +81,8 @@ export type MetaRecord =
   | {
       key: 'syncState';
       cursor: number;
+      // Absent on records written before the purge journal existed.
+      purgeCursor?: number;
       lastSuccessAtMillis: number | null;
       driftMessage: string | null;
     };
@@ -83,6 +94,7 @@ export class FerrumDb extends Dexie {
   restTimers!: EntityTable<RestTimerRecord, 'sessionId'>;
   routines!: EntityTable<RoutineRecord, 'id'>;
   sessionPlans!: EntityTable<SessionPlanRecord, 'sessionId'>;
+  purges!: EntityTable<PurgeRecord, 'aggregateId'>;
   // Table rather than EntityTable: EntityTable's InsertType collapses a
   // discriminated union to its common keys, rejecting every variant's own fields.
   settings!: Table<SettingsRecord, SettingsRecord['key'], SettingsRecord>;
@@ -109,6 +121,9 @@ export class FerrumDb extends Dexie {
     this.version(3).stores({
       events:
         '&eventId, aggregateId, orderKey, acknowledged, [aggregateId+orderKey], [acknowledged+orderKey]',
+    });
+    this.version(4).stores({
+      purges: '&aggregateId, pushed',
     });
   }
 }

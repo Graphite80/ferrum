@@ -2,15 +2,22 @@ import { liveQuery } from 'dexie';
 import { type DomainEvent } from '@ferrum/domain';
 import {
   PULL_DEFAULT_LIMIT,
+  PURGE_MAX_AGGREGATES,
   isProtocolError,
   parsePullResponse,
+  parsePurgeResponse,
   parsePushResponse,
+  serializePurgeRequest,
   serializePushRequest,
 } from '@ferrum/sync-protocol';
 import { db, withDatabaseRecovery } from '../db/ferrum-db.ts';
 import {
+  applyRemotePurges,
   importRemoteEvents,
   markAcknowledged,
+  pendingPurgeCount,
+  pendingPurges,
+  markPurgesPushed,
   unacknowledgedBatch,
   unacknowledgedCount,
 } from '../db/event-store.ts';
@@ -35,6 +42,7 @@ export type SyncTrigger =
 
 export interface SyncState {
   readonly cursor: number;
+  readonly purgeCursor: number;
   readonly lastSuccessAtMillis: number | null;
   readonly driftMessage: string | null;
 }
@@ -52,6 +60,9 @@ export interface SyncClientDeps {
   readonly saveState: (patch: Partial<SyncState>) => Promise<void>;
   readonly unacknowledgedBatch: (limit: number) => Promise<readonly PushableEvent[]>;
   readonly markAcknowledged: (eventIds: readonly string[]) => Promise<void>;
+  readonly pendingPurges: (limit: number) => Promise<readonly string[]>;
+  readonly markPurgesPushed: (aggregateIds: readonly string[]) => Promise<void>;
+  readonly applyRemotePurges: (aggregateIds: readonly string[], nowMillis: number) => Promise<void>;
   readonly importRemoteEvents: (
     events: readonly DomainEvent[],
     nowMillis: number
@@ -137,6 +148,13 @@ export class SyncClient {
     if (count > 0) this.scheduleAppendSync();
   }
 
+  // A purge produces no event, so the unacknowledged count never rises for it and
+  // it would otherwise wait for the next ambient trigger — leaving the server
+  // holding a workout the user was told is gone.
+  notePendingPurgeCount(count: number): void {
+    if (count > 0) this.scheduleAppendSync();
+  }
+
   async start(): Promise<void> {
     if (this.started) return;
     this.started = true;
@@ -210,6 +228,9 @@ export class SyncClient {
       }
       const target = { serverUrl: config.serverUrl, syncToken: config.syncToken };
       this.publish({ configured: true, syncing: true });
+      // Purges go first: the server must have forgotten the session before the
+      // pull that would otherwise hand it straight back.
+      await this.pushPurges(target);
       await this.pushAll(target);
       await this.pullAll(target);
       this.failureCount = 0;
@@ -256,6 +277,22 @@ export class SyncClient {
     });
   }
 
+  private async pushPurges(target: SyncTarget): Promise<void> {
+    for (;;) {
+      const aggregateIds = await this.deps.pendingPurges(PURGE_MAX_AGGREGATES);
+      if (aggregateIds.length === 0) return;
+      const response = await this.callServer(target, '/sync/purge', {
+        method: 'POST',
+        body: JSON.stringify(serializePurgeRequest({ aggregateIds })),
+      });
+      if (!response.ok) throw new Error(`purge failed with status ${response.status}`);
+      const parsed = parsePurgeResponse((await response.json()) as unknown);
+      if (isProtocolError(parsed)) throw new Error(parsed.message);
+      await this.deps.markPurgesPushed(aggregateIds);
+      if (aggregateIds.length < PURGE_MAX_AGGREGATES) return;
+    }
+  }
+
   private async pushAll(target: SyncTarget): Promise<void> {
     for (;;) {
       const batch = await this.deps.unacknowledgedBatch(PUSH_BATCH_LIMIT);
@@ -287,23 +324,36 @@ export class SyncClient {
   // is the head of the whole per-user log; jumping there would skip any events
   // another device pushed at lower sequences than our own batch.
   private async pullAll(target: SyncTarget): Promise<void> {
-    let cursor = (await this.deps.loadState()).cursor;
+    const state = await this.deps.loadState();
+    let cursor = state.cursor;
+    let purgeCursor = state.purgeCursor;
     for (;;) {
       const response = await this.callServer(
         target,
-        `/sync/pull?after=${String(cursor)}&limit=${String(PULL_DEFAULT_LIMIT)}`,
+        `/sync/pull?after=${String(cursor)}&purgedAfter=${String(purgeCursor)}` +
+          `&limit=${String(PULL_DEFAULT_LIMIT)}`,
         { method: 'GET' }
       );
       if (!response.ok) throw new Error(`pull failed with status ${response.status}`);
       const parsed = parsePullResponse((await response.json()) as unknown);
       if (isProtocolError(parsed)) throw new Error(parsed.message);
       await this.deps.importRemoteEvents(parsed.events, this.deps.now());
+      // Purges are applied after the events of the same page on purpose: the two
+      // queries are not one snapshot, so a page read before the purge can still
+      // carry events of the aggregate the purge destroys.
+      if (parsed.purges.length > 0) {
+        await this.deps.applyRemotePurges(
+          parsed.purges.map(entry => entry.aggregateId),
+          this.deps.now()
+        );
+      }
       // A server restored from backup (or a wrong URL) can hand back a smaller
       // cursor; regressing ours would re-pull the same pages forever.
       cursor = Math.max(cursor, parsed.cursor);
-      await this.deps.saveState({ cursor });
+      purgeCursor = Math.max(purgeCursor, parsed.purgeCursor);
+      await this.deps.saveState({ cursor, purgeCursor });
       this.publish({ cursor });
-      if (!parsed.hasMore || parsed.events.length === 0) return;
+      if (!parsed.hasMore || (parsed.events.length === 0 && parsed.purges.length === 0)) return;
     }
   }
 }
@@ -329,10 +379,11 @@ async function loadSyncState(): Promise<SyncState> {
   return record?.key === 'syncState'
     ? {
         cursor: record.cursor,
+        purgeCursor: record.purgeCursor ?? 0,
         lastSuccessAtMillis: record.lastSuccessAtMillis,
         driftMessage: record.driftMessage,
       }
-    : { cursor: 0, lastSuccessAtMillis: null, driftMessage: null };
+    : { cursor: 0, purgeCursor: 0, lastSuccessAtMillis: null, driftMessage: null };
 }
 
 async function saveSyncState(patch: Partial<SyncState>): Promise<void> {
@@ -346,6 +397,10 @@ export const syncClient = new SyncClient({
   saveState: patch => withDatabaseRecovery(() => saveSyncState(patch)),
   unacknowledgedBatch: limit => withDatabaseRecovery(() => unacknowledgedBatch(limit)),
   markAcknowledged: eventIds => withDatabaseRecovery(() => markAcknowledged(eventIds)),
+  pendingPurges: limit => withDatabaseRecovery(() => pendingPurges(limit)),
+  markPurgesPushed: aggregateIds => withDatabaseRecovery(() => markPurgesPushed(aggregateIds)),
+  applyRemotePurges: (aggregateIds, nowMillis) =>
+    withDatabaseRecovery(() => applyRemotePurges(aggregateIds, nowMillis)),
   importRemoteEvents: (events, nowMillis) =>
     withDatabaseRecovery(() => importRemoteEvents(events, nowMillis)),
   fetch: (url, init) => fetch(url, init),
@@ -388,10 +443,23 @@ function observePendingCount(): void {
   });
 }
 
+function observePendingPurges(): void {
+  liveQuery(() => withDatabaseRecovery(pendingPurgeCount)).subscribe({
+    next: count => {
+      syncClient.notePendingPurgeCount(count);
+    },
+    error: (error: unknown) => {
+      console.error('pending purge observation failed, re-arming', error);
+      setTimeout(observePendingPurges, 5_000);
+    },
+  });
+}
+
 export async function initSync(): Promise<void> {
   if (initialized) return;
   initialized = true;
   observePendingCount();
+  observePendingPurges();
   window.addEventListener('online', () => {
     syncClient.requestSync('online');
   });

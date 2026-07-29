@@ -176,6 +176,53 @@ test.describe('sync across devices', () => {
     await deviceB.close();
   });
 
+  test('erasing on device A destroys the workout on the server and on device B', async ({
+    browser,
+  }) => {
+    const token = await mintToken();
+
+    const deviceA = await browser.newContext();
+    const pageA = await deviceA.newPage();
+    await configureSync(pageA, token);
+    await logWorkout(pageA, 1);
+    await syncNowExpectDrained(pageA);
+
+    const deviceB = await browser.newContext();
+    const pageB = await deviceB.newPage();
+    await configureSync(pageB, token);
+    await pageB.getByTestId('open-history').click();
+    await expect(pageB.getByTestId('history-item')).toHaveCount(1);
+    await pageB.getByTestId('back-home').click();
+
+    await pageA.getByTestId('open-history').click();
+    await pageA.getByTestId('history-item').click();
+    await pageA.getByTestId('delete-workout').click();
+    await pageA.getByTestId('confirm-delete-workout').click();
+    await pageA.getByTestId('show-deleted-toggle').click();
+    await pageA.getByTestId('purge-session').click();
+    await pageA.getByTestId('confirm-purge-session').click();
+    await expect(pageA.getByTestId('history-empty')).toBeVisible();
+    await pageA.getByTestId('back-home').click();
+    await syncNowExpectDrained(pageA);
+
+    // Device B learns from the purge journal, not from an event: the log it holds
+    // has no record of this, and the server has nothing left to send.
+    await syncNowExpectDrained(pageB);
+    await pageB.getByTestId('open-history').click();
+    await expect(pageB.getByTestId('history-empty')).toBeVisible();
+    await expect(pageB.getByTestId('show-deleted-toggle')).toHaveCount(0);
+    await pageB.getByTestId('back-home').click();
+
+    // And it stays erased: another round trip must not resurrect it from either side.
+    await syncNowExpectDrained(pageA);
+    await syncNowExpectDrained(pageB);
+    await pageA.getByTestId('open-history').click();
+    await expect(pageA.getByTestId('history-empty')).toBeVisible();
+
+    await deviceA.close();
+    await deviceB.close();
+  });
+
   test('a bot import converges into the device and the folded clock keeps pushing cleanly', async ({
     browser,
   }) => {

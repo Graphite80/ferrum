@@ -74,6 +74,25 @@ export const events = pgTable(
   ]
 );
 
+export const purgedAggregates = pgTable(
+  'purged_aggregates',
+  {
+    userId: uuid('user_id')
+      .$type<UserId>()
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    aggregateId: text('aggregate_id').$type<SessionId>().notNull(),
+    purgedAt: timestamp('purged_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    purgeSequence: bigint('purge_sequence', { mode: 'number' })
+      .notNull()
+      .generatedAlwaysAsIdentity(),
+  },
+  table => [
+    primaryKey({ columns: [table.userId, table.aggregateId] }),
+    index('purged_aggregates_user_sequence_idx').on(table.userId, table.purgeSequence),
+  ]
+);
+
 export const deviceClocks = pgTable(
   'device_clocks',
   {

@@ -96,6 +96,35 @@ test.describe('workout deletion', () => {
   });
 });
 
+test.describe('erasing a deleted workout for good', () => {
+  test('the confirm step is cancellable, and erasing survives a reload', async ({ page }) => {
+    await finishWorkout(page, 2);
+    await deleteFromDetail(page);
+    await page.getByTestId('show-deleted-toggle').click();
+    await expect(page.getByTestId('deleted-history-item')).toHaveCount(1);
+
+    // Restore stays one tap; erasing asks first, and cancelling changes nothing.
+    await page.getByTestId('purge-session').click();
+    await expect(page.getByTestId('restore-session')).toHaveCount(0);
+    await page.getByTestId('cancel-purge-session').click();
+    await expect(page.getByTestId('restore-session')).toBeVisible();
+    await expect(page.getByTestId('deleted-history-item')).toHaveCount(1);
+
+    await page.getByTestId('purge-session').click();
+    await page.getByTestId('confirm-purge-session').click();
+    await expect(page.getByTestId('history-empty')).toBeVisible();
+    await expect(page.getByTestId('show-deleted-toggle')).toHaveCount(0);
+
+    // Nothing replays it back: the events are gone, not tombstoned.
+    await page.reload();
+    await expect(page.getByTestId('booting')).toHaveCount(0);
+    await expect(page.getByTestId('start-routine')).toBeVisible();
+    await page.getByTestId('open-history').click();
+    await expect(page.getByTestId('history-empty')).toBeVisible();
+    await expect(page.getByTestId('pending-events')).toContainText('0 events not yet synced');
+  });
+});
+
 test.describe('a deleted workout stops counting', () => {
   test('its sets no longer prefill the next session', async ({ page }) => {
     await page.goto('/');

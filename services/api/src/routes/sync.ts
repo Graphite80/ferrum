@@ -5,13 +5,15 @@ import {
   PULL_DEFAULT_LIMIT,
   PULL_MAX_LIMIT,
   isProtocolError,
+  parsePurgeRequest,
   parsePushRequest,
   serializePullResponse,
+  serializePurgeResponse,
   type ClockDriftRejection,
 } from '@ferrum/sync-protocol';
 import { type Database } from '../db.ts';
 import { requireAuth, type AppEnv } from '../middleware/auth.ts';
-import { ClockDriftBatchError, pullPage, pushBatch } from '../sync.ts';
+import { ClockDriftBatchError, pullPage, purgeAggregates, pushBatch } from '../sync.ts';
 
 export function syncRoutes(db: Database): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
@@ -54,13 +56,37 @@ export function syncRoutes(db: Database): Hono<AppEnv> {
     if (!Number.isInteger(after) || after < 0) {
       return c.json({ error: 'invalid_after' }, 400);
     }
+    const purgedAfter = Number(c.req.query('purgedAfter') ?? '0');
+    if (!Number.isInteger(purgedAfter) || purgedAfter < 0) {
+      return c.json({ error: 'invalid_purged_after' }, 400);
+    }
     const limitParam = c.req.query('limit');
     const limit = limitParam === undefined ? PULL_DEFAULT_LIMIT : Number(limitParam);
     if (!Number.isInteger(limit) || limit < 1 || limit > PULL_MAX_LIMIT) {
       return c.json({ error: 'invalid_limit' }, 400);
     }
-    const page = await pullPage(db, c.get('userId'), { afterSequence: after, limit });
+    const page = await pullPage(db, c.get('userId'), {
+      afterSequence: after,
+      limit,
+      afterPurgeSequence: purgedAfter,
+    });
     return c.json(serializePullResponse(page));
+  });
+
+  // Destroying data is the one sync operation with no undo, so it is its own
+  // endpoint rather than an event type: nothing about it converges, and nothing
+  // about it can be replayed.
+  app.post('/sync/purge', async c => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: 'invalid_json' }, 400);
+    }
+    const request = parsePurgeRequest(body);
+    if (isProtocolError(request)) return c.json(request, 400);
+    const response = await db.transaction(tx => purgeAggregates(tx, c.get('userId'), request));
+    return c.json(serializePurgeResponse(response));
   });
 
   return app;

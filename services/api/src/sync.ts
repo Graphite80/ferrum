@@ -1,4 +1,4 @@
-import { and, eq, gt, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, sql } from 'drizzle-orm';
 import {
   ClockDriftError,
   buildDomainEvent,
@@ -9,16 +9,19 @@ import {
   type DomainEvent,
   type DomainEventBody,
   type Hlc,
+  type SessionId,
   type UserId,
 } from '@ferrum/domain';
 import {
   type PullRequest,
   type PullResponse,
+  type PurgeRequest,
+  type PurgeResponse,
   type PushRequest,
   type PushResponse,
 } from '@ferrum/sync-protocol';
 import { type Database, type Tx } from './db.ts';
-import { deviceClocks, events } from './schema.ts';
+import { deviceClocks, events, purgedAggregates } from './schema.ts';
 
 export class ClockDriftBatchError extends Error {
   constructor(readonly driftedEventIds: readonly string[]) {
@@ -76,9 +79,33 @@ export async function pushBatch(
   }
   if (drifted.length > 0) throw new ClockDriftBatchError(drifted);
 
+  // A device that has not pulled the purge journal yet still holds the erased
+  // session locally and will happily push it back. Re-accepting those events would
+  // resurrect a workout the user destroyed, so the purge tombstone outranks the
+  // push for as long as it exists.
+  const aggregateIds = [...new Set(request.events.map(event => event.aggregateId))];
+  const purgedRows =
+    aggregateIds.length === 0
+      ? []
+      : await tx
+          .select({ aggregateId: purgedAggregates.aggregateId })
+          .from(purgedAggregates)
+          .where(
+            and(
+              eq(purgedAggregates.userId, uid),
+              inArray(purgedAggregates.aggregateId, aggregateIds)
+            )
+          );
+  const purgedIds = new Set(purgedRows.map(row => row.aggregateId as string));
+
   let accepted = 0;
   let duplicates = 0;
+  let purged = 0;
   for (const event of request.events) {
+    if (purgedIds.has(event.aggregateId)) {
+      purged += 1;
+      continue;
+    }
     const inserted = await tx
       .insert(events)
       .values({
@@ -107,7 +134,37 @@ export async function pushBatch(
     .select({ cursor: sql`coalesce(max(${events.serverSequence}), 0)`.mapWith(Number) })
     .from(events)
     .where(eq(events.userId, uid));
-  return { accepted, duplicates, cursor: cursorResult[0]?.cursor ?? 0 };
+  return { accepted, duplicates, purged, cursor: cursorResult[0]?.cursor ?? 0 };
+}
+
+// Purge is the deliberate exception to the append-only log (INVARIANTS §7): the rows
+// leave the database, and a tombstone row takes their place so every other replica
+// can be told to forget too.
+export async function purgeAggregates(
+  tx: Tx,
+  userId: string,
+  request: PurgeRequest
+): Promise<PurgeResponse> {
+  const uid = userId as UserId;
+  const aggregateIds = [...new Set(request.aggregateIds)] as SessionId[];
+  await tx.execute(sql`set local statement_timeout = '30s'`);
+
+  const deleted = await tx
+    .delete(events)
+    .where(and(eq(events.userId, uid), inArray(events.aggregateId, aggregateIds)))
+    .returning({ eventId: events.eventId });
+
+  await tx
+    .insert(purgedAggregates)
+    .values(aggregateIds.map(aggregateId => ({ userId: uid, aggregateId })))
+    .onConflictDoNothing({ target: [purgedAggregates.userId, purgedAggregates.aggregateId] });
+
+  const cursorResult = await tx
+    .select({ cursor: sql`coalesce(max(${purgedAggregates.purgeSequence}), 0)`.mapWith(Number) })
+    .from(purgedAggregates)
+    .where(eq(purgedAggregates.userId, uid));
+
+  return { purgedEvents: deleted.length, purgeCursor: cursorResult[0]?.cursor ?? 0 };
 }
 
 export const USER_EVENTS_HARD_CAP = 100_000;
@@ -154,7 +211,33 @@ export async function pullPage(
   const pageEvents = page.map(rowToEvent);
   const last = page[page.length - 1];
   const cursor = last === undefined ? request.afterSequence : last.serverSequence;
-  return { events: pageEvents, cursor, hasMore };
+
+  const purgeRows = await db.orm
+    .select({
+      aggregateId: purgedAggregates.aggregateId,
+      sequence: purgedAggregates.purgeSequence,
+    })
+    .from(purgedAggregates)
+    .where(
+      and(
+        eq(purgedAggregates.userId, userId as UserId),
+        gt(purgedAggregates.purgeSequence, request.afterPurgeSequence)
+      )
+    )
+    .orderBy(purgedAggregates.purgeSequence)
+    .limit(request.limit + 1);
+  const purgesHaveMore = purgeRows.length > request.limit;
+  const purgePage = purgeRows.slice(0, request.limit);
+  const lastPurge = purgePage[purgePage.length - 1];
+  const purgeCursor = lastPurge === undefined ? request.afterPurgeSequence : lastPurge.sequence;
+
+  return {
+    events: pageEvents,
+    cursor,
+    hasMore: hasMore || purgesHaveMore,
+    purges: purgePage.map(row => ({ aggregateId: row.aggregateId, sequence: row.sequence })),
+    purgeCursor,
+  };
 }
 
 function rowToEvent(row: typeof events.$inferSelect): DomainEvent {

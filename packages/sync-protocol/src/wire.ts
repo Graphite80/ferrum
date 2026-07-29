@@ -38,9 +38,13 @@ import {
 } from 'valibot';
 import {
   PULL_MAX_LIMIT,
+  PURGE_MAX_AGGREGATES,
   PUSH_MAX_EVENTS,
   type PullRequest,
   type PullResponse,
+  type PurgeRequest,
+  type PurgeResponse,
+  type PurgedAggregate,
   type PushRequest,
   type PushResponse,
 } from './protocol.ts';
@@ -118,6 +122,7 @@ export interface WirePushRequest {
 export interface WirePushResponse {
   readonly accepted: number;
   readonly duplicates: number;
+  readonly purged: number;
   readonly cursor: number;
 }
 
@@ -125,6 +130,17 @@ export interface WirePullResponse {
   readonly events: readonly WireEvent[];
   readonly cursor: number;
   readonly hasMore: boolean;
+  readonly purges: readonly PurgedAggregate[];
+  readonly purgeCursor: number;
+}
+
+export interface WirePurgeRequest {
+  readonly aggregateIds: readonly string[];
+}
+
+export interface WirePurgeResponse {
+  readonly purgedEvents: number;
+  readonly purgeCursor: number;
 }
 
 export function toWireEvent(event: DomainEvent): WireEvent {
@@ -148,7 +164,12 @@ export function serializePushRequest(request: PushRequest): WirePushRequest {
 }
 
 export function serializePushResponse(response: PushResponse): WirePushResponse {
-  return { accepted: response.accepted, duplicates: response.duplicates, cursor: response.cursor };
+  return {
+    accepted: response.accepted,
+    duplicates: response.duplicates,
+    purged: response.purged,
+    cursor: response.cursor,
+  };
 }
 
 export function serializePullResponse(response: PullResponse): WirePullResponse {
@@ -156,7 +177,17 @@ export function serializePullResponse(response: PullResponse): WirePullResponse 
     events: response.events.map(toWireEvent),
     cursor: response.cursor,
     hasMore: response.hasMore,
+    purges: response.purges.map(purge => ({ ...purge })),
+    purgeCursor: response.purgeCursor,
   };
+}
+
+export function serializePurgeRequest(request: PurgeRequest): WirePurgeRequest {
+  return { aggregateIds: [...request.aggregateIds] };
+}
+
+export function serializePurgeResponse(response: PurgeResponse): WirePurgeResponse {
+  return { purgedEvents: response.purgedEvents, purgeCursor: response.purgeCursor };
 }
 
 const NOT_AN_OBJECT_MESSAGE = 'Expected a JSON object';
@@ -258,6 +289,7 @@ const pushRequestSchema = object({
 const pushResponseSchema = object({
   accepted: nonNegativeIntegerSchema,
   duplicates: nonNegativeIntegerSchema,
+  purged: optional(nonNegativeIntegerSchema, 0),
   cursor: nonNegativeIntegerSchema,
 });
 
@@ -268,12 +300,36 @@ const pullRequestSchema = object({
     minValue(1, `Expected a limit between 1 and ${PULL_MAX_LIMIT}`),
     maxValue(PULL_MAX_LIMIT, `Expected a limit between 1 and ${PULL_MAX_LIMIT}`)
   ),
+  afterPurgeSequence: optional(nonNegativeIntegerSchema, 0),
 });
 
+const purgedAggregateSchema = object({
+  aggregateId: nonEmptyStringSchema,
+  sequence: nonNegativeIntegerSchema,
+});
+
+// A server that predates the purge journal answers without these two fields, and a
+// client that treated that as a protocol error would stall its whole sync over a
+// feature it is not using. They default instead: no journal means nothing purged.
 const pullResponseSchema = object({
   events: array(wireEventSchema, 'Expected an array of events'),
   cursor: nonNegativeIntegerSchema,
   hasMore: boolean('Expected a boolean'),
+  purges: optional(array(purgedAggregateSchema, 'Expected an array of purges'), []),
+  purgeCursor: optional(nonNegativeIntegerSchema, 0),
+});
+
+const purgeRequestSchema = object({
+  aggregateIds: pipe(
+    array(nonEmptyStringSchema, 'Expected an array of aggregate ids'),
+    minLength(1, 'Expected at least one aggregate id'),
+    maxLength(PURGE_MAX_AGGREGATES, `A purge carries at most ${PURGE_MAX_AGGREGATES} aggregate ids`)
+  ),
+});
+
+const purgeResponseSchema = object({
+  purgedEvents: nonNegativeIntegerSchema,
+  purgeCursor: nonNegativeIntegerSchema,
 });
 
 function pathSegment(key: unknown): string {
@@ -332,4 +388,12 @@ export function parsePullRequest(json: unknown): PullRequest | ProtocolError {
 
 export function parsePullResponse(json: unknown): PullResponse | ProtocolError {
   return parseWith(pullResponseSchema, json, 'pullResponse');
+}
+
+export function parsePurgeRequest(json: unknown): PurgeRequest | ProtocolError {
+  return parseWith(purgeRequestSchema, json, 'purgeRequest');
+}
+
+export function parsePurgeResponse(json: unknown): PurgeResponse | ProtocolError {
+  return parseWith(purgeResponseSchema, json, 'purgeResponse');
 }

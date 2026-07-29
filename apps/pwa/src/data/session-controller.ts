@@ -12,7 +12,11 @@ import {
   toKilograms,
   toLocalDate,
 } from '@ferrum/domain';
-import { appendEvents, type AppendInput } from '../db/event-store.ts';
+import {
+  appendEvents,
+  purgeSession as purgeSessionFromStore,
+  type AppendInput,
+} from '../db/event-store.ts';
 import { type RoutineRecord } from '../db/ferrum-db.ts';
 import { saveSessionPlan } from './routine-store.ts';
 import { ulidFactory } from '../platform/ids.ts';
@@ -270,6 +274,13 @@ export async function restoreSession(sessionId: SessionId, nowMillis: number): P
     [{ aggregateId: sessionId, eventType: 'SessionRestored', payload: { sessionId } }],
     nowMillis
   );
+}
+
+// Every other destructive operation here appends an event; this one leaves the log
+// entirely, locally and on the server. It is the only irreversible action in the
+// app, which is why it is not reachable without first deleting the workout.
+export async function purgeSession(sessionId: SessionId, nowMillis: number): Promise<void> {
+  await purgeSessionFromStore(sessionId, nowMillis);
 }
 
 export async function finishSession(sessionId: SessionId, nowMillis: number): Promise<void> {

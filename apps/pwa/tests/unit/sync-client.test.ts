@@ -29,7 +29,16 @@ class Harness {
   readonly fetchCalls: string[] = [];
   readonly client: SyncClient;
 
-  private state: SyncState = { cursor: 0, lastSuccessAtMillis: null, driftMessage: null };
+  purgeQueue: string[] = [];
+  readonly purgesMarkedPushed: string[] = [];
+  readonly purgesAppliedLocally: string[] = [];
+
+  private state: SyncState = {
+    cursor: 0,
+    purgeCursor: 0,
+    lastSuccessAtMillis: null,
+    driftMessage: null,
+  };
   private timers = new Map<number, ArmedTimer>();
   private nextTimerId = 1;
 
@@ -43,6 +52,16 @@ class Harness {
       },
       unacknowledgedBatch: () => Promise.resolve([...this.batch]),
       markAcknowledged: () => Promise.resolve(),
+      pendingPurges: () => Promise.resolve([...this.purgeQueue]),
+      markPurgesPushed: aggregateIds => {
+        this.purgesMarkedPushed.push(...aggregateIds);
+        this.purgeQueue = this.purgeQueue.filter(id => !aggregateIds.includes(id));
+        return Promise.resolve();
+      },
+      applyRemotePurges: aggregateIds => {
+        this.purgesAppliedLocally.push(...aggregateIds);
+        return Promise.resolve();
+      },
       importRemoteEvents: () => Promise.resolve(0),
       fetch: url => {
         this.fetchCalls.push(url);
@@ -80,10 +99,18 @@ class Harness {
     }
   }
 
+  syncState(): SyncState {
+    return this.state;
+  }
+
+  // A pull page that predates the purge journal, so the defaulting path is what
+  // every existing gating test exercises.
   serveEmptyPull(): void {
-    this.fetchImpl = () =>
+    this.fetchImpl = url =>
       Promise.resolve(
-        new Response(JSON.stringify({ events: [], cursor: 0, hasMore: false }), { status: 200 })
+        url.includes('/sync/purge')
+          ? new Response(JSON.stringify({ purgedEvents: 0, purgeCursor: 0 }), { status: 200 })
+          : new Response(JSON.stringify({ events: [], cursor: 0, hasMore: false }), { status: 200 })
       );
   }
 
@@ -237,5 +264,74 @@ describe('sync gating logic', () => {
     // Nothing pending is the only state that schedules nothing.
     harness.client.notePendingCount(0);
     expect(harness.armedTimers()).toHaveLength(0);
+  });
+
+  test('a pending purge schedules its own sync: no event is appended for it', async () => {
+    const harness = new Harness();
+    harness.serveEmptyPull();
+
+    harness.client.notePendingPurgeCount(1);
+    const timers = harness.armedTimers();
+    expect(timers).toHaveLength(1);
+    expect(timers[0]!.delayMillis).toBe(APPEND_DEBOUNCE_MILLIS);
+
+    harness.client.notePendingPurgeCount(0);
+    harness.fireTimer(timers[0]!);
+    await harness.settle();
+    expect(harness.fetchCalls).toHaveLength(1);
+  });
+});
+
+describe('purge propagation', () => {
+  test('a purge is delivered before the pull that would hand the workout back', async () => {
+    const harness = new Harness();
+    harness.purgeQueue = ['ses_erased'];
+    harness.serveEmptyPull();
+
+    harness.client.requestSync('manual');
+    await harness.settle();
+
+    expect(harness.fetchCalls[0]).toContain('/sync/purge');
+    expect(harness.fetchCalls[1]).toContain('/sync/pull');
+    expect(harness.purgesMarkedPushed).toEqual(['ses_erased']);
+    // Drained, so the next cycle is a pull only.
+    harness.client.requestSync('manual');
+    await harness.settle();
+    expect(harness.fetchCalls.filter(url => url.includes('/sync/purge'))).toHaveLength(1);
+  });
+
+  test('a purge from another device erases locally and advances its own cursor', async () => {
+    const harness = new Harness();
+    let page = 0;
+    harness.fetchImpl = url => {
+      if (url.includes('/sync/purge')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ purgedEvents: 0, purgeCursor: 0 }), { status: 200 })
+        );
+      }
+      page += 1;
+      const body =
+        page === 1
+          ? {
+              events: [],
+              cursor: 12,
+              hasMore: true,
+              purges: [{ aggregateId: 'ses_erased', sequence: 4 }],
+              purgeCursor: 4,
+            }
+          : { events: [], cursor: 12, hasMore: false, purges: [], purgeCursor: 4 };
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+    };
+
+    harness.client.requestSync('manual');
+    await harness.settle();
+
+    expect(harness.purgesAppliedLocally).toEqual(['ses_erased']);
+    expect(harness.syncState().purgeCursor).toBe(4);
+    // The second page carried nothing, so the loop stopped rather than spinning on
+    // a hasMore that only the purge journal had raised.
+    expect(harness.fetchCalls.filter(url => url.includes('/sync/pull'))).toHaveLength(2);
+    expect(harness.fetchCalls[0]).toContain('purgedAfter=0');
+    expect(harness.fetchCalls[1]).toContain('purgedAfter=4');
   });
 });
