@@ -41,6 +41,22 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
   sign-in: it carries `setsImported` and `unresolved`, and a non-zero `unresolved` is history the
   exercise library could not name — a finding, not noise. `hub_backfill_unreachable` means the
   NetworkPolicy pair or `HUB_API_URL` is wrong; sign-in still succeeded, the account is just empty.
+- The integration runs BOTH ways and both need checking. `hub_export` after a `/sync/push` that
+  finishes a workout is the return leg; `hub_export_rejected` with a status is the hub refusing
+  (401 = the audiences drifted, 404 = the hub predates the ingest endpoint). The export deliberately
+  times out at 4s — well under the sync client's 20s — because it runs inside the push response, and
+  a hub that merely hangs would otherwise time the PUSH out, make the client retry, and wedge sync
+  in a loop over a secondary concern. Never raise it to the client's timeout.
+- A deleted set has to stop counting on BOTH sides. The hub's ingest trailing-prunes per
+  (date, exercise) because `workout_sets` has no source column — a wider prune would delete rows
+  the Hevy importer owns on the same day. Removing a whole exercise from a session, or deleting a
+  finished session outright, still leaves its rows in the hub: known gap, not yet closed.
+- A session with no title of its own is named from its primary movers (`describeSession`), so the
+  history list reads Push / Pull / Legs / Upper body / Full body / Core rather than 278 rows of
+  "Workout". The label is derived, never stored, so a session that changes renames itself and a
+  title the lifter typed always wins. `packages/exercise-library/tests/session-label.test.ts`
+  asserts every exercise in the library classifies — an unclassified one silently degrades the
+  whole list to the fallback.
 - Static responses carry cache headers from the API, not from the edge: `/assets/*` (content
   hashed) is `public, max-age=31536000, immutable`, every other document — index.html, `sw.js`,
   the manifest — is `no-cache`. Left unset, the edge applies a 4h default and a released shell
