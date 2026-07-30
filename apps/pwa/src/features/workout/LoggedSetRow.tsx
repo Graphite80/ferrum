@@ -39,6 +39,8 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
     setEditing(true);
   };
 
+  const isWarmup = props.set.setType === 'warmup';
+
   const save = () => {
     const patch: SetPatch = {};
     if (load !== displayedLoad) patch.load = { entered: load, unit: props.unit };
@@ -46,6 +48,13 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
     if (rir !== (measurements.rirEntered ?? 0)) patch.rir = rir;
     setEditing(false);
     if (Object.keys(patch).length > 0) props.onAmend(patch);
+  };
+
+  // Its own control rather than part of Save: an imported set is usually right
+  // about the numbers and wrong only about this, and a heuristic's guess should
+  // take one tap to overturn.
+  const toggleWarmup = () => {
+    props.onAmend({ setType: isWarmup ? 'working' : 'warmup' });
   };
 
   return (
@@ -63,7 +72,7 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
         }}
       >
         <span className={eyebrow()}>Set {props.position}</span>
-        {props.set.setType === 'warmup' && (
+        {isWarmup && (
           <span
             className={eyebrow({ className: 'rounded-[2px] border border-seam px-1.5 py-0.5' })}
             data-testid="warmup-marker"
@@ -94,6 +103,15 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
           />
           <Stepper label="Reps" value={reps} step={1} onChange={setReps} testId="amend-reps" />
           <Stepper label="RIR" value={rir} step={1} onChange={setRir} testId="amend-rir" />
+          <button
+            type="button"
+            className={button({ intent: 'secondary', className: 'w-full' })}
+            aria-pressed={isWarmup}
+            data-testid="toggle-warmup"
+            onClick={toggleWarmup}
+          >
+            {isWarmup ? 'Count as a working set' : 'Mark as warmup'}
+          </button>
           <div className="flex items-stretch gap-2">
             <button
               type="button"

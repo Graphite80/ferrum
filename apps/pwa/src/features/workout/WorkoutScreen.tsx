@@ -267,6 +267,7 @@ export function WorkoutScreen({
                     rir: values.rir,
                     comparisonSignature: plan.comparisonSignature,
                     prescription: plan.prescription,
+                    setType: values.setType,
                   },
                   now
                 );

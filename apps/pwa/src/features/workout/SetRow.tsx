@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type WeightUnit } from '@ferrum/domain';
+import { type SetType, type WeightUnit } from '@ferrum/domain';
 import { Stepper } from '../../components/Stepper.tsx';
 import { button, eyebrow, mono } from '../../ui.ts';
 
@@ -12,7 +12,12 @@ export interface SetRowProps {
   readonly defaultReps: number;
   readonly defaultRir: number;
   readonly incrementStep: number;
-  readonly onComplete: (values: { load: number; reps: number; rir: number }) => void;
+  readonly onComplete: (values: {
+    load: number;
+    reps: number;
+    rir: number;
+    setType: SetType;
+  }) => void;
 }
 
 // `defaultLoad` and `incrementStep` arrive already converted to the display unit;
@@ -23,11 +28,30 @@ export function SetRow(props: SetRowProps) {
   const [reps, setReps] = useState(props.defaultReps);
   const [rir, setRir] = useState(props.defaultRir);
   const [expanded, setExpanded] = useState(false);
+  // Warmups are excluded from PRs and from the next session's prefill, so the
+  // choice has to be available before the set is logged, not only as a repair
+  // afterwards.
+  const [warmup, setWarmup] = useState(false);
 
   return (
     <li className="rounded-md border border-seam bg-forged p-3">
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <span className={eyebrow()}>Set {props.index + 1}</span>
+        <button
+          type="button"
+          aria-pressed={warmup}
+          className={eyebrow({
+            className: `rounded-[2px] border px-1.5 py-0.5 ${
+              warmup ? 'border-chalk text-chalk' : 'border-seam text-ash'
+            }`,
+          })}
+          data-testid={`set-${String(props.index)}-warmup`}
+          onClick={() => {
+            setWarmup(current => !current);
+          }}
+        >
+          Warmup
+        </button>
         <span className="text-xs text-ash" data-testid="previous-label">
           {props.previousLabel}
         </span>
@@ -93,7 +117,8 @@ export function SetRow(props: SetRowProps) {
         type="button"
         className={button({ className: 'mt-2 w-full px-3 font-semibold' })}
         onClick={() => {
-          props.onComplete({ load, reps, rir });
+          props.onComplete({ load, reps, rir, setType: warmup ? 'warmup' : 'working' });
+          setWarmup(false);
         }}
         data-testid={`set-${String(props.index)}-done`}
       >

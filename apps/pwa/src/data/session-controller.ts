@@ -6,6 +6,7 @@ import {
   type SetMeasurements,
   type SetPrescriptionSnapshot,
   type SetQualifiers,
+  type SetType,
   type WeightUnit,
   type WorkoutSetId,
   instant,
@@ -31,12 +32,14 @@ export interface LoggedSetInput {
   readonly rir: number;
   readonly comparisonSignature: ComparisonSignature;
   readonly prescription: SetPrescriptionSnapshot | null;
+  readonly setType?: SetType;
 }
 
 export interface SetPatch {
   load?: { entered: number; unit: WeightUnit };
   reps?: number;
   rir?: number;
+  setType?: SetType;
 }
 
 function tzOffsetMinutes(nowMillis: number): number {
@@ -186,7 +189,7 @@ export async function logSet(input: LoggedSetInput, nowMillis: number): Promise<
           setId,
           sessionExerciseId: input.sessionExerciseId,
           orderIndex: input.orderIndex,
-          setType: 'working',
+          setType: input.setType ?? 'working',
           measurements,
           qualifiers,
           equipmentInstanceId: null,
@@ -228,10 +231,21 @@ export async function amendSet(
     ...(patch.reps !== undefined ? { reps: patch.reps } : {}),
     ...(patch.rir !== undefined ? { rirEntered: patch.rir } : {}),
   };
-  if (Object.keys(measurements).length === 0) return;
+  const hasMeasurements = Object.keys(measurements).length > 0;
+  if (!hasMeasurements && patch.setType === undefined) return;
 
   await appendEvents(
-    [{ aggregateId: sessionId, eventType: 'SetAmended', payload: { setId, measurements } }],
+    [
+      {
+        aggregateId: sessionId,
+        eventType: 'SetAmended',
+        payload: {
+          setId,
+          ...(hasMeasurements ? { measurements } : {}),
+          ...(patch.setType === undefined ? {} : { setType: patch.setType }),
+        },
+      },
+    ],
     nowMillis
   );
 }

@@ -3,6 +3,7 @@ import {
   type ExerciseDefinition,
   type SessionExercise,
   type SetPrescriptionSnapshot,
+  type SetType,
   type WeightUnit,
   type WorkoutSet,
   type WorkoutSetId,
@@ -35,7 +36,7 @@ export interface ExerciseSectionProps {
   readonly liveSets: readonly WorkoutSet[];
   // undefined = history lookup still running; null = looked up, nothing found
   readonly lastTime: LastPerformance | null | undefined;
-  readonly onLog: (values: { load: number; reps: number; rir: number }) => void;
+  readonly onLog: (values: { load: number; reps: number; rir: number; setType: SetType }) => void;
   readonly onAmend: (setId: WorkoutSetId, patch: SetPatch) => void;
   readonly onDelete: (setId: WorkoutSetId) => void;
   readonly onRemove: () => void;

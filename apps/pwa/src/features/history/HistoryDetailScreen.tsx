@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { type SessionId, type WeightUnit, type WorkoutSet, formatLoad } from '@ferrum/domain';
 import { loadSession } from '../../db/event-store.ts';
-import { deleteSession } from '../../data/session-controller.ts';
+import { amendSet, deleteSession } from '../../data/session-controller.ts';
 import { loadSessionPlanSlots } from '../../data/routine-store.ts';
 import { exerciseDisplayName, formatDuration, setsForExercise } from './session-view.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
@@ -83,10 +83,29 @@ export function HistoryDetailScreen({
             </h2>
             <ul className="mt-2 flex flex-col gap-1 border-t border-seam pt-2">
               {live.map((set, index) => (
-                <DetailSetRow key={set.id} position={index + 1} set={set} unit={unit} />
+                <DetailSetRow
+                  key={set.id}
+                  position={index + 1}
+                  set={set}
+                  unit={unit}
+                  onToggleWarmup={() => {
+                    void amendSet(
+                      sessionId,
+                      set.id,
+                      { setType: set.setType === 'warmup' ? 'working' : 'warmup' },
+                      Date.now()
+                    );
+                  }}
+                />
               ))}
               {deleted.map(set => (
-                <DetailSetRow key={set.id} position={null} set={set} unit={unit} />
+                <DetailSetRow
+                  key={set.id}
+                  position={null}
+                  set={set}
+                  unit={unit}
+                  onToggleWarmup={null}
+                />
               ))}
             </ul>
           </section>
@@ -143,13 +162,17 @@ function DetailSetRow({
   position,
   set,
   unit,
+  onToggleWarmup,
 }: {
   position: number | null;
   set: WorkoutSet;
   unit: WeightUnit;
+  // null for a deleted set: a tombstone has nothing left to reclassify.
+  onToggleWarmup: (() => void) | null;
 }) {
   const measurements = set.measurements;
   const deleted = position == null;
+  const isWarmup = set.setType === 'warmup';
   return (
     <li
       className={`flex items-baseline justify-between gap-2 text-sm ${
@@ -158,7 +181,27 @@ function DetailSetRow({
       data-testid={deleted ? 'detail-set-deleted' : 'detail-set'}
     >
       <span className={eyebrow()}>{deleted ? 'Deleted' : `Set ${String(position)}`}</span>
-      {set.setType === 'warmup' && (
+      {/* An imported set carries whatever the import heuristic guessed, and the
+          guess is wrong often enough that correcting it has to be reachable
+          where the sets actually are — in history, long after the session was
+          finished. The domain already records that as an amendment. */}
+      {onToggleWarmup !== null && (
+        <button
+          type="button"
+          aria-pressed={isWarmup}
+          aria-label={isWarmup ? 'Count as a working set' : 'Mark as warmup'}
+          className={eyebrow({
+            className: `rounded-[2px] border px-1.5 py-0.5 ${
+              isWarmup ? 'border-chalk text-chalk' : 'border-seam text-ash'
+            }`,
+          })}
+          data-testid={isWarmup ? 'detail-warmup-marker' : 'detail-warmup-toggle'}
+          onClick={onToggleWarmup}
+        >
+          Warmup
+        </button>
+      )}
+      {onToggleWarmup === null && isWarmup && (
         <span
           className={eyebrow({ className: 'rounded-[2px] border border-seam px-1.5 py-0.5' })}
           data-testid="detail-warmup-marker"
