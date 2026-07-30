@@ -5,9 +5,10 @@ import fc from 'fast-check';
 import { LibraryValidationError, loadExerciseLibrary } from '../src/index.ts';
 
 // 93 at first curation; 117 once the imported history's own vocabulary was
-// covered end to end. The count is asserted so growth stays deliberate — a
-// definition added to make one import pass is a duplicate waiting to happen.
-const LIBRARY_SIZE = 117;
+// covered end to end; 118 with the bodyweight crunch that history had been
+// filing under the cable one. The count is asserted so growth stays deliberate
+// — a definition added to make one import pass is a duplicate waiting to happen.
+const LIBRARY_SIZE = 118;
 
 // The names the imported Hevy history uses. They must keep resolving forever: the moment
 // one of them stops matching, an import silently creates a second exercise and splits a
@@ -112,6 +113,24 @@ describe('exercise library data', () => {
       }
     }
     expect(contradictions).toEqual([]);
+  });
+
+  // `external` is a claim that the entered number is kilograms at the hands. On a
+  // selectorized stack it is a marking on a pulley of unknown ratio, and the two
+  // are not interchangeable: `external` reports calibrated: true, so the number
+  // flows into volume and e1RM as if it had been weighed. Three lat-machine
+  // exercises were typed this way while every other exercise on the same stack
+  // was not, which made one physical machine speak in two units.
+  it('never presents a stack marking as measured kilograms', () => {
+    const onAStack = library.all.filter(
+      definition =>
+        definition.equipmentType === 'cable' || definition.equipmentType === 'machine_stack'
+    );
+    expect(onAStack.length).toBeGreaterThan(0);
+    const claimingKilograms = onAStack.filter(
+      definition => definition.loadSemantics === 'external'
+    );
+    expect(claimingKilograms.map(definition => definition.name)).toEqual([]);
   });
 
   it('resolves every exercise name present in the real history fixture', () => {

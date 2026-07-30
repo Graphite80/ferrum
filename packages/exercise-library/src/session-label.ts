@@ -74,13 +74,9 @@ function label(regions: ReadonlySet<BodyRegion>): string {
   return 'Workout';
 }
 
-/**
- * A name for a session, derived from the exercises it actually contains.
- *
- * `definitions` is every exercise in the session, in order; an unresolved one is
- * simply absent, which is why an empty session falls back to "Workout" rather
- * than claiming something it cannot support.
- */
+// An unresolved exercise is simply absent from `definitions`, which is why an
+// empty session falls back to "Workout" rather than claiming something it
+// cannot support.
 export function describeSession(definitions: readonly ExerciseDefinition[]): string {
   const regions = new Set<BodyRegion>();
   for (const definition of definitions) {
