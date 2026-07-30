@@ -8,8 +8,13 @@ import {
 import { describeSession, loadExerciseLibrary } from '@ferrum/exercise-library';
 import { type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 
-export function formatDuration(startMillis: number, endMillis: number): string {
+// An imported workout carries no clock — the source records a date, not a start
+// and an end — so start and finish land on the same instant. Rendering that as
+// "0 s" claims a workout that took no time; the honest answer is that the
+// duration is not known, and null lets the caller leave it off entirely.
+export function formatDuration(startMillis: number, endMillis: number): string | null {
   const totalSeconds = Math.max(0, Math.round((endMillis - startMillis) / 1000));
+  if (totalSeconds === 0) return null;
   if (totalSeconds < 60) return `${String(totalSeconds)} s`;
   const totalMinutes = Math.round(totalSeconds / 60);
   if (totalMinutes < 60) return `${String(totalMinutes)} min`;

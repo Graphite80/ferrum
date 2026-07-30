@@ -70,7 +70,9 @@ export function WorkoutSummaryScreen({
         <StatCard
           label="Duration"
           value={
-            session.finishedAt == null ? '—' : formatDuration(session.startedAt, session.finishedAt)
+            (session.finishedAt == null
+              ? null
+              : formatDuration(session.startedAt, session.finishedAt)) ?? '—'
           }
           valueTestId="summary-duration"
         />
