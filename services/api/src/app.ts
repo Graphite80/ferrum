@@ -110,7 +110,14 @@ export function createApp({
       ...(hubApiUrl === undefined ? {} : { hubApiUrl }),
     })
   );
-  app.route('/', syncRoutes(db));
+  app.route(
+    '/',
+    syncRoutes(db, {
+      log,
+      ...(ssoSigningKey === undefined ? {} : { ssoSigningKey }),
+      ...(hubApiUrl === undefined ? {} : { hubApiUrl }),
+    })
+  );
   app.route('/', linkRoutes(db));
 
   if (telegram !== undefined) {

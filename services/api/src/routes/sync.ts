@@ -12,10 +12,18 @@ import {
   type ClockDriftRejection,
 } from '@ferrum/sync-protocol';
 import { type Database } from '../db.ts';
+import { exportSessionsToHub } from '../hub-export.ts';
 import { requireAuth, type AppEnv } from '../middleware/auth.ts';
 import { ClockDriftBatchError, pullPage, purgeAggregates, pushBatch } from '../sync.ts';
 
-export function syncRoutes(db: Database): Hono<AppEnv> {
+export interface SyncRouteOptions {
+  // Both present => a finished workout is pushed on to the hub after it lands.
+  readonly ssoSigningKey?: string;
+  readonly hubApiUrl?: string;
+  readonly log?: (message: string) => void;
+}
+
+export function syncRoutes(db: Database, options: SyncRouteOptions = {}): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
   // The PWA may be installed from one origin and pointed at a server on another.
@@ -35,9 +43,22 @@ export function syncRoutes(db: Database): Hono<AppEnv> {
     const request = parsePushRequest(body);
     if (isProtocolError(request)) return c.json(request, 400);
     try {
-      const response = await db.transaction(tx =>
-        pushBatch(tx, c.get('userId'), request, Date.now())
-      );
+      const userId = c.get('userId');
+      const response = await db.transaction(tx => pushBatch(tx, userId, request, Date.now()));
+      // After the batch is durable, never inside its transaction: the hub being
+      // slow or down must not roll back a workout that is already safely stored.
+      if (options.ssoSigningKey !== undefined && options.hubApiUrl !== undefined) {
+        const touched = [...new Set(request.events.map(event => event.aggregateId))];
+        await exportSessionsToHub(
+          db,
+          userId,
+          touched,
+          options.ssoSigningKey,
+          options.hubApiUrl,
+          options.log ?? (() => undefined),
+          Date.now()
+        );
+      }
       return c.json(response);
     } catch (error) {
       if (error instanceof ClockDriftBatchError) {

@@ -240,7 +240,7 @@ export async function pullPage(
   };
 }
 
-function rowToEvent(row: typeof events.$inferSelect): DomainEvent {
+export function rowToEvent(row: typeof events.$inferSelect): DomainEvent {
   // Every stored row went through parseWireEvent before insert, so event_type is a
   // known DomainEventType — but the compiler cannot carry that runtime-proven
   // correlation between eventType and payload back out of the database, so the pair

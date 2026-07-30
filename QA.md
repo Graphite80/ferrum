@@ -36,6 +36,11 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
   that was presented and failed verification is a 401 AND an `sso_ticket_rejected` log line:
   that line is the only symptom of `SSO_SIGNING_KEY` drifting between `ferrum-secrets` and
   life-as-code's `sso-signing-key`, which otherwise looks like an ordinary signed-out visitor.
+- The first SSO sign-in backfills history from the hub, so `events` going from 0 to thousands on
+  one request is the expected shape, not a runaway. Check `hub_backfill` in the pod log after any
+  sign-in: it carries `setsImported` and `unresolved`, and a non-zero `unresolved` is history the
+  exercise library could not name — a finding, not noise. `hub_backfill_unreachable` means the
+  NetworkPolicy pair or `HUB_API_URL` is wrong; sign-in still succeeded, the account is just empty.
 - Static responses carry cache headers from the API, not from the edge: `/assets/*` (content
   hashed) is `public, max-age=31536000, immutable`, every other document — index.html, `sw.js`,
   the manifest — is `no-cache`. Left unset, the edge applies a 4h default and a released shell

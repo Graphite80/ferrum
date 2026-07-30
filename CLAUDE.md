@@ -138,6 +138,58 @@ Three properties this rests on, none of them incidental:
 Without `SSO_SIGNING_KEY` the endpoint is not mounted at all and the manual token field in Settings
 is the whole story — which is what local development and the e2e suite run against.
 
+## The history backfill
+
+Signing in gives a lifter an account. Without this it is an _empty_ one, which reads as "the app
+lost my training" rather than "the app is new" — so the first sign-in pulls the history the hub
+already holds and replays it through the same importer the Telegram path uses.
+
+`/auth/sso` → `hub-import.ts` → `GET {HUB_API_URL}/api/federated/strength-sets`, presenting the
+same ticket ferrum just verified. The hub verifies it too and answers with the sets of _that
+subject only_ — the user id is never an input. The rows come back in `@ferrum/importers`'
+`life-as-code:get_strength_sets` shape, which is the hub's own column names.
+
+- **Only into an empty account.** The importer is idempotent, but a device that has already logged
+  something owns its history and must not have the hub's copy replayed over it.
+- **Inline, not a background job.** Measured at 1.34s for 5,904 sets. A background job that failed
+  would leave the app showing an empty account with nothing to retry against.
+- **A hub outage costs nothing.** The token is minted first; a failed backfill answers
+  `backfill.outcome: "unavailable"` and sign-in still succeeds.
+- **`HUB_API_URL` is cluster-local**, so the call never leaves the cluster. It needs BOTH halves of
+  the NetworkPolicy pair in gitops (`crossNamespaceEgress` on ferrum, `crossNamespaceIngress` on
+  life-as-code); an egress allow alone gives a connection that times out rather than one refused.
+
+Measured against the real five-year history: 5,902 of 5,904 rows import, 0 field mismatches, volume
+matching to the kilogram. The 2 that do not are one Pull Up logged as 0 reps × 0 kg — no
+measurement, so there is no set to make.
+
+## The return leg
+
+The backfill alone would make this a one-way street: the hub is where training data is analysed, so
+a workout logged here has to arrive there or the hub goes stale the moment a lifter stops using the
+importer that used to feed it.
+
+`POST /sync/push` → `hub-export.ts` → `POST {HUB_API_URL}/api/federated/strength-sets`, after the
+batch is durable and never inside its transaction. The hub upserts on
+`(user_id, date, exercise, set_index)` — the same key its Hevy sync uses — so a re-push corrects a
+row instead of duplicating it.
+
+- **Only finished, undeleted sessions travel.** A session still being logged would arrive a set at
+  a time and read there as a string of tiny workouts.
+- **A separate audience.** The read ticket is handed to the browser as a cookie and therefore leaves
+  this domain, so it must not also authorise a write: ferrum mints `aud: life-as-code-ingest`,
+  `iss: ferrum`, 5 minutes, over the same shared key. The hub checks both, and a read ticket
+  presented to the write endpoint is a 401.
+- **Only a linked account has anywhere to push.** The hub subject comes from `user_identities`; a
+  bootstrap-only account reports `not-linked`, which is not an error.
+- **A hub outage never costs a set.** The export runs after the push has been stored and its failure
+  is logged (`hub_export_unreachable`), never returned — the workout is already safe.
+- Warmups are sent marked rather than dropped, because the hub excludes them from its own analysis
+  and sending them as working sets would inflate every volume figure it computes.
+
+The hub's `DataSource` gained a `ferrum` member for this, so its sync-status surface can tell these
+rows apart from Hevy's.
+
 ## Git
 
 Work on `main`, commit and push directly. Conventional commits, sentence-case subject, scope from
