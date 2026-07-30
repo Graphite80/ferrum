@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { LibraryValidationError, loadExerciseLibrary } from '../src/index.ts';
 
-// 93 at first curation; 108 once the imported history's own vocabulary was
+// 93 at first curation; 117 once the imported history's own vocabulary was
 // covered end to end. The count is asserted so growth stays deliberate — a
 // definition added to make one import pass is a duplicate waiting to happen.
-const LIBRARY_SIZE = 108;
+const LIBRARY_SIZE = 117;
 
 // The names the imported Hevy history uses. They must keep resolving forever: the moment
 // one of them stops matching, an import silently creates a second exercise and splits a
@@ -75,6 +75,43 @@ describe('exercise library data', () => {
       name => library.resolveAlias(name) === undefined
     );
     expect(unresolved).toEqual([]);
+  });
+
+  // loadEntryMode is chosen from the equipment — barbell totals, dumbbell per
+  // hand, a stack marking that is not kilograms at all. So an alias that files
+  // "Upright Row (Barbell)" under a cable definition does not just mislabel the
+  // row, it changes what its number means. Cross-equipment aliases were how the
+  // first pass at covering the imported history went wrong, on 158 sets.
+  it('never files a name under a contradicting equipment class', () => {
+    const stated = (name: string): string | null => {
+      const lowered = name.toLowerCase();
+      // Before the generic machine test: a Smith machine is its own equipment
+      // type, and the aliases spell it with and without parentheses.
+      if (lowered.includes('smith machine')) return 'smith_machine';
+      if (lowered.includes('(barbell)')) return 'barbell';
+      if (lowered.includes('(dumbbell)')) return 'dumbbell';
+      if (lowered.includes('(cable)')) return 'cable';
+      if (lowered.includes('machine')) return 'machine';
+      return null;
+    };
+    const actual = (equipmentType: string): string =>
+      equipmentType === 'machine_stack' || equipmentType === 'machine_plate_loaded'
+        ? 'machine'
+        : equipmentType;
+
+    // Every alias in the library, not a sample: the whole point is to catch the
+    // next one somebody adds.
+    const contradictions: string[] = [];
+    for (const definition of library.all) {
+      for (const name of [definition.name, ...definition.aliases]) {
+        const claimed = stated(name);
+        if (claimed === null) continue;
+        if (actual(definition.equipmentType) !== claimed) {
+          contradictions.push(`${name} -> ${definition.id} (${definition.equipmentType})`);
+        }
+      }
+    }
+    expect(contradictions).toEqual([]);
   });
 
   it('resolves every exercise name present in the real history fixture', () => {

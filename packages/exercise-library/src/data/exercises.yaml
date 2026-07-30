@@ -52,7 +52,6 @@ exercises:
       - Barbell Bench Press
       - Flat Bench Press (Barbell)
       - Iso lateral Bench Press
-      - Bench Press (Cable)
     equipmentType: barbell
     laterality: bilateral
     loadSemantics: external
@@ -171,8 +170,6 @@ exercises:
     aliases:
       - Dumbbell Incline Bench Press
       - Incline Press (Dumbbell)
-      - Incline Chest Press (Machine)
-      - Incline Chest Press (TechnoGym)
     equipmentType: dumbbell
     laterality: bilateral
     loadSemantics: external
@@ -980,7 +977,6 @@ exercises:
     aliases:
       - Barbell Row
       - Barbell Bent Over Row
-      - Bent Over Row (Dumbbell)
     equipmentType: barbell
     laterality: bilateral
     loadSemantics: external
@@ -1014,8 +1010,9 @@ exercises:
     movementId: horizontal_row
     name: 'Dumbbell Row'
     aliases:
-      - 'Single Arm Dumbbell Row'
-      - 'One Arm Dumbbell Row'
+      - Single Arm Dumbbell Row
+      - One Arm Dumbbell Row
+      - Bent Over Row (Dumbbell)
     equipmentType: dumbbell
     laterality: unilateral_isolated
     loadSemantics: external
@@ -1538,7 +1535,6 @@ exercises:
     name: 'Walking Lunge (Dumbbell)'
     aliases:
       - Dumbbell Walking Lunge
-      - Lunge (Barbell)
     equipmentType: dumbbell
     laterality: unilateral_alternating
     loadSemantics: external
@@ -1734,8 +1730,6 @@ exercises:
       - Hyperextension
       - Back Extension (Hyperextension)
       - Back Extension (Weighted Hyperextension)
-      - Back Extension (Machine)
-      - LowerBack TechnoGym
     equipmentType: bodyweight
     laterality: bilateral
     loadSemantics: bodyweight_plus_external
@@ -1763,7 +1757,6 @@ exercises:
     aliases:
       - Cable Kickback
       - Cable Glute Kickback
-      - Glute Kickback (Machine)
       - Standing Cable Glute Kickbacks
     equipmentType: cable
     laterality: unilateral_isolated
@@ -2474,8 +2467,6 @@ exercises:
     name: 'Upright Row (Cable)'
     aliases:
       - Cable Upright Row
-      - Upright Row (Barbell)
-      - Upright Row (Dumbbell)
     equipmentType: cable
     laterality: bilateral
     loadSemantics: machine_stack
@@ -2743,7 +2734,6 @@ exercises:
     name: 'Standing Calf Raise (Dumbbell)'
     aliases:
       - Dumbbell Calf Raise
-      - Standing Calf Raise (Barbell)
     equipmentType: dumbbell
     laterality: bilateral
     loadSemantics: bodyweight_plus_external
@@ -2821,7 +2811,6 @@ exercises:
     name: Reverse Grip Lat Pulldown (Cable)
     aliases:
       - Reverse Grip Lat Pulldown (Cable)
-      - Lat Machine Close Reverse Grip TechnoGym
     equipmentType: cable
     laterality: bilateral
     loadSemantics: external
@@ -3121,5 +3110,221 @@ exercises:
         role: secondary
     defaultRestSeconds: 90
     defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: incline_chest_press_machine
+    movementId: incline_press
+    name: Incline Chest Press (Machine)
+    aliases:
+      - Incline Chest Press (Machine)
+      - Incline Chest Press (TechnoGym)
+    equipmentType: machine_stack
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: pectoralis_major
+        role: primary
+      - muscleId: anterior_deltoid
+        role: secondary
+      - muscleId: triceps_brachii
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: glute_kickback_machine
+    movementId: hip_thrust
+    name: Glute Kickback (Machine)
+    aliases:
+      - Glute Kickback (Machine)
+    equipmentType: machine_stack
+    laterality: unilateral_isolated
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: gluteus_maximus
+        role: primary
+      - muscleId: hamstrings
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: reverse_grip_lat_pulldown_machine
+    movementId: vertical_pull
+    name: Reverse Grip Lat Pulldown (Machine)
+    aliases:
+      - Lat Machine Close Reverse Grip TechnoGym
+    equipmentType: machine_stack
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: latissimus_dorsi
+        role: primary
+      - muscleId: biceps_brachii
+        role: secondary
+      - muscleId: teres_major
+        role: secondary
+      - muscleId: rhomboids
+        role: stabilizer
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: back_extension_machine
+    movementId: back_extension
+    name: Back Extension (Machine)
+    aliases:
+      - Back Extension (Machine)
+      - LowerBack TechnoGym
+    equipmentType: machine_stack
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: erector_spinae
+        role: primary
+      - muscleId: gluteus_maximus
+        role: secondary
+      - muscleId: hamstrings
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: upright_row_barbell
+    movementId: upright_row
+    name: Upright Row (Barbell)
+    aliases:
+      - Upright Row (Barbell)
+    equipmentType: barbell
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: lateral_deltoid
+        role: primary
+      - muscleId: trapezius_upper
+        role: secondary
+      - muscleId: biceps_brachii
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 2.5
+    userCreated: false
+    revision: 1
+  - id: upright_row_dumbbell
+    movementId: upright_row
+    name: Upright Row (Dumbbell)
+    aliases:
+      - Upright Row (Dumbbell)
+    equipmentType: dumbbell
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: per_hand
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: lateral_deltoid
+        role: primary
+      - muscleId: trapezius_upper
+        role: secondary
+      - muscleId: biceps_brachii
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 2
+    userCreated: false
+    revision: 1
+  - id: bench_press_cable
+    movementId: horizontal_press
+    name: Bench Press (Cable)
+    aliases:
+      - Bench Press (Cable)
+    equipmentType: cable
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: per_side
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: pectoralis_major
+        role: primary
+      - muscleId: triceps_brachii
+        role: secondary
+      - muscleId: anterior_deltoid
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: standing_calf_raise_barbell
+    movementId: calf_raise
+    name: Standing Calf Raise (Barbell)
+    aliases:
+      - Standing Calf Raise (Barbell)
+    equipmentType: barbell
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: gastrocnemius
+        role: primary
+      - muscleId: soleus
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 2.5
+    userCreated: false
+    revision: 1
+  - id: lunge_barbell
+    movementId: lunge
+    name: Lunge (Barbell)
+    aliases:
+      - Lunge (Barbell)
+    equipmentType: barbell
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: quadriceps
+        role: primary
+      - muscleId: gluteus_maximus
+        role: primary
+      - muscleId: hamstrings
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 2.5
     userCreated: false
     revision: 1
