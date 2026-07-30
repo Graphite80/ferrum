@@ -26,6 +26,11 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
 
 - Two suites are the product's core promises and must never be weakened:
   `packages/domain/tests/replay.test.ts`, `apps/pwa/tests/e2e/workout-loss.spec.ts`.
+- `POST /auth/revoke-all` withdraws every credential of the calling account, its own included,
+  by stamping `auth_tokens.revoked_at`; `requireAuth` requires that stamp to be absent. It is the
+  remedy for a lost device and the only auth operation that stays correct whatever is settled in
+  issue #1 about expiry and device names. There is deliberately no UI: signing out a
+  bootstrap-only device that holds unsynced events would strand them.
 - Token minting in production is `POST /auth/bootstrap` with header `x-bootstrap-key`
   (Keychain: `ferrum-bootstrap-key`) or `POST /auth/sso` with the hub's identity cookie and
   header `x-ferrum-sso: 1`; `/dev/token` needs `FERRUM_DEV_ROUTES=1` and must stay off in prod.
@@ -51,6 +56,21 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
   (date, exercise) because `workout_sets` has no source column — a wider prune would delete rows
   the Hevy importer owns on the same day. Removing a whole exercise from a session, or deleting a
   finished session outright, still leaves its rows in the hub: known gap, not yet closed.
+- **An exercise id is a lookup key, and only the library's spelling works.** `lastPerformances`
+  and `bestPriorSets` match on `exerciseDefinitionId`, so a routine that spells one differently
+  finds nothing — silently, because `resolveDefinition` falls back to punctuation-insensitive
+  alias resolution and every name and diagram still renders. The seeded routine said
+  `squat-machine` against a library of `squat_machine` and five years of imported history read
+  "no previous set". `apps/pwa/tests/e2e/session-naming.spec.ts` drills it now; a new routine
+  source must take ids from the library, never compose them.
+- **Never hand-assemble a comparison signature.** The seed used to, and claimed `machine_stack`
+  semantics for a plate-loaded press. A slot with no signature is correct — `planExercise` asks
+  the library — and a wrong one is invisible until history stops matching.
+- A screen's chips must say what a thing IS, not what tapping would do. Both warmup chips read
+  "Warmup" and differed only by border brightness, which put twelve of them on a workout with
+  three. State on the face, action in the `aria-label`.
+- An imported session starts and finishes on one instant, so anything derived from elapsed time
+  has to answer "unknown" rather than zero (`formatDuration` returns null).
 - Every screen owns a URL (`/`, `/history`, `/history/<id>`, `/workout/<id>`, `/summary/<id>`,
   `/routine/<id|new>`, `/settings`) and a reload restores it. Boot-time auto-resume only fires
   when the path names nothing — otherwise reloading on `/history` would drag you into a workout
@@ -121,6 +141,16 @@ test`. The sync spec spawns `services/api` `dev:memory` (PGlite) itself.
   `workflow-templates/autoqa.yaml`. Always read the first two lines of the autoqa log:
   "Live site serves main-<sha>" means the run is trustworthy, the `::warning::` line
   means it tested something else.
+- **The crawler cannot reach a populated screen, so populate one yourself for any pass that
+  claims to have looked.** Dump the hub's `workout_sets` to the importer's shape
+  (`select ... json_agg` on `lifeascode_production`), seed a throwaway PGlite through
+  `importForUser`, and serve it with `PGLITE_DIR=<dir> STATIC_DIR=apps/pwa/dist tsx
+src/dev-server.ts`. That is how the "no previous set" and "0 s" defects surfaced; neither is
+  visible on the empty database every automated suite runs against. No production credentials
+  and no hub cookie are involved.
+- `/auth/sso` answers 404 in that local configuration (no `SSO_SIGNING_KEY`), and the browser
+  logs it as a console error on every start. Expected, not a finding: not mounting the endpoint
+  without a key is the deliberate posture, asserted in `services/api/tests/sso.test.ts`.
 - A QA browser profile holds a service worker from whatever build it last loaded, and
   `registerType: 'prompt'` keeps it there until "Restart" is tapped. A cache-busting query
   string does not help. Unregister the worker and clear `caches` before believing anything
