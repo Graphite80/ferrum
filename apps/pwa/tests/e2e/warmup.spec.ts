@@ -74,8 +74,14 @@ test.describe('warmup and working sets', () => {
     await expect(page.getByTestId('history-detail')).toBeVisible();
     await expect(page.getByTestId('detail-warmup-marker')).toHaveCount(0);
 
+    // Both chips are toggles, so each has to say which one it is on its face.
+    // They used to read "Warmup" in both states and differ only by a border,
+    // which put twelve chips reading Warmup on a workout that had three.
+    await expect(page.getByTestId('detail-warmup-toggle').first()).toHaveText('Working');
+
     await page.getByTestId('detail-warmup-toggle').first().click();
     await expect(page.getByTestId('detail-warmup-marker')).toHaveCount(1);
+    await expect(page.getByTestId('detail-warmup-marker').first()).toHaveText('Warmup');
     await expect(page.getByTestId('detail-amendments')).toBeVisible();
 
     // The detail screen owns a URL, so a reload comes back to this workout

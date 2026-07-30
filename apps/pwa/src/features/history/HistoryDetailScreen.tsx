@@ -35,6 +35,8 @@ export function HistoryDetailScreen({
   }
 
   const session = projection.session;
+  const duration =
+    session.finishedAt == null ? null : formatDuration(session.startedAt, session.finishedAt);
 
   return (
     <ScreenShell
@@ -59,11 +61,7 @@ export function HistoryDetailScreen({
         })}
       >
         <span data-testid="detail-date">{session.localDate}</span>
-        {session.finishedAt != null && (
-          <span data-testid="detail-duration">
-            {formatDuration(session.startedAt, session.finishedAt)}
-          </span>
-        )}
+        {duration !== null && <span data-testid="detail-duration">{duration}</span>}
         <span>{session.status}</span>
       </div>
 
@@ -203,7 +201,12 @@ function DetailSetRow({
           data-testid={isWarmup ? 'detail-warmup-marker' : 'detail-warmup-toggle'}
           onClick={onToggleWarmup}
         >
-          Warmup
+          {/* The chip says what the set IS, never what tapping it would do. Both
+              states used to read "Warmup" and differ only by border brightness,
+              so a workout with three warmups showed twelve chips reading Warmup
+              and no way to tell an assertion from an offer. The action stays in
+              the aria-label, where it belongs. */}
+          {isWarmup ? 'Warmup' : 'Working'}
         </button>
       )}
       {onToggleWarmup === null && isWarmup && (
