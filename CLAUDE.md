@@ -104,10 +104,39 @@ Verified July 2026. Do not "simplify" the code that works around these.
 - **Web Push cannot wake the app**; `notificationclick` does not fire when the PWA is closed. Push
   is not a rest timer and not a sync trigger.
 - **Cross-domain navigation exits standalone mode** and cookies are not shared with Safari, so
-  authentication must stay on our own origin — no third-party OAuth redirect.
+  authentication must stay on our own origin — no third-party OAuth redirect. This is why ferrum
+  lives at `ferrum.life-as-code.com` and signs in from a cookie rather than a redirect: see
+  "Single sign-on" below.
 
 The rest timer is always derived from `endsAt - now`. `setInterval` is a repaint trigger, never the
 source of truth.
+
+## Single sign-on
+
+life-as-code is the hub and owns the human's account; ferrum is one of its apps and holds no
+password. The hub sets a second cookie next to its own session — `__Secure-lac-sso`, scoped
+`Domain=life-as-code.com`, HttpOnly, SameSite=Lax — carrying an HS256-signed statement of who is
+logged in (`iss=life-as-code`, `aud=life-as-code-apps`, 12h). The hub's own session cookie keeps its
+stricter `__Host-` prefix and is never shared.
+
+Because ferrum is served from a host under the same registrable domain, that cookie arrives on every
+request to this origin. `POST /auth/sso` verifies it offline against `SSO_SIGNING_KEY` — no callback
+to the hub, so a hub outage cannot lock a lifter out mid-session — maps `sub` onto a row in
+`user_identities` (provider `life-as-code`) and mints an ordinary ferrum bearer token. The PWA does
+this once, on start-up, when it has no token stored.
+
+Three properties this rests on, none of them incidental:
+
+- **No redirect anywhere.** A top-level hop to the hub would exit standalone mode on iOS and land in
+  a browser view with a different cookie jar — the constraint above.
+- **`x-ferrum-sso: 1` is required.** The cookie is ambient, so a hostile page could aim a form POST
+  at `/auth/sso`; a custom header cannot be forged cross-origin without a CORS preflight this API
+  never answers. SameSite=Lax is the second lock.
+- **A one-day cap on ticket lifetime is enforced by the verifier**, not just by the issuer. A stolen
+  ticket is a login; the reader is what bounds the damage.
+
+Without `SSO_SIGNING_KEY` the endpoint is not mounted at all and the manual token field in Settings
+is the whole story — which is what local development and the e2e suite run against.
 
 ## Git
 
@@ -116,7 +145,9 @@ Work on `main`, commit and push directly. Conventional commits, sentence-case su
 
 ## Deployment (live)
 
-Running at `ferrum.nikolay-eremeev.com`; ArgoCD app `ferrum-production`, namespace
+Running at `ferrum.life-as-code.com` (moved off `ferrum.nikolay-eremeev.com` on 2026-07-30, which
+now 301s there via a Cloudflare page rule in `gitops/terraform/redirects.tf`); ArgoCD app
+`ferrum-production`, namespace
 `ferrum-production`, image `git.nikolay-eremeev.com/nikolay-e/ferrum:main-<sha7>`. Push to `main`,
 Argo Workflows builds, the `ferrum-production` ImageUpdater CRD bumps the tag, ArgoCD syncs; the
 whole loop takes about ten minutes. Apps in this cluster contain **no CI config at all**: the

@@ -9,7 +9,8 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
   secret from `gitops/kubernetes/secrets/ci-events/forgejo-webhook.enc.yaml`.
 - CD: ArgoCD app `ferrum-production`, namespace `ferrum-production`, image
   `git.nikolay-eremeev.com/nikolay-e/ferrum:main-<sha7>`, ImageUpdater CRD `ferrum-production`.
-- URL: https://ferrum.nikolay-eremeev.com (public tier, Cloudflare tunnel `gitops`).
+- URL: https://ferrum.life-as-code.com (public tier, Cloudflare tunnel `gitops`). The old
+  https://ferrum.nikolay-eremeev.com must answer 301 to it — check both every pass.
 - Postgres: role/db `ferrum_production` on shared CNPG via pooler; password secret
   `shared-postgres-ferrum-production` (shared-database ns) → ExternalSecret `ferrum-postgres`.
 - SonarCloud: no project configured — skip, note as N/A.
@@ -25,9 +26,13 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
 
 - Two suites are the product's core promises and must never be weakened:
   `packages/domain/tests/replay.test.ts`, `apps/pwa/tests/e2e/workout-loss.spec.ts`.
-- Token minting in production is only `POST /auth/bootstrap` with header `x-bootstrap-key`
-  (Keychain: `ferrum-bootstrap-key`); `/dev/token` needs `FERRUM_DEV_ROUTES=1` and must stay
-  off in prod. Tokens are stored sha256-hashed (`auth_tokens.token_hash`).
+- Token minting in production is `POST /auth/bootstrap` with header `x-bootstrap-key`
+  (Keychain: `ferrum-bootstrap-key`) or `POST /auth/sso` with the hub's identity cookie and
+  header `x-ferrum-sso: 1`; `/dev/token` needs `FERRUM_DEV_ROUTES=1` and must stay off in prod.
+  Tokens are stored sha256-hashed (`auth_tokens.token_hash`).
+- `POST /auth/sso` without a cookie must be 401, never 200. `SSO_SIGNING_KEY` must be identical
+  in `ferrum-secrets` and life-as-code's `sso-signing-key`; if they drift, sign-in silently
+  falls back to "not signed in to life-as-code" and the failure looks like a hub problem.
 - The Telegram bot is private-chat only by design — group chats would let any member read or
   write another member's log. Do not "fix" the chat-type guards away.
 - Bot env (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_WEBHOOK_SECRET`) is optional; the server must

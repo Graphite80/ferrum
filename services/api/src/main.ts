@@ -36,6 +36,9 @@ const app = createApp({
   ...(process.env.AUTH_BOOTSTRAP_KEY === undefined || process.env.AUTH_BOOTSTRAP_KEY === ''
     ? {}
     : { bootstrapKey: process.env.AUTH_BOOTSTRAP_KEY }),
+  ...(process.env.SSO_SIGNING_KEY === undefined || process.env.SSO_SIGNING_KEY === ''
+    ? {}
+    : { ssoSigningKey: process.env.SSO_SIGNING_KEY }),
   ...(telegram === undefined ? {} : { telegram }),
   ...(process.env.STATIC_DIR === undefined || process.env.STATIC_DIR === ''
     ? {}

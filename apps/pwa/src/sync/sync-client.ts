@@ -21,6 +21,7 @@ import {
   unacknowledgedBatch,
   unacknowledgedCount,
 } from '../db/event-store.ts';
+import { requestHubToken, type HubSignInOutcome } from './sso.ts';
 
 export interface SyncConfig {
   readonly serverUrl: string | null;
@@ -455,9 +456,33 @@ function observePendingPurges(): void {
   });
 }
 
+export type HubSignInResult = HubSignInOutcome | 'already-configured';
+
+// A device that arrives from the hub with nothing stored gets its sync target
+// from the hub itself. An already-configured device is left alone: a manually
+// entered token, or one for a different server, is a deliberate choice.
+export async function signInWithHub({ force = false }: { force?: boolean } = {}): Promise<{
+  result: HubSignInResult;
+  displayName: string | null;
+}> {
+  const existing = await withDatabaseRecovery(loadSyncConfig).catch(() => null);
+  if (!force && existing?.serverUrl != null && existing.syncToken != null) {
+    return { result: 'already-configured', displayName: null };
+  }
+  const signIn = await requestHubToken(window.location.origin);
+  if (signIn.outcome !== 'granted' || signIn.token === null) {
+    return { result: signIn.outcome, displayName: null };
+  }
+  await saveSyncConfig({ serverUrl: window.location.origin, syncToken: signIn.token });
+  return { result: 'granted', displayName: signIn.displayName };
+}
+
 export async function initSync(): Promise<void> {
   if (initialized) return;
   initialized = true;
+  // Before the first cycle, so a device that arrives from the hub with no local
+  // config pushes its backlog on this start rather than the next one.
+  await signInWithHub();
   observePendingCount();
   observePendingPurges();
   window.addEventListener('online', () => {

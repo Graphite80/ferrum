@@ -21,7 +21,19 @@ const pglite = dataDir === undefined || dataDir === '' ? new PGlite() : new PGli
 const db = pgliteDatabase(pglite);
 await migrate(db);
 
-const app = createApp({ db, enableDevRoutes: true });
+// Both optional and both mirroring main.ts: serving the PWA from the API origin
+// is the only way to exercise the hub's identity cookie, which is same-origin by
+// construction, without standing up the production container.
+const app = createApp({
+  db,
+  enableDevRoutes: true,
+  ...(process.env.SSO_SIGNING_KEY === undefined || process.env.SSO_SIGNING_KEY === ''
+    ? {}
+    : { ssoSigningKey: process.env.SSO_SIGNING_KEY }),
+  ...(process.env.STATIC_DIR === undefined || process.env.STATIC_DIR === ''
+    ? {}
+    : { staticDir: process.env.STATIC_DIR }),
+});
 
 interface BotImportBody {
   readonly lines: readonly string[];

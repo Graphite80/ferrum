@@ -8,17 +8,32 @@ import {
   loadSyncConfig,
   requestSync,
   saveSyncConfig,
+  signInWithHub,
   subscribeSyncStatus,
   type SyncConfig,
   type SyncStatus,
 } from '../../sync/sync-client.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
 import { StatCard } from '../../components/StatCard.tsx';
+import { HUB_NAME, HUB_URL } from '../../hub.ts';
 import { button, card, eyebrow, mono } from '../../ui.ts';
 
 const INPUT = card({
   className: 'tap-target px-4 text-base text-chalk outline-none placeholder:text-ash',
 });
+
+const HUB_SIGN_IN_MESSAGES: Record<
+  'granted' | 'no-identity' | 'unavailable' | 'already-configured',
+  (displayName: string | null) => string
+> = {
+  granted: displayName =>
+    displayName === null
+      ? `Signed in with ${HUB_NAME}.`
+      : `Signed in with ${HUB_NAME} as ${displayName}.`,
+  'no-identity': () => `Not signed in to ${HUB_NAME} in this browser. Open it, log in, come back.`,
+  unavailable: () => `Could not reach ${HUB_NAME} sign-in. Enter a token below instead.`,
+  'already-configured': () => 'Already configured.',
+};
 
 export function SettingsScreen({
   unit,
@@ -62,7 +77,29 @@ export function SettingsScreen({
       </StatCard>
 
       <SyncCard />
+      <HubCard />
     </ScreenShell>
+  );
+}
+
+// Ferrum is the training app of the life-as-code hub; the hub holds sleep,
+// recovery and bloodwork this app deliberately does not. The link is the whole
+// integration a lifter sees — the account behind it is already shared.
+function HubCard() {
+  return (
+    <StatCard
+      label={HUB_NAME}
+      description="Ferrum signs in with your life-as-code account. Sleep, recovery and everything else live there."
+      className="gap-3 p-4"
+    >
+      <a
+        className={button({ intent: 'secondary', className: 'flex items-center justify-center' })}
+        href={HUB_URL}
+        data-testid="hub-link"
+      >
+        Open {HUB_NAME}
+      </a>
+    </StatCard>
   );
 }
 
@@ -95,7 +132,22 @@ function SyncCardBody({
 }) {
   const [serverUrl, setServerUrl] = useState(config?.serverUrl ?? '');
   const [token, setToken] = useState(config?.syncToken ?? '');
+  const [hubMessage, setHubMessage] = useState<string | null>(null);
   const loaded = config !== undefined;
+
+  const signIn = () => {
+    setHubMessage('Signing in…');
+    void signInWithHub({ force: true }).then(async ({ result, displayName }) => {
+      setHubMessage(HUB_SIGN_IN_MESSAGES[result](displayName));
+      if (result !== 'granted') return;
+      // Re-read rather than assume: the fields must show the token that was
+      // actually stored, or the next Save would overwrite it with a blank.
+      const saved = await loadSyncConfig();
+      setServerUrl(saved.serverUrl ?? '');
+      setToken(saved.syncToken ?? '');
+      requestSync('manual');
+    });
+  };
 
   const save = () => {
     const trimmedUrl = serverUrl.trim();
@@ -115,6 +167,20 @@ function SyncCardBody({
         Optional. Ferrum works fully offline without a server; add one to back up history and share
         it across devices.
       </p>
+      <button
+        type="button"
+        className={button({ className: 'w-full' })}
+        data-testid="hub-sign-in"
+        disabled={!loaded}
+        onClick={signIn}
+      >
+        Sign in with {HUB_NAME}
+      </button>
+      {hubMessage !== null && (
+        <p className="text-xs text-ash" data-testid="hub-sign-in-message">
+          {hubMessage}
+        </p>
+      )}
       <label className="flex flex-col gap-1">
         <span className={eyebrow()}>Server URL</span>
         <input

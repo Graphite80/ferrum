@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
-import { type Database, type Tx } from '../db.ts';
+import { type Database } from '../db.ts';
+import { findOrCreateUserByIdentity } from '../identities.ts';
 import {
   botPending,
   linkTokens,
   telegramChats,
   userIdentities,
-  users,
   type PendingShorthand,
 } from '../schema.ts';
 
@@ -15,32 +15,7 @@ export { type PendingShorthand } from '../schema.ts';
 const TELEGRAM_PROVIDER = 'telegram';
 
 export async function findOrCreateTelegramUser(db: Database, providerUid: string): Promise<string> {
-  return db.transaction(async tx => {
-    const existing = await findTelegramUser(tx, providerUid);
-    if (existing != null) return existing;
-    const created = await tx.insert(users).values({}).returning({ id: users.id });
-    const userId = created[0]?.id;
-    if (userId === undefined) throw new Error('user insert returned no row');
-    await tx
-      .insert(userIdentities)
-      .values({ userId, provider: TELEGRAM_PROVIDER, providerUid })
-      .onConflictDoNothing({ target: [userIdentities.provider, userIdentities.providerUid] });
-    const settled = await findTelegramUser(tx, providerUid);
-    return settled ?? userId;
-  });
-}
-
-async function findTelegramUser(tx: Tx, providerUid: string): Promise<string | null> {
-  const found = await tx
-    .select({ userId: userIdentities.userId })
-    .from(userIdentities)
-    .where(
-      and(
-        eq(userIdentities.provider, TELEGRAM_PROVIDER),
-        eq(userIdentities.providerUid, providerUid)
-      )
-    );
-  return found[0]?.userId ?? null;
+  return findOrCreateUserByIdentity(db, TELEGRAM_PROVIDER, providerUid);
 }
 
 export async function bindTelegramIdentity(
