@@ -26,6 +26,8 @@ interface TicketOverrides {
   readonly alg?: string;
 }
 
+const CAP_BASE = Math.floor(Date.now() / 1000);
+
 function ticketFor(subject: string): string {
   return ticket({ sub: subject });
 }
@@ -164,7 +166,11 @@ describe('single sign-on from life-as-code', () => {
     ['an unsigned "none" ticket', `__Secure-lac-sso=${ticket({ alg: 'none' })}`],
     [
       'a ticket that outlives the one-day cap',
-      `__Secure-lac-sso=${ticket({ exp: Math.floor(Date.now() / 1000) + 86_401 })}`,
+      // iat pinned alongside exp from ONE reading of the clock. Overriding only
+      // exp let a second tick between the two, making the lifetime exactly the
+      // cap instead of one over it — a test that passed alone and failed in a
+      // slower full run.
+      `__Secure-lac-sso=${ticket({ iat: CAP_BASE, exp: CAP_BASE + 86_401 })}`,
     ],
     [
       'a ticket dated in the future',

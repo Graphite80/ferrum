@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { type SessionId, type SessionProjection } from '@ferrum/domain';
 import { listSessions, unacknowledgedCount } from '../../db/event-store.ts';
 import { purgeSession, restoreSession } from '../../data/session-controller.ts';
+import { sessionDisplayTitle } from './session-view.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
 import { button, card, mono } from '../../ui.ts';
 import { useLiveData } from '../../components/live-data.ts';
@@ -164,7 +165,7 @@ function SessionSummary({ projection }: { projection: SessionProjection }) {
     <>
       <div className="flex items-baseline justify-between text-sm">
         <span className="font-display text-base font-semibold uppercase">
-          {projection.session?.title ?? 'Workout'}
+          {sessionDisplayTitle(projection)}
         </span>
         <span className={mono({ className: 'text-xs font-medium text-ash' })}>
           {projection.session?.localDate}

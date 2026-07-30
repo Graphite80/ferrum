@@ -12,7 +12,7 @@ import { loadSession } from '../../db/event-store.ts';
 import { type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 import { type TopSet, bestPriorSets, topWorkingSet } from '../../db/history.ts';
 import { loadSessionPlanSlots } from '../../data/routine-store.ts';
-import { exerciseDisplayName, formatDuration } from './session-view.ts';
+import { exerciseDisplayName, formatDuration, sessionDisplayTitle } from './session-view.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
 import { StatCard } from '../../components/StatCard.tsx';
 import { button, card, eyebrow, mono } from '../../ui.ts';
@@ -61,7 +61,7 @@ export function WorkoutSummaryScreen({
 
   return (
     <ScreenShell
-      title={session.title ?? 'Workout'}
+      title={sessionDisplayTitle(projection)}
       titleClassName="text-3xl"
       eyebrowText="Workout complete"
       testId="workout-summary"

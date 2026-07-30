@@ -1,10 +1,11 @@
 import {
+  type ExerciseDefinition,
   type SessionExercise,
   type SessionExerciseId,
   type SessionProjection,
   type WorkoutSet,
 } from '@ferrum/domain';
-import { loadExerciseLibrary } from '@ferrum/exercise-library';
+import { describeSession, loadExerciseLibrary } from '@ferrum/exercise-library';
 import { type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 
 export function formatDuration(startMillis: number, endMillis: number): string {
@@ -38,4 +39,18 @@ export function setsForExercise(
     live: projection.sets.filter(set => set.sessionExerciseId === sessionExerciseId),
     deleted: projection.deletedSets.filter(set => set.sessionExerciseId === sessionExerciseId),
   };
+}
+
+// A session with no title of its own gets one derived from what it trained, so
+// a history of hundreds of imported workouts is a list you can actually scan
+// instead of the same word repeated. A title the lifter typed always wins.
+export function sessionDisplayTitle(projection: SessionProjection): string {
+  const session = projection.session;
+  if (session?.title != null && session.title.trim() !== '') return session.title;
+
+  const library = loadExerciseLibrary();
+  const definitions = projection.exercises
+    .map(exercise => library.byId.get(exercise.exerciseDefinitionId))
+    .filter((definition): definition is ExerciseDefinition => definition !== undefined);
+  return describeSession(definitions);
 }

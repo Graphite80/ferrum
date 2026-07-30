@@ -3,7 +3,12 @@ import { type SessionId, type WeightUnit, type WorkoutSet, formatLoad } from '@f
 import { loadSession } from '../../db/event-store.ts';
 import { amendSet, deleteSession } from '../../data/session-controller.ts';
 import { loadSessionPlanSlots } from '../../data/routine-store.ts';
-import { exerciseDisplayName, formatDuration, setsForExercise } from './session-view.ts';
+import {
+  exerciseDisplayName,
+  formatDuration,
+  sessionDisplayTitle,
+  setsForExercise,
+} from './session-view.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
 import { button, card, eyebrow, mono } from '../../ui.ts';
 import { useLiveData } from '../../components/live-data.ts';
@@ -33,7 +38,7 @@ export function HistoryDetailScreen({
 
   return (
     <ScreenShell
-      title={session.title ?? 'Workout'}
+      title={sessionDisplayTitle(projection)}
       titleClassName="min-w-0"
       className="gap-3"
       testId="history-detail"
