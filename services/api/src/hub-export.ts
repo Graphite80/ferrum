@@ -17,7 +17,13 @@ import { SSO_PROVIDER } from './sso.ts';
 const INGEST_AUDIENCE = 'life-as-code-ingest';
 const INGEST_ISSUER = 'ferrum';
 const TICKET_LIFETIME_SECONDS = 300;
-const REQUEST_TIMEOUT_MILLIS = 20_000;
+// Deliberately well under the sync client's own 20s request timeout. This runs
+// inside the push response, so a hub that merely hangs would otherwise time the
+// PUSH out client-side; the client would retry, the retry would re-trigger the
+// same slow export, and sync would fail in a loop over a secondary concern.
+// Losing an export is recoverable — the next push that touches the session
+// re-sends it — and the failure is logged either way.
+const REQUEST_TIMEOUT_MILLIS = 4_000;
 
 export interface HubExportRow {
   readonly date: string;
