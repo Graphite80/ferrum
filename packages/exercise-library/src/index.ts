@@ -56,6 +56,7 @@ const MOVEMENT_PATTERNS: readonly MovementPattern[] = [
   'elbow_flexion',
   'elbow_extension',
   'shoulder_abduction',
+  'shoulder_flexion',
   'shoulder_elevation',
   'shoulder_external_rotation',
   'wrist_flexion',

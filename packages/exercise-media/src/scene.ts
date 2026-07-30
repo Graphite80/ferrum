@@ -68,6 +68,8 @@ export function anchorPoint(skeleton: Skeleton, anchor: AnchorKind): Vec2 {
       return skeleton.chest;
     case 'upper-back':
       return mix(skeleton.chest, skeleton.headCenter, 0.35);
+    case 'head':
+      return skeleton.headCenter;
   }
 }
 

@@ -91,3 +91,15 @@ loaded_carry:
 step_up:
   name: Step Up
   pattern: lunge
+front_raise:
+  name: Front Raise
+  pattern: shoulder_flexion
+neck:
+  name: Neck
+  pattern: trunk_flexion
+cardio_cycle:
+  name: Cycling
+  pattern: squat
+decline_press:
+  name: Decline Press
+  pattern: horizontal_push

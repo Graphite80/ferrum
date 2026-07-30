@@ -63,6 +63,12 @@ test`. The sync spec spawns `services/api` `dev:memory` (PGlite) itself.
 - The crawler will always report "Pages visited: 1". Every screen lives at `/` (the typed
   `Screen` union in `App.tsx`; a router was considered and rejected), so link-following cannot
   reach them. UI coverage comes from the monkey run and the Playwright suite, not the crawler.
+  **"Pages visited: 0" is a different animal and always a broken run** — it means every seed
+  was skipped, and the gate still reports `ok` (upstream `nikolay-e/autoqa#51`). It happened
+  on the 2026-07-30 host move: the sensor still named the old host, which by then 301'd to the
+  new one, so the crawler audited nothing, the monkey took 0 actions, and an empty baseline was
+  written for the old host. Whenever the public host changes, the sensor's `TARGET_URL` in
+  gitops changes in the same commit, and the first run afterwards gets read line by line.
 - Observatory sits at B+ (threshold B). The single failing test is `unsafe-inline`/`unsafe-eval`
   in `script-src`, which comes from the cluster-wide `kube-system-security-headers` middleware
   shared by every app on the domain — a ferrum-only fix would mean a ferrum-only middleware.

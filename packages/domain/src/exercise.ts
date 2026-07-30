@@ -16,6 +16,10 @@ export type MovementPattern =
   | 'elbow_flexion'
   | 'elbow_extension'
   | 'shoulder_abduction'
+  // A front raise is shoulder flexion, not abduction: same deltoid, different
+  // joint action, so folding it into the raise family would make two unlike
+  // movements look like substitutes for each other.
+  | 'shoulder_flexion'
   | 'shoulder_elevation'
   | 'shoulder_external_rotation'
   | 'wrist_flexion'

@@ -11,7 +11,10 @@ export type AnchorKind =
   | 'knees'
   | 'toes'
   | 'chest'
-  | 'upper-back';
+  | 'upper-back'
+  // The neck machine loads the head against a pad, so the head is the point the
+  // resistance acts on — the hands only steady the body.
+  | 'head';
 
 export interface AnimationSpec {
   readonly view: View;
@@ -131,6 +134,103 @@ const BY_MOVEMENT: Record<string, AnimationSpec> = {
     finish: { hip: [100, 112], torso: 90, hand: [102, 26], elbow: -1, ...STANDING_FEET },
     durationMs: 2800,
     cue: 'Ribs down, press the head through once the bar clears the forehead.',
+  },
+  front_raise: {
+    view: 'side',
+    apparatus: [],
+    implement: 'auto',
+    anchor: 'hands',
+    start: { hip: [100, 112], torso: 90, hand: [104, 142], elbow: -1, foot: [102, 186], knee: 1 },
+    finish: { hip: [100, 112], torso: 90, hand: [148, 96], elbow: -1, foot: [102, 186], knee: 1 },
+    durationMs: 2600,
+    cue: 'Raise to shoulder height in front, thumb up, no swing from the hips.',
+  },
+  decline_press: {
+    view: 'side',
+    apparatus: ['decline_bench'],
+    implement: 'auto',
+    anchor: 'hands',
+    start: {
+      hip: [86, 120],
+      torso: -14,
+      head: -14,
+      hand: [112, 122],
+      elbow: -1,
+      foot: [56, 156],
+      knee: 1,
+      toe: 20,
+    },
+    finish: {
+      hip: [86, 120],
+      torso: -14,
+      head: -14,
+      hand: [134, 90],
+      elbow: -1,
+      foot: [56, 156],
+      knee: 1,
+      toe: 20,
+    },
+    durationMs: 2800,
+    cue: 'Head below the hips, bar to the lower chest, press straight over it.',
+  },
+  neck: {
+    view: 'side',
+    apparatus: ['seat', 'machine_frame'],
+    implement: 'none',
+    anchor: 'head',
+    start: {
+      hip: [96, 126],
+      torso: 88,
+      head: -18,
+      hand: [112, 132],
+      elbow: 1,
+      foot: [104, 186],
+      knee: 1,
+    },
+    finish: {
+      hip: [96, 126],
+      torso: 88,
+      head: 26,
+      hand: [112, 132],
+      elbow: 1,
+      foot: [104, 186],
+      knee: 1,
+    },
+    durationMs: 3000,
+    cue: 'Move the head alone through its range; the torso stays still.',
+  },
+  cardio_cycle: {
+    view: 'side',
+    apparatus: ['seat'],
+    implement: 'none',
+    anchor: 'ankles',
+    // The pedals move opposite each other, so their midpoint stands still: the
+    // path worth drawing is the circle one foot takes.
+    trace: 'near-ankle',
+    start: {
+      hip: [92, 122],
+      torso: 74,
+      hand: [126, 112],
+      elbow: -1,
+      foot: [
+        [126, 146],
+        [86, 176],
+      ],
+      knee: [-1, -1],
+    },
+    finish: {
+      hip: [92, 122],
+      torso: 74,
+      hand: [126, 112],
+      elbow: -1,
+      foot: [
+        [86, 176],
+        [126, 146],
+      ],
+      knee: [-1, -1],
+    },
+    durationMs: 2000,
+    cue: 'Turn the pedals smoothly; the effort is time, not a load.',
   },
   lateral_raise: {
     view: 'front',

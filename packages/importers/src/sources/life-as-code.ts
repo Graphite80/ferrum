@@ -21,6 +21,10 @@ export interface LifeAsCodeSetRow {
   readonly reps: number | null;
   readonly rpe: number | null;
   readonly rest_s: number | null;
+  // Optional: older exports of this format predate both columns, and a reader
+  // that demanded them would reject every one of those documents outright.
+  readonly duration_seconds?: number | null;
+  readonly distance_meters?: number | null;
   readonly set_type: string;
 }
 
@@ -45,6 +49,7 @@ const ASSUMPTIONS: readonly string[] = [
   'Warmups are not flagged in this export: every row arrives as "normal". Leading sets that are far below the day\'s top load for the same exercise are reclassified as warmup by the import heuristic, each one flagged so it can be restored to a working set.',
   'RPE is converted to RIR as 10 - RPE. Rows without an RPE keep a null RIR; no effort figure is invented.',
   'A rest duration is never present in this export, so no rest time is recorded.',
+  'A row carrying a duration or a distance instead of reps is a timed hold or a cardio effort, and is imported as such rather than discarded.',
 ];
 
 export function extractLifeAsCode(document: unknown): SourceExtraction {
@@ -114,8 +119,12 @@ export function extractLifeAsCode(document: unknown): SourceExtraction {
       loadKind: weight == null ? 'bodyweight_only' : 'external',
       reps: numberOrNull(record.reps),
       rpe: numberOrNull(record.rpe),
-      durationSeconds: null,
-      distanceMeters: null,
+      // A timed hold and a cardio effort are sets like any other. Discarding
+      // these two fields dropped every plank, side plank and spin from the
+      // import as "describes no set", which is the source recording something
+      // and this reader refusing to see it.
+      durationSeconds: numberOrNull(record.duration_seconds),
+      distanceMeters: numberOrNull(record.distance_meters),
       restSeconds: numberOrNull(record.rest_s),
       note: null,
       supersetKey: null,

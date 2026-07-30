@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { LibraryValidationError, loadExerciseLibrary } from '../src/index.ts';
 
-const LIBRARY_SIZE = 93;
+// 93 at first curation; 108 once the imported history's own vocabulary was
+// covered end to end. The count is asserted so growth stays deliberate — a
+// definition added to make one import pass is a duplicate waiting to happen.
+const LIBRARY_SIZE = 108;
 
 // The names the imported Hevy history uses. They must keep resolving forever: the moment
 // one of them stops matching, an import silently creates a second exercise and splits a

@@ -49,8 +49,10 @@ exercises:
     movementId: horizontal_press
     name: 'Bench Press (Barbell)'
     aliases:
-      - 'Barbell Bench Press'
-      - 'Flat Bench Press (Barbell)'
+      - Barbell Bench Press
+      - Flat Bench Press (Barbell)
+      - Iso lateral Bench Press
+      - Bench Press (Cable)
     equipmentType: barbell
     laterality: bilateral
     loadSemantics: external
@@ -78,8 +80,10 @@ exercises:
     movementId: incline_press
     name: 'Incline Bench Press (Barbell)'
     aliases:
-      - 'Barbell Incline Bench Press'
-      - 'Incline Press (Barbell)'
+      - Barbell Incline Bench Press
+      - Incline Press (Barbell)
+      - Iso-Lateral Incline Press
+      - Iso-Lateral Incline Press (Hammer Strength)
     equipmentType: barbell
     laterality: bilateral
     loadSemantics: external
@@ -107,7 +111,8 @@ exercises:
     movementId: horizontal_press
     name: 'Close Grip Bench Press (Barbell)'
     aliases:
-      - 'Narrow Grip Bench Press (Barbell)'
+      - Narrow Grip Bench Press (Barbell)
+      - Bench Press - Close Grip (Barbell)
     equipmentType: barbell
     laterality: bilateral
     loadSemantics: external
@@ -164,8 +169,10 @@ exercises:
     movementId: incline_press
     name: 'Incline Bench Press (Dumbbell)'
     aliases:
-      - 'Dumbbell Incline Bench Press'
-      - 'Incline Press (Dumbbell)'
+      - Dumbbell Incline Bench Press
+      - Incline Press (Dumbbell)
+      - Incline Chest Press (Machine)
+      - Incline Chest Press (TechnoGym)
     equipmentType: dumbbell
     laterality: bilateral
     loadSemantics: external
@@ -219,8 +226,10 @@ exercises:
     movementId: horizontal_press
     name: 'Chest Press (Machine)'
     aliases:
-      - 'Seated Chest Press (Machine)'
-      - 'Machine Chest Press'
+      - Seated Chest Press (Machine)
+      - Machine Chest Press
+      - Chest Press TechnoGym
+      - Iso-Lateral Chest Press (Machine)
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: machine_stack
@@ -273,9 +282,11 @@ exercises:
     movementId: chest_fly
     name: 'Seated Chest Flys (Cable)'
     aliases:
-      - 'Seated Chest Fly (Cable)'
-      - 'Cable Chest Fly'
-      - 'Cable Crossover'
+      - Seated Chest Fly (Cable)
+      - Cable Chest Fly
+      - Cable Crossover
+      - Cable Fly Crossovers
+      - Low Cable Fly Crossovers
     equipmentType: cable
     laterality: bilateral
     loadSemantics: machine_stack
@@ -326,8 +337,10 @@ exercises:
     movementId: chest_fly
     name: 'Pec Deck (Machine)'
     aliases:
-      - 'Machine Chest Fly'
-      - 'Butterfly (Machine)'
+      - Machine Chest Fly
+      - Butterfly (Machine)
+      - Chest Fly (Machine)
+      - Butterfly (Pec Deck)
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: machine_stack
@@ -351,7 +364,8 @@ exercises:
     movementId: horizontal_press
     name: 'Push Up'
     aliases:
-      - 'Press Up'
+      - Press Up
+      - Push Up - Close Grip
     equipmentType: bodyweight
     laterality: bilateral
     loadSemantics: bodyweight
@@ -381,9 +395,11 @@ exercises:
     movementId: horizontal_press
     name: 'Dip'
     aliases:
-      - 'Chest Dip'
-      - 'Parallel Bar Dip'
-      - 'Triceps Dip'
+      - Chest Dip
+      - Parallel Bar Dip
+      - Triceps Dip
+      - Chest Dip (Weighted)
+      - Triceps Dip (Weighted)
     equipmentType: bodyweight
     laterality: bilateral
     loadSemantics: bodyweight_plus_external
@@ -411,9 +427,11 @@ exercises:
     movementId: overhead_press
     name: 'Overhead Press (Barbell)'
     aliases:
-      - 'Shoulder Press (Barbell)'
-      - 'Military Press (Barbell)'
-      - 'Standing Overhead Press'
+      - Shoulder Press (Barbell)
+      - Military Press (Barbell)
+      - Standing Overhead Press
+      - Overhead Press Front Grip
+      - Seated Overhead Press (Barbell)
     equipmentType: barbell
     laterality: bilateral
     loadSemantics: external
@@ -507,8 +525,9 @@ exercises:
     movementId: overhead_press
     name: 'Seated Shoulder Press (Machine)'
     aliases:
-      - 'Shoulder Press (Machine)'
-      - 'Machine Shoulder Press'
+      - Shoulder Press (Machine)
+      - Machine Shoulder Press
+      - Shoulder Press TechnoGym
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: machine_stack
@@ -588,8 +607,9 @@ exercises:
     movementId: lateral_raise
     name: 'Lateral Raise (Dumbbell)'
     aliases:
-      - 'Dumbbell Lateral Raise'
-      - 'Side Lateral Raise (Dumbbell)'
+      - Dumbbell Lateral Raise
+      - Side Lateral Raise (Dumbbell)
+      - Seated Lateral Raise (Dumbbell)
     equipmentType: dumbbell
     laterality: bilateral
     loadSemantics: external
@@ -671,8 +691,10 @@ exercises:
     movementId: rear_delt_fly
     name: 'Rear Delt Fly (Machine)'
     aliases:
-      - 'Reverse Pec Deck'
-      - 'Reverse Fly (Machine)'
+      - Reverse Pec Deck
+      - Reverse Fly (Machine)
+      - Rear Delt Reverse Fly (Machine)
+      - Rear Delt Row TechnoGym
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: machine_stack
@@ -727,7 +749,9 @@ exercises:
     movementId: vertical_pull
     name: 'Pull Up'
     aliases:
-      - 'Wide Grip Pull Up'
+      - Wide Grip Pull Up
+      - Pull Up (Weighted)
+      - Wide Pull Up
     equipmentType: bodyweight
     laterality: bilateral
     loadSemantics: bodyweight_plus_external
@@ -793,8 +817,9 @@ exercises:
     movementId: vertical_pull
     name: 'Assisted Pull Up (Machine)'
     aliases:
-      - 'Assisted Pull-Up'
-      - 'Machine Assisted Pull Up'
+      - Assisted Pull-Up
+      - Machine Assisted Pull Up
+      - Pull Up (Assisted)
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: bodyweight_minus_assistance
@@ -863,8 +888,9 @@ exercises:
     movementId: vertical_pull
     name: 'Close Grip Lat Pulldown (Cable)'
     aliases:
-      - 'Narrow Grip Lat Pulldown'
-      - 'Close Grip Pulldown'
+      - Narrow Grip Lat Pulldown
+      - Close Grip Pulldown
+      - Lat Pulldown - Close Grip (Cable)
     equipmentType: cable
     laterality: bilateral
     loadSemantics: machine_stack
@@ -952,8 +978,9 @@ exercises:
     movementId: horizontal_row
     name: 'Bent Over Row (Barbell)'
     aliases:
-      - 'Barbell Row'
-      - 'Barbell Bent Over Row'
+      - Barbell Row
+      - Barbell Bent Over Row
+      - Bent Over Row (Dumbbell)
     equipmentType: barbell
     laterality: bilateral
     loadSemantics: external
@@ -1024,7 +1051,8 @@ exercises:
     movementId: horizontal_row
     name: 'Chest Supported Row (Dumbbell)'
     aliases:
-      - 'Incline Bench Row (Dumbbell)'
+      - Incline Bench Row (Dumbbell)
+      - Chest Supported Incline Row (Dumbbell)
     equipmentType: dumbbell
     laterality: bilateral
     loadSemantics: external
@@ -1090,8 +1118,16 @@ exercises:
     movementId: horizontal_row
     name: 'Seated Row (Machine)'
     aliases:
-      - 'Machine Seated Row'
-      - 'Machine Row'
+      - Machine Seated Row
+      - Machine Row
+      - Iso-Lateral Row (Machine)
+      - Iso-Lateral D.Y. Row
+      - Iso-Lateral Row (Hammer Strength) Low
+      - Iso-Lateral Row (gym80)
+      - Low Row TechoGym
+      - Low Row
+      - Upper Back
+      - Iso-Lateral High Row (Machine)
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: machine_stack
@@ -1123,8 +1159,9 @@ exercises:
     movementId: horizontal_row
     name: 'Seated Row (Cable)'
     aliases:
-      - 'Seated Cable Row'
-      - 'Cable Row'
+      - Seated Cable Row
+      - Cable Row
+      - Seated Cable Row - V Grip (Cable)
     equipmentType: cable
     laterality: bilateral
     loadSemantics: machine_stack
@@ -1378,7 +1415,8 @@ exercises:
     movementId: squat
     name: 'Hack Squat (Machine)'
     aliases:
-      - 'Hack Squat'
+      - Hack Squat
+      - Hack Squad TechnoGym
     equipmentType: machine_plate_loaded
     laterality: bilateral
     loadSemantics: external
@@ -1406,8 +1444,9 @@ exercises:
     movementId: squat
     name: 'Leg Press (Machine)'
     aliases:
-      - 'Leg Press'
-      - '45 Degree Leg Press'
+      - Leg Press
+      - 45 Degree Leg Press
+      - Leg Press Horizontal (Machine)
     equipmentType: machine_plate_loaded
     laterality: bilateral
     loadSemantics: external
@@ -1498,7 +1537,8 @@ exercises:
     movementId: lunge
     name: 'Walking Lunge (Dumbbell)'
     aliases:
-      - 'Dumbbell Walking Lunge'
+      - Dumbbell Walking Lunge
+      - Lunge (Barbell)
     equipmentType: dumbbell
     laterality: unilateral_alternating
     loadSemantics: external
@@ -1530,8 +1570,9 @@ exercises:
     movementId: hinge
     name: 'Deadlift (Barbell)'
     aliases:
-      - 'Conventional Deadlift'
-      - 'Barbell Deadlift'
+      - Conventional Deadlift
+      - Barbell Deadlift
+      - Sumo Deadlift
     equipmentType: barbell
     laterality: bilateral
     loadSemantics: external
@@ -1689,8 +1730,12 @@ exercises:
     movementId: back_extension
     name: 'Back Extension'
     aliases:
-      - '45 Degree Back Extension'
-      - 'Hyperextension'
+      - 45 Degree Back Extension
+      - Hyperextension
+      - Back Extension (Hyperextension)
+      - Back Extension (Weighted Hyperextension)
+      - Back Extension (Machine)
+      - LowerBack TechnoGym
     equipmentType: bodyweight
     laterality: bilateral
     loadSemantics: bodyweight_plus_external
@@ -1716,8 +1761,10 @@ exercises:
     movementId: hip_thrust
     name: 'Glute Kickback (Cable)'
     aliases:
-      - 'Cable Kickback'
-      - 'Cable Glute Kickback'
+      - Cable Kickback
+      - Cable Glute Kickback
+      - Glute Kickback (Machine)
+      - Standing Cable Glute Kickbacks
     equipmentType: cable
     laterality: unilateral_isolated
     loadSemantics: machine_stack
@@ -1743,8 +1790,11 @@ exercises:
     movementId: knee_extension
     name: 'Leg Extension (Machine)'
     aliases:
-      - 'Leg Extension'
-      - 'Knee Extension (Machine)'
+      - Leg Extension
+      - Knee Extension (Machine)
+      - Leg Extension TechnoGym
+      - Iso-Lateral Leg Extension
+      - Leg Extension (Outer Legs)
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: machine_stack
@@ -1766,8 +1816,10 @@ exercises:
     movementId: knee_flexion
     name: 'Lying Leg Curl (Machine)'
     aliases:
-      - 'Lying Hamstring Curl'
-      - 'Leg Curl (Machine)'
+      - Lying Hamstring Curl
+      - Leg Curl (Machine)
+      - Iso-Lateral Leg Curl
+      - Iso-Lateral Kneeling Leg Curl
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: machine_stack
@@ -1791,7 +1843,8 @@ exercises:
     movementId: knee_flexion
     name: 'Seated Leg Curl (Machine)'
     aliases:
-      - 'Seated Hamstring Curl'
+      - Seated Hamstring Curl
+      - Leg Curl TechnoGym
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: machine_stack
@@ -1813,8 +1866,9 @@ exercises:
     movementId: hip_abduction
     name: 'Hip Abduction (Machine)'
     aliases:
-      - 'Abductor Machine'
-      - 'Seated Hip Abduction'
+      - Abductor Machine
+      - Seated Hip Abduction
+      - Abductor TechnoGym
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: machine_stack
@@ -1836,8 +1890,10 @@ exercises:
     movementId: calf_raise
     name: 'Calf Extension (Machine)'
     aliases:
-      - 'Standing Calf Raise (Machine)'
-      - 'Calf Raise (Machine)'
+      - Standing Calf Raise (Machine)
+      - Calf Raise (Machine)
+      - Calf TechnoGym
+      - Rotary Calf
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: machine_stack
@@ -1882,8 +1938,10 @@ exercises:
     movementId: calf_raise
     name: 'Calf Press (Leg Press)'
     aliases:
-      - 'Leg Press Calf Raise'
-      - 'Calf Press'
+      - Leg Press Calf Raise
+      - Calf Press
+      - Calf Press on Seated Leg Press
+      - Calf Press (Machine)
     equipmentType: machine_plate_loaded
     laterality: bilateral
     loadSemantics: external
@@ -1993,8 +2051,9 @@ exercises:
     movementId: elbow_flexion
     name: 'Incline Curl (Dumbbell)'
     aliases:
-      - 'Incline Dumbbell Curl'
-      - 'Incline Bicep Curl (Dumbbell)'
+      - Incline Dumbbell Curl
+      - Incline Bicep Curl (Dumbbell)
+      - Seated Incline Curl (Dumbbell)
     equipmentType: dumbbell
     laterality: bilateral
     loadSemantics: external
@@ -2020,7 +2079,8 @@ exercises:
     movementId: elbow_flexion
     name: 'Concentration Curl (Dumbbell)'
     aliases:
-      - 'Seated Concentration Curl'
+      - Seated Concentration Curl
+      - Concentration Curl
     equipmentType: dumbbell
     laterality: unilateral_isolated
     loadSemantics: external
@@ -2071,8 +2131,10 @@ exercises:
     movementId: elbow_flexion
     name: 'Bicep Curl (Cable)'
     aliases:
-      - 'Cable Curl'
-      - 'Cable Bicep Curl'
+      - Cable Curl
+      - Cable Bicep Curl
+      - Arm Curl TechnoGym
+      - Bicep (Gum)
     equipmentType: cable
     laterality: bilateral
     loadSemantics: machine_stack
@@ -2145,8 +2207,9 @@ exercises:
     movementId: elbow_extension
     name: 'Overhead Triceps Extension (Dumbbell)'
     aliases:
-      - 'Dumbbell Overhead Triceps Extension'
-      - 'Seated Triceps Extension (Dumbbell)'
+      - Dumbbell Overhead Triceps Extension
+      - Seated Triceps Extension (Dumbbell)
+      - Triceps Extension (Dumbbell)
     equipmentType: dumbbell
     laterality: bilateral
     loadSemantics: external
@@ -2193,8 +2256,9 @@ exercises:
     movementId: elbow_extension
     name: 'Triceps Extension (Machine)'
     aliases:
-      - 'Machine Triceps Extension'
-      - 'Cable Triceps Extension (Machine)'
+      - Machine Triceps Extension
+      - Cable Triceps Extension (Machine)
+      - Seated Dip Machine
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: machine_stack
@@ -2269,7 +2333,9 @@ exercises:
     movementId: trunk_flexion
     name: 'Hanging Leg Raise'
     aliases:
-      - 'Hanging Knee Raise'
+      - Hanging Knee Raise
+      - Leg Raise Parallel Bars
+      - Knee Raise Parallel Bars
     equipmentType: bodyweight
     laterality: bilateral
     loadSemantics: repetitions_only
@@ -2297,8 +2363,10 @@ exercises:
     movementId: trunk_flexion
     name: 'Cable Crunch'
     aliases:
-      - 'Kneeling Cable Crunch'
-      - 'Rope Crunch'
+      - Kneeling Cable Crunch
+      - Rope Crunch
+      - Crunch
+      - Decline Crunch
     equipmentType: cable
     laterality: bilateral
     loadSemantics: machine_stack
@@ -2322,8 +2390,11 @@ exercises:
     movementId: trunk_flexion
     name: 'Ab Crunch (Machine)'
     aliases:
-      - 'Machine Crunch'
-      - 'Abdominal Crunch (Machine)'
+      - Machine Crunch
+      - Abdominal Crunch (Machine)
+      - Crunch (Machine)
+      - Abdominal Crunch
+      - Total Abdominal TechnoGym
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: machine_stack
@@ -2402,7 +2473,9 @@ exercises:
     movementId: upright_row
     name: 'Upright Row (Cable)'
     aliases:
-      - 'Cable Upright Row'
+      - Cable Upright Row
+      - Upright Row (Barbell)
+      - Upright Row (Dumbbell)
     equipmentType: cable
     laterality: bilateral
     loadSemantics: machine_stack
@@ -2477,8 +2550,9 @@ exercises:
     movementId: hip_adduction
     name: 'Hip Adduction (Machine)'
     aliases:
-      - 'Adductor Machine'
-      - 'Seated Hip Adduction'
+      - Adductor Machine
+      - Seated Hip Adduction
+      - Adductor TechnoGym
     equipmentType: machine_stack
     laterality: bilateral
     loadSemantics: machine_stack
@@ -2500,8 +2574,9 @@ exercises:
     movementId: wrist_flexion
     name: 'Wrist Curl (Dumbbell)'
     aliases:
-      - 'Dumbbell Wrist Curl'
-      - 'Seated Wrist Curl'
+      - Dumbbell Wrist Curl
+      - Seated Wrist Curl
+      - Seated Palms Up Wrist Curl
     equipmentType: dumbbell
     laterality: unilateral_isolated
     loadSemantics: external
@@ -2611,7 +2686,8 @@ exercises:
     movementId: straight_arm_pulldown
     name: 'Pullover (Dumbbell)'
     aliases:
-      - 'Dumbbell Pullover'
+      - Dumbbell Pullover
+      - Pullover
     equipmentType: dumbbell
     laterality: bilateral
     loadSemantics: external
@@ -2666,7 +2742,8 @@ exercises:
     movementId: calf_raise
     name: 'Standing Calf Raise (Dumbbell)'
     aliases:
-      - 'Dumbbell Calf Raise'
+      - Dumbbell Calf Raise
+      - Standing Calf Raise (Barbell)
     equipmentType: dumbbell
     laterality: bilateral
     loadSemantics: bodyweight_plus_external
@@ -2684,5 +2761,365 @@ exercises:
         role: stabilizer
     defaultRestSeconds: 75
     defaultIncrementKg: 2
+    userCreated: false
+    revision: 1
+  - id: lat_pulldown_machine
+    movementId: vertical_pull
+    name: Lat Pulldown (Machine)
+    aliases:
+      - Vertical Traction TechnoGym
+      - Iso-Lateral Wide Pulldown
+    equipmentType: machine_stack
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: latissimus_dorsi
+        role: primary
+      - muscleId: teres_major
+        role: secondary
+      - muscleId: biceps_brachii
+        role: secondary
+      - muscleId: rhomboids
+        role: stabilizer
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: behind_neck_lat_pulldown_cable
+    movementId: vertical_pull
+    name: Behind Neck Lat Pulldown (Cable)
+    aliases:
+      - Lateral Pulldown Behind Neck
+    equipmentType: cable
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: latissimus_dorsi
+        role: primary
+      - muscleId: teres_major
+        role: secondary
+      - muscleId: biceps_brachii
+        role: secondary
+      - muscleId: rhomboids
+        role: stabilizer
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: reverse_grip_lat_pulldown_cable
+    movementId: vertical_pull
+    name: Reverse Grip Lat Pulldown (Cable)
+    aliases:
+      - Reverse Grip Lat Pulldown (Cable)
+      - Lat Machine Close Reverse Grip TechnoGym
+    equipmentType: cable
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: latissimus_dorsi
+        role: primary
+      - muscleId: teres_major
+        role: secondary
+      - muscleId: biceps_brachii
+        role: secondary
+      - muscleId: rhomboids
+        role: stabilizer
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: pullover_machine
+    movementId: straight_arm_pulldown
+    name: Pullover (Machine)
+    aliases:
+      - Pullover (Machine)
+    equipmentType: machine_stack
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: latissimus_dorsi
+        role: primary
+      - muscleId: pectoralis_major
+        role: secondary
+      - muscleId: triceps_brachii
+        role: stabilizer
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: assisted_dip_machine
+    movementId: horizontal_press
+    name: Assisted Dip (Machine)
+    aliases:
+      - Chest Dip (Assisted)
+      - Triceps Dip (Assisted)
+    equipmentType: machine_stack
+    laterality: bilateral
+    loadSemantics: bodyweight_minus_assistance
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 1
+    muscleRoles:
+      - muscleId: pectoralis_major
+        role: primary
+      - muscleId: triceps_brachii
+        role: primary
+      - muscleId: anterior_deltoid
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: preacher_curl_barbell
+    movementId: elbow_flexion
+    name: Preacher Curl (Barbell)
+    aliases:
+      - Preacher Curl (Barbell)
+    equipmentType: barbell
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: biceps_brachii
+        role: primary
+      - muscleId: brachialis
+        role: secondary
+      - muscleId: brachioradialis
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 2.5
+    userCreated: false
+    revision: 1
+  - id: front_raise_dumbbell
+    movementId: front_raise
+    name: Front Raise (Dumbbell)
+    aliases:
+      - Front Raise (Dumbbell)
+    equipmentType: dumbbell
+    laterality: bilateral
+    loadSemantics: external
+    loadEntryMode: per_hand
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: anterior_deltoid
+        role: primary
+      - muscleId: pectoralis_major
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 2
+    userCreated: false
+    revision: 1
+  - id: oblique_crunch_machine
+    movementId: trunk_flexion
+    name: Oblique Crunch (Machine)
+    aliases:
+      - Oblique Crunch Machine
+    equipmentType: machine_stack
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: obliques
+        role: primary
+      - muscleId: rectus_abdominis
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: glute_ham_raise
+    movementId: knee_flexion
+    name: Glute Ham Raise
+    aliases:
+      - Glute / Ham
+    equipmentType: machine_stack
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: hamstrings
+        role: primary
+      - muscleId: gluteus_maximus
+        role: secondary
+      - muscleId: erector_spinae
+        role: stabilizer
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: neck_machine
+    movementId: neck
+    name: 4 Way Neck (Machine)
+    aliases:
+      - 4 Way Neck
+    equipmentType: machine_stack
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: trapezius_upper
+        role: primary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: v_squat_machine
+    movementId: squat
+    name: V-Squat (Machine)
+    aliases:
+      - Single Leg V-Squat
+    equipmentType: machine_plate_loaded
+    laterality: unilateral_isolated
+    loadSemantics: external
+    loadEntryMode: per_side
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: quadriceps
+        role: primary
+      - muscleId: gluteus_maximus
+        role: secondary
+      - muscleId: hamstrings
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
+    userCreated: false
+    revision: 1
+  - id: pistol_squat
+    movementId: squat
+    name: Pistol Squat
+    aliases:
+      - Pistol Squat
+    equipmentType: bodyweight
+    laterality: unilateral_isolated
+    loadSemantics: bodyweight_plus_external
+    loadEntryMode: added_only
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 1
+    muscleRoles:
+      - muscleId: quadriceps
+        role: primary
+      - muscleId: gluteus_maximus
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 2.5
+    userCreated: false
+    revision: 1
+  - id: superman
+    movementId: back_extension
+    name: Superman
+    aliases:
+      - Superman
+    equipmentType: bodyweight
+    laterality: bilateral
+    loadSemantics: bodyweight_plus_external
+    loadEntryMode: added_only
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0.45
+    muscleRoles:
+      - muscleId: erector_spinae
+        role: primary
+      - muscleId: gluteus_maximus
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 2.5
+    userCreated: false
+    revision: 1
+  - id: spin_bike
+    movementId: cardio_cycle
+    name: Spinning
+    aliases:
+      - Spinning
+    equipmentType: other
+    laterality: bilateral
+    # Time is the whole measurement here: the history records a duration and no
+    # load at all, so anything bodyweight-based would invent a number.
+    loadSemantics: time
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: quadriceps
+        role: primary
+      - muscleId: gluteus_maximus
+        role: secondary
+      - muscleId: gastrocnemius
+        role: secondary
+    defaultRestSeconds: 60
+    defaultIncrementKg: 1
+    userCreated: false
+    revision: 1
+  - id: decline_press_machine
+    movementId: decline_press
+    name: Decline Chest Press (Machine)
+    aliases:
+      - Decline Bench Press (Machine)
+      - Iso-Lateral Decline Press
+    equipmentType: machine_stack
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: total
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: pectoralis_major
+        role: primary
+      - muscleId: triceps_brachii
+        role: secondary
+      - muscleId: anterior_deltoid
+        role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 5
     userCreated: false
     revision: 1
