@@ -16,8 +16,9 @@ import {
   kilograms,
 } from '@ferrum/domain';
 import { RAW_EXERCISES, RAW_MOVEMENTS, RAW_MUSCLES } from './generated/library.gen.ts';
-export { describeSession, regionsOf, muscleRegion, type BodyRegion } from './session-label.ts';
 import { type RawExercise, type RawMovement, type RawMuscle } from './shapes.ts';
+
+export { describeSession, regionsOf, type BodyRegion } from './session-label.ts';
 
 export interface Muscle {
   readonly id: MuscleId;

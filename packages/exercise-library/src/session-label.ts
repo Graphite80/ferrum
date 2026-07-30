@@ -1,4 +1,4 @@
-import { type ExerciseDefinition, type MuscleId } from '@ferrum/domain';
+import { type ExerciseDefinition } from '@ferrum/domain';
 
 // A history of 278 rows all reading "Workout" is a list you cannot navigate.
 // The name is derived from what the session actually trained rather than typed
@@ -87,8 +87,4 @@ export function describeSession(definitions: readonly ExerciseDefinition[]): str
     for (const region of regionsOf(definition)) regions.add(region);
   }
   return label(regions);
-}
-
-export function muscleRegion(muscleId: MuscleId): BodyRegion | undefined {
-  return REGION_BY_MUSCLE[muscleId as unknown as string];
 }

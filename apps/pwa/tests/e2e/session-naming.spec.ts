@@ -95,16 +95,15 @@ test.describe('naming an imported workout', () => {
     await configureSync(page, token);
     await page.getByTestId('open-history').click();
 
-    const titles = page.getByTestId('history-item').locator('span').first();
-    await expect(titles).not.toHaveText('Workout');
-
-    const all = await page
+    await expect(page.getByTestId('history-item')).toHaveCount(2);
+    const names = await page
       .getByTestId('history-item')
-      .evaluateAll(items =>
-        items.map(item => item.querySelector('span')?.textContent?.trim() ?? '')
-      );
-    expect(all).toContain('Push');
-    expect(all).toContain('Legs');
-    expect(all).not.toContain('Workout');
+      .evaluateAll(items => items.map(item => item.querySelector('span')?.textContent.trim()));
+
+    // Two different names, and neither is the fallback — the exact complaint a
+    // list of identical rows produces.
+    expect(names).toContain('Push');
+    expect(names).toContain('Legs');
+    expect(names).not.toContain('Workout');
   });
 });
