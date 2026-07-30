@@ -35,12 +35,15 @@ export async function requestHubToken(origin: string): Promise<HubSignIn> {
   if (response.status === 401) return DENIED;
   if (!response.ok) return UNAVAILABLE;
 
-  let body: { token?: unknown; displayName?: unknown };
+  let body: { signedIn?: unknown; token?: unknown; displayName?: unknown };
   try {
-    body = (await response.json()) as { token?: unknown; displayName?: unknown };
+    body = (await response.json()) as typeof body;
   } catch {
     return UNAVAILABLE;
   }
+  // The common answer: nobody is signed in to the hub in this browser. It is a
+  // 200 on purpose — see routes/auth.ts — so it has to be read from the body.
+  if (body.signedIn !== true) return DENIED;
   if (typeof body.token !== 'string' || body.token === '') return UNAVAILABLE;
 
   return {

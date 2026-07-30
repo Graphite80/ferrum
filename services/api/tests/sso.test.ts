@@ -47,11 +47,17 @@ let server: ServerType;
 let baseUrl = '';
 let disabledServer: ServerType;
 let disabledUrl = '';
+const logLines: string[] = [];
 
 beforeAll(async () => {
   const db = pgliteDatabase(new PGlite());
   await migrate(db);
-  const app = createApp({ db, enableDevRoutes: false, ssoSigningKey: SIGNING_KEY });
+  const app = createApp({
+    db,
+    enableDevRoutes: false,
+    ssoSigningKey: SIGNING_KEY,
+    log: message => logLines.push(message),
+  });
   await new Promise<void>(resolve => {
     server = serve({ fetch: app.fetch, port: 0, hostname: '127.0.0.1' }, info => {
       baseUrl = `http://127.0.0.1:${info.port}`;
@@ -86,10 +92,12 @@ describe('single sign-on from life-as-code', () => {
     const response = await signIn(`__Secure-lac-sso=${ticket({ sub: '7' })}`);
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
+      signedIn: boolean;
       userId: string;
       token: string;
       displayName: string | null;
     };
+    expect(body.signedIn).toBe(true);
     expect(body.displayName).toBe('nikolay');
 
     const pull = await fetch(`${baseUrl}/sync/pull?after=0&purgedAfter=0`, {
@@ -128,10 +136,20 @@ describe('single sign-on from life-as-code', () => {
     expect(response.status).toBe(200);
   });
 
+  // Answered 200 with signedIn:false, not 401: the app asks on every cold start,
+  // so "nobody is signed in here" must not read as an error to the browser
+  // console, the pod log or the crawler. What must never happen is a token.
   it.each([
     ['no cookie at all', null],
     ['an unrelated cookie jar', 'theme=dark'],
     ['an empty ticket', '__Secure-lac-sso='],
+  ])('answers %s quietly, and without a token', async (_label, cookie) => {
+    const response = await signIn(cookie);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toStrictEqual({ signedIn: false });
+  });
+
+  it.each([
     ['a truncated ticket', '__Secure-lac-sso=only.two'],
     ['a ticket signed with another key', `__Secure-lac-sso=${ticket({ key: 'wrong-key' })}`],
     ['an expired ticket', `__Secure-lac-sso=${ticket({ exp: Math.floor(Date.now() / 1000) - 1 })}`],
@@ -158,6 +176,19 @@ describe('single sign-on from life-as-code', () => {
       headers: { cookie: `__Secure-lac-sso=${ticket()}` },
     });
     expect(response.status).toBe(401);
+  });
+
+  // A signing-key drift between this service and the hub is the documented way
+  // this feature fails, and it produces the same 401 as every visitor who is
+  // simply not signed in. The log line is the only thing that tells them apart.
+  it('logs a rejected ticket, and stays quiet when none was presented', async () => {
+    logLines.length = 0;
+    await signIn(null);
+    await signIn('theme=dark');
+    expect(logLines.filter(line => line.includes('sso_ticket_rejected'))).toHaveLength(0);
+
+    await signIn(`__Secure-lac-sso=${ticket({ key: 'a-drifted-signing-key-of-length' })}`);
+    expect(logLines.filter(line => line.includes('sso_ticket_rejected'))).toHaveLength(1);
   });
 
   it('does not expose the endpoint when no signing key is configured', async () => {

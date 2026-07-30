@@ -11,6 +11,7 @@ export interface AuthRouteOptions {
   readonly enableDevRoutes: boolean;
   readonly bootstrapKey: string | undefined;
   readonly ssoSigningKey?: string;
+  readonly log?: (message: string) => void;
 }
 
 export function authRoutes({
@@ -18,6 +19,9 @@ export function authRoutes({
   enableDevRoutes,
   bootstrapKey,
   ssoSigningKey,
+  log = () => {
+    /* the request logger already records the status; this is the extra detail */
+  },
 }: AuthRouteOptions): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
@@ -45,15 +49,28 @@ export function authRoutes({
     app.post('/auth/sso', async c => {
       if (c.req.header('x-ferrum-sso') !== '1') return c.json({ error: 'unauthorized' }, 401);
       const ticket = readSsoCookie(c.req.header('cookie'));
-      if (ticket === null) return c.json({ error: 'no_identity' }, 401);
+      // "Nobody is signed in to the hub in this browser" is the answer to the
+      // question, not a failure of it — and the app asks on every cold start.
+      // A 401 here would put a red line in the console of every visitor who has
+      // not used the hub, bury the 401s that do mean something in the pod log,
+      // and hand the crawler a network-error finding on every page.
+      if (ticket === null) return c.json({ signedIn: false });
       const identity = verifySsoTicket(ticket, {
         signingKey: ssoSigningKey,
         nowMillis: Date.now(),
       });
-      if (identity === null) return c.json({ error: 'unauthorized' }, 401);
+      if (identity === null) {
+        // Every unsigned-in visitor produces a 401 here, so the status alone
+        // says nothing. A ticket that WAS presented and did not verify is the
+        // one that matters: it is what a signing-key drift between this service
+        // and the hub looks like, and otherwise it would be invisible in a sea
+        // of identical lines.
+        log(JSON.stringify({ level: 'warn', event: 'sso_ticket_rejected' }));
+        return c.json({ error: 'unauthorized' }, 401);
+      }
       const userId = await findOrCreateUserByIdentity(db, SSO_PROVIDER, identity.subject);
       const minted = await mintTokenForUser(db, userId);
-      return c.json({ ...minted, displayName: identity.displayName });
+      return c.json({ signedIn: true, ...minted, displayName: identity.displayName });
     });
   }
 

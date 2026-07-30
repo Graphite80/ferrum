@@ -498,6 +498,22 @@ describe('single-page fallback', () => {
     expect(await response.json()).toStrictEqual({ error: 'not_found' });
   });
 
+  // A released shell that keeps naming the previous build's bundles is the one
+  // cache failure a user cannot clear their way out of, so the two halves of the
+  // rule are asserted rather than assumed: hashed filenames pinned forever,
+  // every mutable entry point revalidated.
+  it('pins content-hashed assets and revalidates the shell', async () => {
+    const asset = await fetch(`${baseUrl}/assets/app-abc123.js`);
+    expect(asset.status).toBe(200);
+    expect(asset.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+
+    for (const path of ['/', '/history']) {
+      const shell = await fetch(`${baseUrl}${path}`);
+      expect(shell.status).toBe(200);
+      expect(shell.headers.get('cache-control')).toBe('no-cache');
+    }
+  });
+
   it('never lets an API namespace fall through to the shell', async () => {
     const wrongMethod = await fetch(`${baseUrl}/auth/bootstrap`);
     expect(wrongMethod.status).toBe(404);

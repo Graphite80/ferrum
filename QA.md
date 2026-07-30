@@ -30,9 +30,16 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
   (Keychain: `ferrum-bootstrap-key`) or `POST /auth/sso` with the hub's identity cookie and
   header `x-ferrum-sso: 1`; `/dev/token` needs `FERRUM_DEV_ROUTES=1` and must stay off in prod.
   Tokens are stored sha256-hashed (`auth_tokens.token_hash`).
-- `POST /auth/sso` without a cookie must be 401, never 200. `SSO_SIGNING_KEY` must be identical
-  in `ferrum-secrets` and life-as-code's `sso-signing-key`; if they drift, sign-in silently
-  falls back to "not signed in to life-as-code" and the failure looks like a hub problem.
+- `POST /auth/sso` answers `200 {"signedIn": false}` when no identity cookie was presented —
+  the app asks on every cold start, so that case must stay quiet in the console, the pod log
+  and the crawler. It must **never** return a token without a ticket that verifies. A ticket
+  that was presented and failed verification is a 401 AND an `sso_ticket_rejected` log line:
+  that line is the only symptom of `SSO_SIGNING_KEY` drifting between `ferrum-secrets` and
+  life-as-code's `sso-signing-key`, which otherwise looks like an ordinary signed-out visitor.
+- Static responses carry cache headers from the API, not from the edge: `/assets/*` (content
+  hashed) is `public, max-age=31536000, immutable`, every other document — index.html, `sw.js`,
+  the manifest — is `no-cache`. Left unset, the edge applies a 4h default and a released shell
+  keeps naming the previous build's bundles.
 - The Telegram bot is private-chat only by design — group chats would let any member read or
   write another member's log. Do not "fix" the chat-type guards away.
 - Bot env (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_WEBHOOK_SECRET`) is optional; the server must

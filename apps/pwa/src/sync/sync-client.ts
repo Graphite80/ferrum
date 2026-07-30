@@ -456,11 +456,18 @@ function observePendingPurges(): void {
   });
 }
 
-export type HubSignInResult = HubSignInOutcome | 'already-configured';
+export type HubSignInResult = HubSignInOutcome | 'already-configured' | 'storage-failed';
 
 // A device that arrives from the hub with nothing stored gets its sync target
 // from the hub itself. An already-configured device is left alone: a manually
 // entered token, or one for a different server, is a deliberate choice.
+//
+// This function never rejects, and that is load-bearing rather than defensive:
+// initSync awaits it before it installs the pending-count observers, the online
+// and visibilitychange triggers and the first sync cycle, so a rejection here
+// would leave sync silently dead for the whole session — on iOS, where an
+// IndexedDB write is exactly the thing that fails, and after the UI has already
+// been painted, so nothing would look wrong.
 export async function signInWithHub({ force = false }: { force?: boolean } = {}): Promise<{
   result: HubSignInResult;
   displayName: string | null;
@@ -470,10 +477,18 @@ export async function signInWithHub({ force = false }: { force?: boolean } = {})
     return { result: 'already-configured', displayName: null };
   }
   const signIn = await requestHubToken(window.location.origin);
-  if (signIn.outcome !== 'granted' || signIn.token === null) {
+  const syncToken = signIn.token;
+  if (signIn.outcome !== 'granted' || syncToken === null) {
     return { result: signIn.outcome, displayName: null };
   }
-  await saveSyncConfig({ serverUrl: window.location.origin, syncToken: signIn.token });
+  try {
+    await withDatabaseRecovery(() =>
+      saveSyncConfig({ serverUrl: window.location.origin, syncToken })
+    );
+  } catch (error) {
+    console.error('storing the hub sign-in failed', error);
+    return { result: 'storage-failed', displayName: null };
+  }
   return { result: 'granted', displayName: signIn.displayName };
 }
 

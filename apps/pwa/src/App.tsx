@@ -93,7 +93,11 @@ export function App() {
       setBooted(true);
       // Sync starts strictly after boot: it must never delay the resume path, and
       // it stays a no-op until a server and token are configured in Settings.
-      await initSync();
+      // Isolated too — this runs after the app is painted, so an unhandled
+      // rejection here would be a silent failure of everything downstream of it.
+      await initSync().catch((error: unknown) => {
+        console.error('sync failed to start', error);
+      });
     })();
   }, []);
 
