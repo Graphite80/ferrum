@@ -19,6 +19,8 @@ export interface AppOptions {
   readonly bootstrapKey?: string;
   // Shared with life-as-code, which signs the identity cookie this API verifies.
   readonly ssoSigningKey?: string;
+  // Cluster-local base URL of the hub, for the first-sign-in history backfill.
+  readonly hubApiUrl?: string;
   readonly telegram?: TelegramMount;
   readonly staticDir?: string;
   // Injected so a test can assert on what would reach the pod log instead of
@@ -40,6 +42,7 @@ export function createApp({
   enableDevRoutes,
   bootstrapKey,
   ssoSigningKey,
+  hubApiUrl,
   telegram,
   staticDir,
   log = message => {
@@ -104,6 +107,7 @@ export function createApp({
       bootstrapKey,
       log,
       ...(ssoSigningKey === undefined ? {} : { ssoSigningKey }),
+      ...(hubApiUrl === undefined ? {} : { hubApiUrl }),
     })
   );
   app.route('/', syncRoutes(db));

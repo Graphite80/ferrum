@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
 import { mintToken, mintTokenForUser } from '../auth-tokens.ts';
 import { type Database } from '../db.ts';
+import { backfillFromHub } from '../hub-import.ts';
 import { findOrCreateUserByIdentity } from '../identities.ts';
 import { type AppEnv } from '../middleware/auth.ts';
 import { readSsoCookie, verifySsoTicket, SSO_PROVIDER } from '../sso.ts';
@@ -11,6 +12,8 @@ export interface AuthRouteOptions {
   readonly enableDevRoutes: boolean;
   readonly bootstrapKey: string | undefined;
   readonly ssoSigningKey?: string;
+  // Cluster-local base URL of the hub. Absent => no backfill, sign-in still works.
+  readonly hubApiUrl?: string;
   readonly log?: (message: string) => void;
 }
 
@@ -19,6 +22,7 @@ export function authRoutes({
   enableDevRoutes,
   bootstrapKey,
   ssoSigningKey,
+  hubApiUrl,
   log = () => {
     /* the request logger already records the status; this is the extra detail */
   },
@@ -70,7 +74,17 @@ export function authRoutes({
       }
       const userId = await findOrCreateUserByIdentity(db, SSO_PROVIDER, identity.subject);
       const minted = await mintTokenForUser(db, userId);
-      return c.json({ signedIn: true, ...minted, displayName: identity.displayName });
+      // Inline rather than fire-and-forget: measured at 1.3s for five years of
+      // history, and a background job that failed would leave the app showing an
+      // empty account with nothing to retry against.
+      const backfill =
+        hubApiUrl === undefined ? null : await backfillFromHub(db, userId, ticket, hubApiUrl, log);
+      return c.json({
+        signedIn: true,
+        ...minted,
+        displayName: identity.displayName,
+        ...(backfill === null ? {} : { backfill }),
+      });
     });
   }
 

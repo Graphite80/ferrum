@@ -26,6 +26,10 @@ interface TicketOverrides {
   readonly alg?: string;
 }
 
+function ticketFor(subject: string): string {
+  return ticket({ sub: subject });
+}
+
 function ticket(overrides: TicketOverrides = {}): string {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const header = encode({ alg: overrides.alg ?? 'HS256', typ: 'JWT' });
@@ -48,6 +52,7 @@ let baseUrl = '';
 let disabledServer: ServerType;
 let disabledUrl = '';
 const logLines: string[] = [];
+const hubRequests: string[] = [];
 
 beforeAll(async () => {
   const db = pgliteDatabase(new PGlite());
@@ -189,6 +194,135 @@ describe('single sign-on from life-as-code', () => {
 
     await signIn(`__Secure-lac-sso=${ticket({ key: 'a-drifted-signing-key-of-length' })}`);
     expect(logLines.filter(line => line.includes('sso_ticket_rejected'))).toHaveLength(1);
+  });
+
+  it('fills an empty account with the history the hub holds, exactly once', async () => {
+    const HUB_SETS = [
+      {
+        id: 1,
+        date: '2026-07-20',
+        exercise: 'Bench Press (Barbell)',
+        set_index: 0,
+        weight_kg: 80,
+        reps: 8,
+        rpe: 8,
+        rest_s: null,
+        duration_seconds: null,
+        distance_meters: null,
+        set_type: 'normal',
+      },
+      {
+        id: 2,
+        date: '2026-07-20',
+        exercise: 'Plank',
+        set_index: 0,
+        weight_kg: null,
+        reps: null,
+        rpe: null,
+        rest_s: null,
+        duration_seconds: 60,
+        distance_meters: null,
+        set_type: 'normal',
+      },
+    ];
+
+    let hubUrl = '';
+    const hub = await new Promise<ServerType>(resolve => {
+      const started = serve(
+        {
+          port: 0,
+          hostname: '127.0.0.1',
+          fetch: (request: Request) => {
+            hubRequests.push(request.headers.get('authorization') ?? '');
+            return new Response(JSON.stringify({ sets: HUB_SETS }), {
+              headers: { 'content-type': 'application/json' },
+            });
+          },
+        },
+        info => {
+          hubUrl = `http://127.0.0.1:${String(info.port)}`;
+          resolve(started);
+        }
+      );
+    });
+
+    const db = pgliteDatabase(new PGlite());
+    await migrate(db);
+    const app = createApp({
+      db,
+      enableDevRoutes: false,
+      ssoSigningKey: SIGNING_KEY,
+      hubApiUrl: hubUrl,
+      log: message => logLines.push(message),
+    });
+    let url = '';
+    const server = await new Promise<ServerType>(resolve => {
+      const started = serve({ fetch: app.fetch, port: 0, hostname: '127.0.0.1' }, info => {
+        url = `http://127.0.0.1:${String(info.port)}`;
+        resolve(started);
+      });
+    });
+
+    try {
+      const ticket = ticketFor('backfill-me');
+      const first = (await (await signIn(`__Secure-lac-sso=${ticket}`, url)).json()) as {
+        token: string;
+        backfill: { outcome: string; setsImported: number };
+      };
+      expect(first.backfill.outcome).toBe('imported');
+      // The timed hold counts: dropping it is how the plank went missing before.
+      expect(first.backfill.setsImported).toBe(2);
+      expect(hubRequests).toEqual([`Bearer ${ticket}`]);
+
+      const pulled = await fetch(`${url}/sync/pull?after=0&purgedAfter=0`, {
+        headers: { authorization: `Bearer ${first.token}` },
+      });
+      const body = (await pulled.json()) as { events: readonly unknown[] };
+      expect(body.events.length).toBeGreaterThan(0);
+
+      // A second device signing into the same account must not replay it.
+      const second = (await (await signIn(`__Secure-lac-sso=${ticket}`, url)).json()) as {
+        backfill: { outcome: string };
+      };
+      expect(second.backfill.outcome).toBe('already-populated');
+      expect(hubRequests).toHaveLength(1);
+    } finally {
+      server.close();
+      hub.close();
+    }
+  });
+
+  it('signs in anyway when the hub cannot be reached', async () => {
+    const db = pgliteDatabase(new PGlite());
+    await migrate(db);
+    const app = createApp({
+      db,
+      enableDevRoutes: false,
+      ssoSigningKey: SIGNING_KEY,
+      // Nothing listens here: a hub outage must not cost a lifter their token.
+      hubApiUrl: 'http://127.0.0.1:9',
+      log: message => logLines.push(message),
+    });
+    let url = '';
+    const server = await new Promise<ServerType>(resolve => {
+      const started = serve({ fetch: app.fetch, port: 0, hostname: '127.0.0.1' }, info => {
+        url = `http://127.0.0.1:${String(info.port)}`;
+        resolve(started);
+      });
+    });
+
+    try {
+      const response = await signIn(`__Secure-lac-sso=${ticketFor('offline-hub')}`, url);
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        token: string;
+        backfill: { outcome: string };
+      };
+      expect(body.token).not.toBe('');
+      expect(body.backfill.outcome).toBe('unavailable');
+    } finally {
+      server.close();
+    }
   });
 
   it('does not expose the endpoint when no signing key is configured', async () => {
