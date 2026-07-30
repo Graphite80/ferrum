@@ -89,9 +89,11 @@ test`. The sync spec spawns `services/api` `dev:memory` (PGlite) itself.
   container `minio`). A green run still requires reading the crawler/monkey findings.
 - Monkey seed 1337 previously caught: Stepper `-Infinity` overflow via pasted huge negatives —
   every Stepper exit must stay finite and non-negative.
-- The crawler will always report "Pages visited: 1". Every screen lives at `/` (the typed
-  `Screen` union in `App.tsx`; a router was considered and rejected), so link-following cannot
-  reach them. UI coverage comes from the monkey run and the Playwright suite, not the crawler.
+- The crawler will always report "Pages visited: 1". Screens DO own URLs now, but every
+  navigation is a `<button>` rather than an `<a href>`, so there is nothing for link-following
+  to follow. UI coverage comes from the monkey run and the Playwright suite, not the crawler.
+  (Adding `seed-pages` to the sensor would raise it, at the cost of a crawl that cannot reach
+  any state behind a tap anyway.)
   **"Pages visited: 0" is a different animal and always a broken run** — it means every seed
   was skipped, and the gate still reports `ok` (upstream `nikolay-e/autoqa#51`). It happened
   on the 2026-07-30 host move: the sensor still named the old host, which by then 301'd to the
