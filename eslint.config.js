@@ -5,6 +5,26 @@ import importPlugin from 'eslint-plugin-import';
 import boundaries from 'eslint-plugin-boundaries';
 import globals from 'globals';
 
+// boundaries classifies a dependency by where it resolves, and a workspace
+// package resolves through node_modules — so `@ferrum/*` reads as external to it
+// and every cross-package rule it carries is inert. The layering between
+// packages is therefore stated here, where the specifier itself is the subject.
+// Verified by deliberately importing across a boundary and watching lint fail;
+// a rule that cannot be made to fail is not a rule.
+const DEEP_RELATIVE = {
+  group: ['../../../*'],
+  message: 'Use the @ferrum/* or @/ aliases instead of deep relative imports.',
+};
+
+const layerImports = (...patterns) => ({
+  'no-restricted-imports': ['error', { patterns: [DEEP_RELATIVE, ...patterns] }],
+});
+
+const onlyFerrum = (...allowed) => ({
+  group: ['@ferrum/*', ...allowed.map(name => `!@ferrum/${name}`)],
+  message: `This package may depend on ${allowed.length === 0 ? 'no other ferrum package' : allowed.map(name => `@ferrum/${name}`).join(', ')}.`,
+});
+
 export default [
   {
     ignores: [
@@ -38,12 +58,20 @@ export default [
     settings: {
       'import/resolver': { typescript: { project: './tsconfig.json' } },
       'boundaries/elements': [
-        { type: 'domain', pattern: 'packages/domain/src/**/*' },
-        { type: 'exercise-library', pattern: 'packages/exercise-library/src/**/*' },
-        { type: 'exercise-media', pattern: 'packages/exercise-media/src/**/*' },
-        { type: 'progression-engine', pattern: 'packages/progression-engine/src/**/*' },
+        // Every element carries mode: 'full'. Without it the pattern is read as a
+        // folder pattern, the files under it classify as nothing, and every rule
+        // naming that type silently passes — which is how domain was free to
+        // import the exercise library for as long as this file has existed.
+        { type: 'domain', mode: 'full', pattern: 'packages/domain/src/**/*' },
+        { type: 'exercise-library', mode: 'full', pattern: 'packages/exercise-library/src/**/*' },
+        { type: 'exercise-media', mode: 'full', pattern: 'packages/exercise-media/src/**/*' },
+        {
+          type: 'progression-engine',
+          mode: 'full',
+          pattern: 'packages/progression-engine/src/**/*',
+        },
         { type: 'importers', mode: 'full', pattern: 'packages/importers/src/**/*' },
-        { type: 'sync-protocol', pattern: 'packages/sync-protocol/src/**/*' },
+        { type: 'sync-protocol', mode: 'full', pattern: 'packages/sync-protocol/src/**/*' },
         { type: 'api', mode: 'full', pattern: 'services/api/src/**/*' },
         {
           type: 'app-ui',
@@ -83,60 +111,102 @@ export default [
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
       'import/no-cycle': ['error', { maxDepth: 10, ignoreExternal: true }],
       'import/no-unresolved': ['error', { caseSensitive: true }],
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['../../../*'],
-              message: 'Use the @ferrum/* or @/ aliases instead of deep relative imports.',
-            },
-          ],
-        },
-      ],
+      'no-restricted-imports': ['error', { patterns: [DEEP_RELATIVE] }],
       // The domain layer must stay runnable in Node, a worker and a browser alike:
       // no DOM, no storage, no clock, no network. Determinism is the whole product promise.
-      'boundaries/element-types': [
+      'boundaries/dependencies': [
         'error',
         {
-          default: 'allow',
+          default: 'disallow',
           rules: [
-            { from: 'domain', allow: ['domain'] },
-            { from: 'exercise-library', allow: ['domain', 'exercise-library'] },
-            { from: 'exercise-media', allow: ['domain', 'exercise-media'] },
-            { from: 'progression-engine', allow: ['domain', 'progression-engine'] },
-            { from: 'importers', allow: ['domain', 'exercise-library', 'importers'] },
-            { from: 'sync-protocol', allow: ['domain', 'sync-protocol'] },
+            { from: [{ type: 'domain' }], allow: [{ to: [{ type: 'domain' }] }] },
             {
-              from: 'api',
+              from: [{ type: 'exercise-library' }],
+              allow: [{ to: [{ type: 'domain' }, { type: 'exercise-library' }] }],
+            },
+            {
+              from: [{ type: 'exercise-media' }],
+              allow: [{ to: [{ type: 'domain' }, { type: 'exercise-media' }] }],
+            },
+            {
+              from: [{ type: 'progression-engine' }],
+              allow: [{ to: [{ type: 'domain' }, { type: 'progression-engine' }] }],
+            },
+            {
+              from: [{ type: 'importers' }],
               allow: [
-                'domain',
-                'sync-protocol',
-                'exercise-library',
-                'importers',
-                'progression-engine',
-                'api',
+                { to: [{ type: 'domain' }, { type: 'exercise-library' }, { type: 'importers' }] },
               ],
             },
             {
-              from: 'app-ui',
+              from: [{ type: 'sync-protocol' }],
+              allow: [{ to: [{ type: 'domain' }, { type: 'sync-protocol' }] }],
+            },
+            {
+              from: [{ type: 'api' }],
               allow: [
-                'domain',
-                'exercise-library',
-                'exercise-media',
-                'app-ui',
-                'app-data',
-                'app-platform',
+                {
+                  to: [
+                    { type: 'domain' },
+                    { type: 'sync-protocol' },
+                    { type: 'exercise-library' },
+                    { type: 'importers' },
+                    { type: 'progression-engine' },
+                    { type: 'api' },
+                  ],
+                },
               ],
             },
             {
-              from: 'app-data',
-              allow: ['domain', 'sync-protocol', 'app-data', 'app-platform'],
+              from: [{ type: 'app-ui' }],
+              allow: [
+                {
+                  to: [
+                    { type: 'domain' },
+                    { type: 'exercise-library' },
+                    { type: 'exercise-media' },
+                    { type: 'app-ui' },
+                    { type: 'app-data' },
+                    { type: 'app-platform' },
+                  ],
+                },
+              ],
             },
-            { from: 'app-platform', allow: ['app-platform'] },
-            { from: 'app-ui', disallow: ['api', 'importers'] },
-            { from: 'app-data', disallow: ['api', 'importers', 'app-ui'] },
-            { from: 'app-platform', disallow: ['api', 'importers', 'app-ui', 'app-data'] },
+            {
+              from: [{ type: 'app-data' }],
+              allow: [
+                {
+                  to: [
+                    { type: 'domain' },
+                    { type: 'sync-protocol' },
+                    { type: 'app-data' },
+                    { type: 'app-platform' },
+                  ],
+                },
+              ],
+            },
+            { from: [{ type: 'app-platform' }], allow: [{ to: [{ type: 'app-platform' }] }] },
+            {
+              from: [{ type: 'app-ui' }],
+              disallow: [{ to: [{ type: 'api' }, { type: 'importers' }] }],
+            },
+            {
+              from: [{ type: 'app-data' }],
+              disallow: [{ to: [{ type: 'api' }, { type: 'importers' }, { type: 'app-ui' }] }],
+            },
+            {
+              from: [{ type: 'app-platform' }],
+              disallow: [
+                {
+                  to: [
+                    { type: 'api' },
+                    { type: 'importers' },
+                    { type: 'app-ui' },
+                    { type: 'app-data' },
+                  ],
+                },
+              ],
+            },
           ],
         },
       ],
@@ -188,5 +258,32 @@ export default [
         },
       ],
     },
+  },
+  {
+    files: ['packages/domain/src/**/*.ts'],
+    rules: layerImports(onlyFerrum()),
+  },
+  {
+    files: [
+      'packages/exercise-library/src/**/*.ts',
+      'packages/exercise-media/src/**/*.ts',
+      'packages/progression-engine/src/**/*.ts',
+      'packages/sync-protocol/src/**/*.ts',
+    ],
+    rules: layerImports(onlyFerrum('domain')),
+  },
+  {
+    files: ['packages/importers/src/**/*.ts'],
+    rules: layerImports(onlyFerrum('domain', 'exercise-library')),
+  },
+  {
+    // The PWA ships to a browser: the API and the importers are server code, and
+    // pulling either in would put Node built-ins and the whole import pipeline
+    // into the bundle.
+    files: ['apps/pwa/src/**/*.{ts,tsx}'],
+    rules: layerImports({
+      group: ['@ferrum/api', '@ferrum/importers'],
+      message: 'The PWA must not import server code.',
+    }),
   },
 ];
