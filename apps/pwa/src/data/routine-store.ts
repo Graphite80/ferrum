@@ -17,7 +17,9 @@ function seedSlot(
   return {
     exerciseDefinitionId: id,
     name,
-    comparisonSignature: `v1|ex:${id}|eq:-|ls:machine_stack|lem:total|rcm:total|lat:bilateral|rom:full|tempo:standard`,
+    // No signature: this layer cannot see the library, and the one it used to
+    // assemble by hand claimed machine_stack semantics for every slot including
+    // a plate-loaded press. planExercise computes the real one.
     sets: 3,
     targetLoadKg,
     targetRepMin: 8,
@@ -36,11 +38,15 @@ function seedRoutine(nowMillis: number): RoutineRecord {
   return {
     id: 'seed-full-body',
     name: 'Full body A',
+    // The ids are the library's own, spelled exactly. They were hyphenated here
+    // while the library uses underscores, and because history is looked up by
+    // this id, a lifter with five years of squats opened the starter routine and
+    // was told there was no previous set for any of it.
     slots: [
-      seedSlot('squat-machine', 'Squat (Machine)', 80, 180, 5),
-      seedSlot('lat-pulldown-cable', 'Lat Pulldown (Cable)', 65, 150, 5),
-      seedSlot('shoulder-press-machine-plates', 'Shoulder Press (Machine Plates)', 45, 150, 5),
-      seedSlot('triceps-pushdown', 'Triceps Pushdown', 30, 90, 2.5),
+      seedSlot('squat_machine', 'Squat (Machine)', 80, 180, 5),
+      seedSlot('lat_pulldown_cable', 'Lat Pulldown (Cable)', 65, 150, 5),
+      seedSlot('shoulder_press_machine_plates', 'Shoulder Press (Machine Plates)', 45, 150, 5),
+      seedSlot('triceps_pushdown', 'Triceps Pushdown', 30, 90, 2.5),
     ],
     createdAtMillis: nowMillis,
     updatedAtMillis: nowMillis,

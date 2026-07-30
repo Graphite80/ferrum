@@ -43,7 +43,12 @@ export interface RestTimerRecord {
 export interface RoutineSlotRecord {
   exerciseDefinitionId: string;
   name: string;
-  comparisonSignature: string;
+  // Absent means "ask the library". A routine built from a picked exercise
+  // stores the signature the library computed; one that cannot see the library
+  // must leave it out rather than assemble a plausible-looking string, because
+  // a wrong signature is not a cosmetic error — it is the key history is looked
+  // up by, so it silently answers "no previous set" forever.
+  comparisonSignature?: string;
   sets: number;
   targetLoadKg: number | null;
   targetRepMin: number;

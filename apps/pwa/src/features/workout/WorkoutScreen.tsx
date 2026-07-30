@@ -15,7 +15,7 @@ import { type LastPerformance, lastPerformances } from '../../db/history.ts';
 import { WakeLockController, type WakeLockState } from '../../platform/wake-lock.ts';
 import { listAllEquipment, toEquipmentInstance } from '../../data/equipment-store.ts';
 import { loadSessionPlanSlots } from '../../data/routine-store.ts';
-import { planExercise, resolveDefinition } from './exercise-plan.ts';
+import { canonicalDefinitionId, planExercise, resolveDefinition } from './exercise-plan.ts';
 import { ExerciseSearchPanel } from './ExerciseSearchPanel.tsx';
 import { ExerciseSection } from './ExerciseSection.tsx';
 import {
@@ -156,7 +156,7 @@ export function WorkoutScreen({
         signature: entry.plan.comparisonSignature,
       }));
     if (wanted.length === 0) return;
-    void lastPerformances(wanted, sessionId).then(found => {
+    void lastPerformances(wanted, sessionId, canonicalDefinitionId).then(found => {
       setLastTimes(previous => {
         const next = new Map(previous);
         for (const [signature, performance] of found) next.set(signature, performance);

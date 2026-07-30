@@ -40,6 +40,15 @@ export function resolveDefinition(
   );
 }
 
+// The library's id for whatever the caller wrote. Anything it cannot name is
+// returned untouched — a user-created exercise is still one exercise, and two
+// sessions naming it identically must keep comparing equal.
+export function canonicalDefinitionId(
+  exerciseDefinitionId: ExerciseDefinitionId
+): ExerciseDefinitionId {
+  return resolveDefinition(exerciseDefinitionId)?.id ?? exerciseDefinitionId;
+}
+
 // Everything needed to render and log against an exercise, resolved from the
 // session's own recorded sets first so an old session keeps rendering correctly
 // after the routine changes, then the session's plan snapshot, then the library.

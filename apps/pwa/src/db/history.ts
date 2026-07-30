@@ -22,17 +22,29 @@ export interface PerformanceQuery {
   readonly signature: ComparisonSignature;
 }
 
+// Two ids that name one exercise are one exercise. A routine seeded with
+// "squat-machine" and a history imported as "squat_machine" are the same lift,
+// and comparing the raw strings answered "no previous set" against five years
+// of squats. The canonicaliser is injected because this layer must not reach
+// for the exercise library; the caller that already has it passes it in.
+export type CanonicalId = (id: ExerciseDefinitionId) => ExerciseDefinitionId;
+
+const asWritten: CanonicalId = id => id;
+
 // Sessions are ~40 events each, so replaying them newest-first until every
 // exercise is resolved is cheaper than maintaining a second index that could
 // drift from the log.
 export async function lastPerformances(
   queries: readonly PerformanceQuery[],
-  excludeSessionId: SessionId
+  excludeSessionId: SessionId,
+  canonical: CanonicalId = asWritten
   // Keyed by signature, not by exercise: naming a machine changes the bucket, and a
   // cache keyed by exercise would keep serving the number from the old one.
 ): Promise<Map<ComparisonSignature, LastPerformance | null>> {
   const found = new Map<ComparisonSignature, LastPerformance | null>();
-  const unresolved = new Map(queries.map(query => [query.definitionId, query.signature]));
+  const unresolved = new Map(
+    queries.map(query => [canonical(query.definitionId), query.signature])
+  );
   // Held back rather than returned immediately: a set from another machine is only
   // the answer once every older session has failed to produce a matching one.
   const fallbacks = new Map<ComparisonSignature, LastPerformance>();
@@ -47,7 +59,7 @@ export async function lastPerformances(
     for (const [definitionId, signature] of [...unresolved]) {
       const exerciseIds = new Set(
         projection.exercises
-          .filter(exercise => exercise.exerciseDefinitionId === definitionId)
+          .filter(exercise => canonical(exercise.exerciseDefinitionId) === definitionId)
           .map(exercise => exercise.id)
       );
       if (exerciseIds.size === 0) continue;

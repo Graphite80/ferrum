@@ -106,4 +106,44 @@ test.describe('naming an imported workout', () => {
     expect(names).toContain('Legs');
     expect(names).not.toContain('Workout');
   });
+
+  // The seeded routine's exercise ids were hyphenated while the library's are
+  // underscored, and history is looked up by that id — so a lifter with five
+  // years of squats opened the starter routine and every exercise read "no
+  // previous set". The drill is the whole point of importing at all.
+  test('the starter routine finds the history that was imported for it', async ({ page }) => {
+    const token = await mintToken();
+    await botImport(token, '2026-07-16', [
+      'squat machine 100x8 @2',
+      'lat pulldown 70x10 @2',
+      'triceps pushdown 35x12 @2',
+    ]);
+
+    await configureSync(page, token);
+    await page.getByTestId('start-routine').click();
+    await expect(page.getByTestId('session-title')).toBeVisible();
+
+    const labels = page.getByTestId('previous-label');
+    await expect(labels.first()).toContainText('Last time', { timeout: 15_000 });
+    const texts = await labels.allTextContents();
+    expect(texts.filter(text => text.includes('Last time')).length).toBeGreaterThanOrEqual(3);
+    // The number carried over, not just the words.
+    expect(texts.some(text => text.includes('100'))).toBe(true);
+  });
+
+  // The source records a date, not a clock, so an imported session starts and
+  // finishes on the same instant. That used to render as "0 s", which claims a
+  // workout that took no time rather than one whose length was never recorded.
+  test('an imported workout claims no duration it never had', async ({ page }) => {
+    const token = await mintToken();
+    await botImport(token, '2026-07-17', ['barbell squat 120x5 @2']);
+
+    await configureSync(page, token);
+    await page.getByTestId('open-history').click();
+    await page.getByTestId('history-item').first().click();
+
+    await expect(page.getByTestId('history-detail')).toBeVisible();
+    await expect(page.getByTestId('detail-date')).toHaveText('2026-07-17');
+    await expect(page.getByTestId('detail-duration')).toHaveCount(0);
+  });
 });
