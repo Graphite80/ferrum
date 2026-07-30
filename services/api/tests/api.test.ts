@@ -25,6 +25,7 @@ import {
   type PushResponse,
 } from '@ferrum/sync-protocol';
 import { createApp } from '../src/app.ts';
+import { mintTokenForUser } from '../src/auth-tokens.ts';
 import { migrate } from '../src/migrate.ts';
 import { pgliteDatabase } from '../src/pglite-database.ts';
 import {
@@ -69,6 +70,12 @@ async function createToken(): Promise<{ userId: string; token: string }> {
   const response = await fetch(`${baseUrl}/dev/token`, { method: 'POST' });
   expect(response.status).toBe(200);
   return (await response.json()) as { userId: string; token: string };
+}
+
+// A second credential for an account that already exists — a second device, or
+// the replacement one issues after a revocation.
+async function mintFor(userId: string): Promise<string> {
+  return (await mintTokenForUser(db, userId)).token;
 }
 
 async function pushRaw(token: string | null, body: string): Promise<Response> {
@@ -211,6 +218,34 @@ describe('auth', () => {
     expect(bobView.events).toHaveLength(0);
     expect(bobView.cursor).toBe(0);
     expect(bobView.hasMore).toBe(false);
+  });
+
+  // A credential on a lost phone used to be good forever. Revoking withdraws
+  // every credential the account holds — the remedy has to reach the device that
+  // is not in your hand, which is the whole point.
+  it('withdraws every credential of the account, and only that account', async () => {
+    const owner = await createToken();
+    const secondDevice = await mintFor(owner.userId);
+    const stranger = await createToken();
+
+    const revoked = await fetch(`${baseUrl}/auth/revoke-all`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${owner.token}` },
+    });
+    expect(revoked.status).toBe(200);
+    expect(await revoked.json()).toEqual({ revoked: 2 });
+
+    expect((await pushRaw(owner.token, '{}')).status).toBe(401);
+    expect((await pushRaw(secondDevice, '{}')).status).toBe(401);
+    // The sets themselves are untouched: a new credential reaches the same log.
+    const reissued = await mintFor(owner.userId);
+    expect((await pull(reissued, 0)).events).toBeDefined();
+    expect((await pull(stranger.token, 0)).cursor).toBe(0);
+  });
+
+  it('refuses to revoke without a credential of its own', async () => {
+    const response = await fetch(`${baseUrl}/auth/revoke-all`, { method: 'POST' });
+    expect(response.status).toBe(401);
   });
 });
 

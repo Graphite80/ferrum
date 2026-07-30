@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { type MiddlewareHandler } from 'hono';
 import { hashToken } from '../auth-tokens.ts';
 import { type Database } from '../db.ts';
@@ -17,7 +17,7 @@ export function requireAuth(db: Database): MiddlewareHandler<AppEnv> {
     const found = await db.orm
       .select({ userId: authTokens.userId })
       .from(authTokens)
-      .where(eq(authTokens.tokenHash, hashToken(token)));
+      .where(and(eq(authTokens.tokenHash, hashToken(token)), isNull(authTokens.revokedAt)));
     const row = found[0];
     if (row === undefined) return c.json({ error: 'unauthorized' }, 401);
     c.set('userId', row.userId);

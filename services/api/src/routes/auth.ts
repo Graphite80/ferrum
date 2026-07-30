@@ -1,10 +1,12 @@
 import { timingSafeEqual } from 'node:crypto';
+import { and, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { mintToken, mintTokenForUser } from '../auth-tokens.ts';
 import { type Database } from '../db.ts';
 import { backfillFromHub } from '../hub-import.ts';
 import { findOrCreateUserByIdentity } from '../identities.ts';
-import { type AppEnv } from '../middleware/auth.ts';
+import { requireAuth, type AppEnv } from '../middleware/auth.ts';
+import { authTokens } from '../schema.ts';
 import { readSsoCookie, verifySsoTicket, SSO_PROVIDER } from '../sso.ts';
 
 export interface AuthRouteOptions {
@@ -32,6 +34,23 @@ export function authRoutes({
   if (enableDevRoutes) {
     app.post('/dev/token', async c => c.json(await mintToken(db)));
   }
+
+  // A credential on a lost phone was previously good forever: nothing expired
+  // and nothing could withdraw it, so the only remedy was a DELETE against
+  // production. This withdraws every credential the account holds, the caller's
+  // included — the one operation that is correct whatever is later decided about
+  // naming devices or expiring tokens individually (issue #1). Nothing is
+  // erased: the sets live in the event log, and signing in again mints a new
+  // credential for the same account.
+  app.post('/auth/revoke-all', requireAuth(db), async c => {
+    const revoked = await db.orm
+      .update(authTokens)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(authTokens.userId, c.get('userId')), isNull(authTokens.revokedAt)))
+      .returning({ tokenHash: authTokens.tokenHash });
+    log(JSON.stringify({ level: 'info', event: 'tokens_revoked', count: revoked.length }));
+    return c.json({ revoked: revoked.length });
+  });
 
   if (bootstrapKey !== undefined) {
     app.post('/auth/bootstrap', async c => {

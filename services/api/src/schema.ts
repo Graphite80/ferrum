@@ -44,6 +44,10 @@ export const authTokens = pgTable('auth_tokens', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  // Stamped rather than deleted: a credential that was used and then withdrawn
+  // is a different fact from one that never existed, and the row is what a
+  // future device list would be built from.
+  revokedAt: timestamp('revoked_at', { withTimezone: true, mode: 'date' }),
 });
 
 export const events = pgTable(
