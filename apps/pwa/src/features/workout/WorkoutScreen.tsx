@@ -43,11 +43,16 @@ export function WorkoutScreen({
   unit,
   onFinished,
   onDiscarded,
+  onLeave,
 }: {
   sessionId: SessionId;
   unit: WeightUnit;
   onFinished: () => void;
   onDiscarded: () => void;
+  // Leaves the workout running rather than ending it. Without this the only way
+  // off this screen is to finish or discard, and an installed PWA has no browser
+  // back button to escape with.
+  onLeave: () => void;
 }) {
   const projection = useLiveData(() => loadSession(sessionId), [sessionId]);
   const planSlots = useLiveData(() => loadSessionPlanSlots(sessionId), [sessionId]);
@@ -227,12 +232,25 @@ export function WorkoutScreen({
       className="pb-32"
       headerClassName="items-baseline"
       action={
-        <span
-          className={mono({ className: 'text-xs font-medium text-ash' })}
-          data-testid="set-count"
-        >
-          {projection.sets.length} sets
-        </span>
+        <div className="flex items-baseline gap-3">
+          <span
+            className={mono({ className: 'text-xs font-medium text-ash' })}
+            data-testid="set-count"
+          >
+            {projection.sets.length} sets
+          </span>
+          {/* The workout keeps running: every set is already durable, so leaving
+              is navigation, not a decision about the session. Home resumes
+              straight back into it. */}
+          <button
+            type="button"
+            className={button({ intent: 'quiet', className: 'px-4' })}
+            data-testid="workout-home"
+            onClick={onLeave}
+          >
+            Home
+          </button>
+        </div>
       }
     >
       <WakeLockBanner

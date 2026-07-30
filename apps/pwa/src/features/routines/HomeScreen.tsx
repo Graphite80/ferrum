@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { type SessionId, type WeightUnit, formatLoad, kilograms } from '@ferrum/domain';
 import { startEmptySession, startSession } from '../../data/session-controller.ts';
+import { activeSession } from '../../db/event-store.ts';
+import { sessionDisplayTitle } from '../history/session-view.ts';
 import { listRoutines } from '../../data/routine-store.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
 import { button, card, eyebrow, mono } from '../../ui.ts';
@@ -9,6 +11,7 @@ import { useLiveData } from '../../components/live-data.ts';
 export function HomeScreen({
   unit,
   onWorkoutStarted,
+  onResumeWorkout,
   onEditRoutine,
   onNewRoutine,
   onOpenHistory,
@@ -16,12 +19,23 @@ export function HomeScreen({
 }: {
   unit: WeightUnit;
   onWorkoutStarted: (sessionId: SessionId) => void;
+  onResumeWorkout: (sessionId: SessionId) => void;
   onEditRoutine: (routineId: string) => void;
   onNewRoutine: () => void;
   onOpenHistory: () => void;
   onOpenSettings: () => void;
 }) {
   const routines = useLiveData(listRoutines);
+  const running = useLiveData(activeSession);
+  // Flattened to what the card needs so the JSX carries no narrowing of its own.
+  const resumable =
+    running != null && running.session != null
+      ? {
+          id: running.session.id,
+          title: sessionDisplayTitle(running),
+          sets: running.sets.length,
+        }
+      : null;
   const [starting, setStarting] = useState(false);
 
   return (
@@ -40,6 +54,32 @@ export function HomeScreen({
         </button>
       }
     >
+      {/* Leaving a workout is navigation, not an ending, so the way back in has
+          to be the first thing on this screen. Without it a running session is
+          invisible until the app is restarted. */}
+      {resumable !== null && (
+        <button
+          type="button"
+          className={card({
+            className: 'flex items-baseline justify-between gap-3 border-plate-green p-4 text-left',
+          })}
+          data-testid="resume-workout"
+          onClick={() => {
+            onResumeWorkout(resumable.id);
+          }}
+        >
+          <span className="min-w-0">
+            <span className={eyebrow()}>In progress</span>
+            <span className="mt-1 block font-display text-xl font-semibold uppercase">
+              {resumable.title}
+            </span>
+          </span>
+          <span className={mono({ className: 'shrink-0 text-xs font-medium text-ash' })}>
+            {resumable.sets} sets
+          </span>
+        </button>
+      )}
+
       {routines?.map(routine => (
         <div key={routine.id} className={card({ className: 'p-4' })} data-testid="routine-card">
           <div className="flex items-baseline justify-between gap-2">

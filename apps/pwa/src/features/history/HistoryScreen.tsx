@@ -24,6 +24,7 @@ export function HistoryScreen({
   return (
     <ScreenShell
       title="History"
+      testId="history"
       className="gap-3"
       action={
         <button

@@ -78,11 +78,10 @@ test.describe('warmup and working sets', () => {
     await expect(page.getByTestId('detail-warmup-marker')).toHaveCount(1);
     await expect(page.getByTestId('detail-amendments')).toBeVisible();
 
-    // A reload returns to Home rather than restoring the detail screen, so the
-    // persistence check walks back in the way a user would.
+    // The detail screen owns a URL, so a reload comes back to this workout
+    // rather than to Home — which is what makes the amendment checkable here.
     await page.reload();
-    await page.getByTestId('open-history').click();
-    await page.getByTestId('history-item').first().click();
+    await expect(page.getByTestId('history-detail')).toBeVisible();
     await expect(page.getByTestId('detail-warmup-marker')).toHaveCount(1);
   });
 });

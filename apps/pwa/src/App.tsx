@@ -27,13 +27,56 @@ type Screen =
   // no entry point in the normal navigation.
   | { name: 'spike' };
 
-function initialScreen(): Screen {
-  return window.location.hash === '#spike' ? { name: 'spike' } : { name: 'home' };
+// Every screen owns a path. Before this they all shared one, so the address bar
+// never described where you were: a reload dropped you on Home whatever you had
+// open, and nothing could be linked to.
+function urlFor(screen: Screen): string {
+  const search = window.location.search;
+  switch (screen.name) {
+    case 'home':
+      return `/${search}`;
+    case 'workout':
+      return `/workout/${screen.sessionId}${search}`;
+    case 'summary':
+      return `/summary/${screen.sessionId}${search}`;
+    case 'history':
+      return `/history${search}`;
+    case 'historyDetail':
+      return `/history/${screen.sessionId}${search}`;
+    case 'routineBuilder':
+      return `/routine/${screen.routineId ?? 'new'}${search}`;
+    case 'settings':
+      return `/settings${search}`;
+    case 'spike':
+      return `/${search}#spike`;
+  }
 }
 
-function urlFor(screen: Screen): string {
-  const base = window.location.pathname + window.location.search;
-  return screen.name === 'spike' ? `${base}#spike` : base;
+function screenForPath(pathname: string): Screen | null {
+  const [, head = '', tail] = pathname.split('/');
+  switch (head) {
+    case 'workout':
+      return tail == null || tail === '' ? null : { name: 'workout', sessionId: tail as SessionId };
+    case 'summary':
+      return tail == null || tail === '' ? null : { name: 'summary', sessionId: tail as SessionId };
+    case 'history':
+      return tail == null || tail === ''
+        ? { name: 'history' }
+        : { name: 'historyDetail', sessionId: tail as SessionId };
+    case 'routine':
+      return tail == null || tail === ''
+        ? null
+        : { name: 'routineBuilder', routineId: tail === 'new' ? null : tail };
+    case 'settings':
+      return { name: 'settings' };
+    default:
+      return null;
+  }
+}
+
+function initialScreen(): Screen {
+  if (window.location.hash === '#spike') return { name: 'spike' };
+  return screenForPath(window.location.pathname) ?? { name: 'home' };
 }
 
 export function App() {
@@ -75,7 +118,11 @@ export function App() {
     void (async () => {
       await ensureSeedRoutine(Date.now());
       setUnit(await loadUnit());
-      if (window.location.hash !== '#spike') {
+      // Only when the address bar does not already say where to be. A force-quit
+      // mid-workout now leaves /workout/<id> behind, which resumes by itself;
+      // this stays as the answer for a cold start on / — and it must not drag a
+      // user who reloaded on /history back into a workout they had left.
+      if (window.location.hash !== '#spike' && screenForPath(window.location.pathname) === null) {
         for (const sessionId of await listSessionIds()) {
           const projection = await loadSession(sessionId);
           // A deleted-but-unfinished session must never hijack boot: its tombstone
@@ -165,6 +212,9 @@ function CurrentScreen({
           onWorkoutStarted={sessionId => {
             onNavigate({ name: 'workout', sessionId });
           }}
+          onResumeWorkout={sessionId => {
+            onNavigate({ name: 'workout', sessionId });
+          }}
           onEditRoutine={routineId => {
             onNavigate({ name: 'routineBuilder', routineId });
           }}
@@ -191,6 +241,12 @@ function CurrentScreen({
           // into the tombstoned session either: replace the workout entry instead of
           // pushing Home on top of it.
           onDiscarded={() => {
+            onReplace({ name: 'home' });
+          }}
+          // Replace, not push: the workout is still running and Home offers to
+          // resume it, so pushing would build a stack of alternating entries
+          // that back walks through one at a time.
+          onLeave={() => {
             onReplace({ name: 'home' });
           }}
         />

@@ -67,10 +67,11 @@ test.describe('workout deletion', () => {
     await deleteFromDetail(page);
     await expect(page.getByTestId('history-item')).toHaveCount(0);
 
+    // A reload lands back on History, because the screen owns a URL now — so
+    // this covers the tombstone replaying AND the address surviving.
     await page.reload();
     await expect(page.getByTestId('booting')).toHaveCount(0);
-    await expect(page.getByTestId('start-routine')).toBeVisible();
-    await page.getByTestId('open-history').click();
+    await expect(page.getByTestId('history')).toBeVisible();
     await expect(page.getByTestId('history-item')).toHaveCount(0);
     await expect(page.getByTestId('show-deleted-toggle')).toHaveText('Show deleted (1)');
   });
@@ -88,11 +89,14 @@ test.describe('workout deletion', () => {
     await deleteFromDetail(page);
     await expect(page.getByTestId('history-item')).toHaveCount(0);
 
-    // Boot must land on Home: the active session is tombstoned, not resumable.
-    await page.reload();
+    // Boot from the root is what the auto-resume path answers, so this asks it
+    // directly instead of depending on where a reload happens to land.
+    await page.goto('/');
     await expect(page.getByTestId('booting')).toHaveCount(0);
     await expect(page.getByTestId('start-routine')).toBeVisible({ timeout: 15_000 });
+    // Neither resumed into it, nor offered as resumable: it is tombstoned.
     await expect(page.getByTestId('session-title')).toHaveCount(0);
+    await expect(page.getByTestId('resume-workout')).toHaveCount(0);
   });
 });
 
@@ -184,8 +188,6 @@ test.describe('erasing a deleted workout for good', () => {
     // Nothing replays it back: the events are gone, not tombstoned.
     await page.reload();
     await expect(page.getByTestId('booting')).toHaveCount(0);
-    await expect(page.getByTestId('start-routine')).toBeVisible();
-    await page.getByTestId('open-history').click();
     await expect(page.getByTestId('history-empty')).toBeVisible();
     await expect(page.getByTestId('pending-events')).toContainText('0 events not yet synced');
   });

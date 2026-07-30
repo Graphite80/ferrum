@@ -51,6 +51,14 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
   (date, exercise) because `workout_sets` has no source column — a wider prune would delete rows
   the Hevy importer owns on the same day. Removing a whole exercise from a session, or deleting a
   finished session outright, still leaves its rows in the hub: known gap, not yet closed.
+- Every screen owns a URL (`/`, `/history`, `/history/<id>`, `/workout/<id>`, `/summary/<id>`,
+  `/routine/<id|new>`, `/settings`) and a reload restores it. Boot-time auto-resume only fires
+  when the path names nothing — otherwise reloading on `/history` would drag you into a workout
+  you had deliberately left. The SPA fallback serves `index.html` for any of these, so a new
+  screen needs a `screenForPath` case or its address 404s to the shell silently.
+- A running workout is leavable: `workout-home` returns to Home WITHOUT ending it, and Home shows
+  `resume-workout` while a session is active and undeleted. These two are a pair — leaving without
+  a way back hides a running workout until the app restarts.
 - A session with no title of its own is named from its primary movers (`describeSession`), so the
   history list reads Push / Pull / Legs / Upper body / Full body / Core rather than 278 rows of
   "Workout". The label is derived, never stored, so a session that changes renames itself and a

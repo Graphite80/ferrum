@@ -261,6 +261,18 @@ export async function listSessionIds(): Promise<SessionId[]> {
   return [...byId.entries()].sort((a, b) => (a[1] < b[1] ? 1 : -1)).map(([sessionId]) => sessionId);
 }
 
+// The one workout still open, if there is one. Home offers to resume it and the
+// boot path restores it, and both need the same answer — a session that is
+// active but tombstoned is finished as far as anyone is concerned.
+export async function activeSession(): Promise<SessionProjection | null> {
+  for (const sessionId of await listSessionIds()) {
+    const projection = await loadSession(sessionId);
+    const session = projection.session;
+    if (session?.status === 'active' && !session.deleted) return projection;
+  }
+  return null;
+}
+
 export async function listSessions(): Promise<SessionProjection[]> {
   const sessionIds = await listSessionIds();
   return Promise.all(sessionIds.map(sessionId => loadSession(sessionId)));
