@@ -164,6 +164,15 @@ channel found in code but missing here.
 - Deletion is a tombstone that must stop the workout counting everywhere, not just in list
   views: `allSets` (domain) excludes deleted sessions, and `db/history.ts` guards both the
   prefill and the PR baseline. A new reader over sessions needs the same filter.
+- **Several pushes in one session leave red autoqa runs that are not defects.** Image Updater
+  bumps straight to the newest tag, so an intermediate commit never goes live and its run ends
+  `::error:: main-<sha> never went live within 20m and no newer build superseded this run`. The
+  second clause is wrong — a newer build did — but the supersession check counts opaque asset
+  fingerprints, which carry no ordering, so it cannot distinguish being overtaken from waiting
+  for its own build (upstream `nikolay-e/autoqa#57`; do NOT "fix" it by lowering the
+  `DISTINCT -ge 3` threshold, which reinstates `#55`). Read every ferrum-autoqa run in the pass,
+  not only the last: map each to its `commit-sha` parameter, and for a red intermediate one
+  confirm its content shipped inside a later commit whose run WAS green. Then it is covered.
 - Post-deploy autoqa races the rollout it is named for: the sensor submits the autoqa
   workflow in PARALLEL with the image build, so its wait budget has to cover build +
   Image Updater poll + ArgoCD sync + rollout (~12.2m measured). It was 12m and silently
