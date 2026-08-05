@@ -19,7 +19,13 @@ COPY package.json package-lock.json tsconfig.json ./
 COPY packages ./packages
 COPY services ./services
 COPY apps/pwa/package.json ./apps/pwa/package.json
-RUN npm ci --omit=dev
+# npm is a build-time tool only — CMD runs tsx directly. Left in place it is the
+# single largest CVE surface in this image: npm vendors its own copies of tar,
+# sigstore, brace-expansion, picomatch and ip-address, which age with the base
+# image and cannot be bumped from package.json. Deleting it removes the whole
+# class instead of chasing each bundled version.
+RUN npm ci --omit=dev && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 COPY --from=builder /app/apps/pwa/dist ./public
 ENV STATIC_DIR=./public
 ENV PORT=3000
