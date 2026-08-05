@@ -16,6 +16,16 @@ async function setCount(page: Page): Promise<number> {
   return Number.parseInt(text, 10);
 }
 
+// Reloading with the network cut is served by the service worker, so a test that
+// goes offline before it has activated is testing whether the worker won a race.
+// The drill is about durability, not about timing, so wait for the precondition
+// it actually depends on instead of hoping boot was slow enough.
+async function serviceWorkerReady(page: Page): Promise<void> {
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, {
+    timeout: 15_000,
+  });
+}
+
 test.describe('workout survival', () => {
   test('the vertical path holds: start, log, timer, restart, finish, history', async ({ page }) => {
     await startWorkout(page);
@@ -54,6 +64,7 @@ test.describe('workout survival', () => {
 
   test('a workout logged fully offline survives and finishes', async ({ page, context }) => {
     await startWorkout(page);
+    await serviceWorkerReady(page);
     await context.setOffline(true);
 
     // The counter only moves once the append transaction has committed, so waiting
@@ -139,6 +150,6 @@ test.describe('workout survival', () => {
 
     await page.getByTestId('open-history').click();
     await expect(page.getByTestId('history-item')).toHaveCount(2);
-    await expect(page.getByTestId('pending-events')).toContainText('events not yet synced');
+    await expect(page.getByTestId('pending-events')).toContainText('events stored on this device');
   });
 });

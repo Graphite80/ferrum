@@ -54,9 +54,13 @@ channel found in code but missing here.
   (Keychain: `ferrum-bootstrap-key`) or `POST /auth/sso` with the hub's identity cookie and
   header `x-ferrum-sso: 1`; `/dev/token` needs `FERRUM_DEV_ROUTES=1` and must stay off in prod.
   Tokens are stored sha256-hashed (`auth_tokens.token_hash`).
+- **A cold start must make no `/auth/sso` call at all.** There is no account by default; the app
+  is local until the lifter asks for sync in Settings. A boot that spends the ambient hub cookie
+  would enrol whoever is logged into the hub in that browser. If a pass ever sees `/auth/sso` in
+  the network log of a freshly loaded page, that is a P0, not a curiosity.
 - `POST /auth/sso` answers `200 {"signedIn": false}` when no identity cookie was presented —
-  the app asks on every cold start, so that case must stay quiet in the console, the pod log
-  and the crawler. It must **never** return a token without a ticket that verifies. A ticket
+  which is what a lifter who taps Sign in without a hub session gets, so that case must stay quiet
+  in the console, the pod log and the crawler. It must **never** return a token without a ticket that verifies. A ticket
   that was presented and failed verification is a 401 AND an `sso_ticket_rejected` log line:
   that line is the only symptom of `SSO_SIGNING_KEY` drifting between `ferrum-secrets` and
   life-as-code's `sso-signing-key`, which otherwise looks like an ordinary signed-out visitor.

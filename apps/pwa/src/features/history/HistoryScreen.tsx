@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { type SessionId, type SessionProjection } from '@ferrum/domain';
 import { listSessions, unacknowledgedCount } from '../../db/event-store.ts';
+import { getSyncStatus, subscribeSyncStatus } from '../../sync/sync-client.ts';
 import { purgeSession, restoreSession } from '../../data/session-controller.ts';
 import { sessionDisplayTitle } from './session-view.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
@@ -17,6 +18,7 @@ export function HistoryScreen({
 }) {
   const sessions = useLiveData(listSessions);
   const pending = useLiveData(unacknowledgedCount);
+  const syncConfigured = useSyncExternalStore(subscribeSyncStatus, getSyncStatus).configured;
   const [showDeleted, setShowDeleted] = useState(false);
 
   const live = sessions?.filter(projection => projection.session?.deleted !== true);
@@ -38,10 +40,14 @@ export function HistoryScreen({
         </button>
       }
     >
+      {/* The same number means two different things. With a server it is a
+          backlog worth watching; without one there is nothing for an event to be
+          "not yet" synced to, and calling it that read as a fault on an app that
+          was working exactly as intended. */}
       {pending !== undefined && (
         <p className="text-xs text-ash" data-testid="pending-events">
-          <span className={mono({ className: 'font-medium' })}>{pending}</span> events not yet
-          synced
+          <span className={mono({ className: 'font-medium' })}>{pending}</span>{' '}
+          {syncConfigured ? 'events not yet synced' : 'events stored on this device'}
         </p>
       )}
 

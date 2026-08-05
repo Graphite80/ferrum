@@ -1,8 +1,11 @@
-// Signing in must not be a second thing to set up: the hub's identity cookie is
-// already attached to every request to this origin, so the app can trade it for
-// a sync token by itself. Nothing here is allowed to throw — a hub that is down,
-// or an origin that serves the PWA without the API behind it, must leave a
-// working offline logger and a manual token field, not a broken start-up.
+// Signing in must not be a second account to create: the hub's identity cookie
+// is already attached to every request to this origin, so once the lifter asks,
+// the app can trade it for a sync token with no password and no redirect. Asking
+// is the precondition — this is never called from start-up, because the cookie
+// is ambient and spending it unbidden would enrol a browser rather than a person
+// (see "No account by default" in CLAUDE.md). Nothing here is allowed to throw:
+// a hub that is down, or an origin that serves the PWA without the API behind
+// it, must leave a working offline logger, not a broken button.
 
 export type HubSignInOutcome = 'granted' | 'no-identity' | 'unavailable';
 

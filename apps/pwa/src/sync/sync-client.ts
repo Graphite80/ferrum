@@ -451,16 +451,13 @@ function observePendingPurges(): void {
 
 export type HubSignInResult = HubSignInOutcome | 'already-configured' | 'storage-failed';
 
-// A device that arrives from the hub with nothing stored gets its token from the
-// hub itself. An already-configured device is left alone: a manually entered
-// token is a deliberate choice.
+// Called only from Settings, when the lifter asks for it. An already-configured
+// device is left alone unless forced: a manually entered token is a deliberate
+// choice.
 //
 // This function never rejects, and that is load-bearing rather than defensive:
-// initSync awaits it before it installs the pending-count observers, the online
-// and visibilitychange triggers and the first sync cycle, so a rejection here
-// would leave sync silently dead for the whole session — on iOS, where an
-// IndexedDB write is exactly the thing that fails, and after the UI has already
-// been painted, so nothing would look wrong.
+// the caller is a click handler, and a rejection would leave the button reading
+// "Signing in…" for good.
 export async function signInWithHub({ force = false }: { force?: boolean } = {}): Promise<{
   result: HubSignInResult;
   displayName: string | null;
@@ -483,12 +480,17 @@ export async function signInWithHub({ force = false }: { force?: boolean } = {})
   return { result: 'granted', displayName: signIn.displayName };
 }
 
+// Ferrum holds an account by default: nothing. The log lives in this browser and
+// start-up talks to no server at all. Signing in with the hub is a thing the
+// lifter asks for in Settings, so start-up must NOT trade the ambient identity
+// cookie for a token — that would enrol anyone who happens to be logged into the
+// hub in the same browser, and pull their history onto a device they never
+// linked. A device that HAS been linked keeps syncing from here without asking
+// again: the stored token is what start-up reads, and the absence of one is a
+// complete, working, local-only app rather than a half-configured one.
 export async function initSync(): Promise<void> {
   if (initialized) return;
   initialized = true;
-  // Before the first cycle, so a device that arrives from the hub with no local
-  // config pushes its backlog on this start rather than the next one.
-  await signInWithHub();
   observePendingCount();
   observePendingPurges();
   window.addEventListener('online', () => {

@@ -130,10 +130,30 @@ wrong. Two consequences worth keeping in mind:
   production uses. `mountStaticFallback` is exported separately from `createApp` for exactly this:
   it answers for everything, so `dev-server.ts` must register `/dev/bot-import` before it.
 
+## No account by default
+
+Ferrum starts with no account and contacts no server. The log lives in this browser (IndexedDB via
+Dexie — an append-only event log, which `localStorage` could hold neither durably nor at size), and
+a lifter who never opens Settings has a complete, working app that has never made a network call
+beyond fetching its own assets.
+
+Syncing with life-as-code is something they ask for, once, in Settings. **Start-up must never trade
+the hub's identity cookie for a token.** The cookie is ambient — it rides along on every request to
+this origin — so spending it at boot would enrol whoever happens to be logged into the hub in the
+same browser, link an account nobody chose to link, and pull that person's five years of history
+onto a device they never claimed. `initSync` therefore only reads the token already stored; a device
+that has been linked keeps syncing across restarts without asking again, and one that has not stays
+local. `apps/pwa/tests/e2e/hub-sso.spec.ts` asserts the boot path issues no `/auth/sso` call at all,
+which is the property, rather than merely asserting no token was stored.
+
+The same number means two things, so History says which: with sync configured, "N events not yet
+synced" is a backlog; without it, "N events stored on this device" — because there is nothing for an
+event to be "not yet" synced to, and the old wording read as a fault on an app working as intended.
+
 ## Single sign-on
 
-life-as-code is the hub and owns the human's account; ferrum is one of its apps and holds no
-password. The hub sets a second cookie next to its own session — `__Secure-lac-sso`, scoped
+Once a lifter asks for it, this is the mechanism. life-as-code is the hub and owns the human's
+account; ferrum is one of its apps and holds no password. The hub sets a second cookie next to its own session — `__Secure-lac-sso`, scoped
 `Domain=life-as-code.com`, HttpOnly, SameSite=Lax — carrying an HS256-signed statement of who is
 logged in (`iss=life-as-code`, `aud=life-as-code-apps`, 12h). The hub's own session cookie keeps its
 stricter `__Host-` prefix and is never shared.
@@ -142,7 +162,7 @@ Because ferrum is served from a host under the same registrable domain, that coo
 request to this origin. `POST /auth/sso` verifies it offline against `SSO_SIGNING_KEY` — no callback
 to the hub, so a hub outage cannot lock a lifter out mid-session — maps `sub` onto a row in
 `user_identities` (provider `life-as-code`) and mints an ordinary ferrum bearer token. The PWA does
-this once, on start-up, when it has no token stored.
+this once, when the lifter asks for it in Settings — never on start-up.
 
 Three properties this rests on, none of them incidental:
 
@@ -162,6 +182,8 @@ is the whole story — which is what local development and the e2e suite run aga
 Signing in gives a lifter an account. Without this it is an _empty_ one, which reads as "the app
 lost my training" rather than "the app is new" — so the first sign-in pulls the history the hub
 already holds and replays it through the same importer the Telegram path uses.
+
+This runs on the sign-in the lifter asked for, never on a cold start — see "No account by default".
 
 `/auth/sso` → `hub-import.ts` → `GET {HUB_API_URL}/api/federated/strength-sets`, presenting the
 same ticket ferrum just verified. The hub verifies it too and answers with the sets of _that

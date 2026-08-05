@@ -85,14 +85,48 @@ test.afterAll(async () => {
 });
 
 test.describe('signing in from the life-as-code hub', () => {
-  test('a device that arrives with the hub cookie is synced without touching settings', async ({
-    context,
-    page,
-  }) => {
+  // Being logged into the hub in this browser is not consent to enrol this
+  // device. Start-up must not spend the ambient cookie: it would link an account
+  // nobody asked to link and pull a stranger's history onto a shared browser.
+  test('the hub cookie alone enrols nothing; the lifter has to ask', async ({ context, page }) => {
     await context.addCookies([{ name: 'lac-sso', value: ticketFor('7', 'nikolay'), url: appUrl }]);
+
+    const ssoCalls: string[] = [];
+    page.on('request', request => {
+      if (request.url().endsWith('/auth/sso')) ssoCalls.push(request.url());
+    });
 
     await page.goto(appUrl);
     await page.getByTestId('open-settings').click();
+    await expect(page.getByTestId('sync-token')).toHaveValue('');
+    await expect(page.getByTestId('sync-last-success')).toHaveText('never');
+    // Not merely "no token stored" — the app never asked the hub at all.
+    expect(ssoCalls).toEqual([]);
+
+    // And asking still works, from the same cookie.
+    await page.getByTestId('hub-sign-in').click();
+    await expect(page.getByTestId('hub-sign-in-message')).toContainText('Signed in');
+    await expect(page.getByTestId('sync-token')).not.toHaveValue('');
+    await expect(page.getByTestId('sync-last-success')).not.toHaveText('never', {
+      timeout: 15_000,
+    });
+  });
+
+  test('a device that has been linked keeps syncing without asking again', async ({
+    context,
+    page,
+  }) => {
+    await context.addCookies([{ name: 'lac-sso', value: ticketFor('11', 'nikolay'), url: appUrl }]);
+    await page.goto(appUrl);
+    await page.getByTestId('open-settings').click();
+    await page.getByTestId('hub-sign-in').click();
+    await expect(page.getByTestId('hub-sign-in-message')).toContainText('Signed in');
+
+    // A restart is not a second consent prompt: the stored token is what
+    // start-up reads, so sync resumes on its own. Settings owns its own URL, so
+    // the reload lands straight back on it.
+    await page.reload();
+    await expect(page.getByTestId('settings')).toBeVisible();
     await expect(page.getByTestId('sync-token')).not.toHaveValue('');
     await expect(page.getByTestId('sync-last-success')).not.toHaveText('never', {
       timeout: 15_000,

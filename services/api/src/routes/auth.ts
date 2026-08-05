@@ -73,7 +73,8 @@ export function authRoutes({
       if (c.req.header('x-ferrum-sso') !== '1') return c.json({ error: 'unauthorized' }, 401);
       const ticket = readSsoCookie(c.req.header('cookie'));
       // "Nobody is signed in to the hub in this browser" is the answer to the
-      // question, not a failure of it — and the app asks on every cold start.
+      // question, not a failure of it — it is what a lifter who taps Sign in
+      // without a hub session in this browser gets.
       // A 401 here would put a red line in the console of every visitor who has
       // not used the hub, bury the 401s that do mean something in the pod log,
       // and hand the crawler a network-error finding on every page.

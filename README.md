@@ -9,8 +9,9 @@ your workout, and whose recommendations you can audit.
 ## Status
 
 Early. The domain core, the offline logger, the exercise library and sync work; programs and the
-recommendation engine are not finished. It runs at `ferrum.life-as-code.com` and signs in with a
-life-as-code account — there is no password of its own. Nothing here has run on a real iPhone.
+recommendation engine are not finished. It runs at `ferrum.life-as-code.com`. There is no account
+by default and no password of its own — your training stays in your browser until you choose to
+sync it with a life-as-code account. Nothing here has run on a real iPhone.
 
 ## What works today
 
@@ -20,8 +21,8 @@ life-as-code account — there is no password of its own. Nothing here has run o
 - 118 curated exercise definitions with honest load semantics: a push-up is not 100% of bodyweight,
   a Smith bar is not 20 kg, and a cable stack marked "50" is a marking rather than a mass.
 - Import from a personal training database, Hevy CSV, Strong CSV and Telegram shorthand.
-- Sync across devices against your life-as-code account, and only that account: history flows in
-  on first sign-in and finished workouts flow back.
+- Optional sync against your life-as-code account, and only that account: history flows in when you
+  sign in, and finished workouts flow back. Off until you turn it on.
 
 ## Requirements
 

@@ -191,7 +191,9 @@ test.describe('erasing a deleted workout for good', () => {
     await page.reload();
     await expect(page.getByTestId('booting')).toHaveCount(0);
     await expect(page.getByTestId('history-empty')).toBeVisible();
-    await expect(page.getByTestId('pending-events')).toContainText('0 events not yet synced');
+    await expect(page.getByTestId('pending-events')).toContainText(
+      '0 events stored on this device'
+    );
   });
 });
 
