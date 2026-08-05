@@ -44,6 +44,8 @@ proxies the API paths to `dev-server.ts` on port 3100:
 npm run dev --workspace @ferrum/api    # in a second terminal
 ```
 
+Set `FERRUM_API_ORIGIN` if that port is taken.
+
 Build and preview the installable app:
 
 ```bash

@@ -42,15 +42,20 @@ export default defineConfig({
   ],
   // Sync targets the origin the page came from, so the dev server has to answer
   // for the API too or nothing behind sign-in can be exercised without building.
-  // The target is dev-server.ts's default port; it simply 502s when not running,
-  // which is the same shape as an offline server and is handled.
+  // The default is dev-server.ts's own default port; FERRUM_API_ORIGIN overrides
+  // it, because 3100 is a popular port and losing it should not mean editing
+  // this file. An unreachable target 502s, which is the same shape as an offline
+  // server and is already handled.
   server: {
     port: 5173,
     strictPort: true,
     proxy: Object.fromEntries(
       ['/health', '/ready', '/auth', '/dev', '/sync', '/link', '/telegram'].map(prefix => [
         prefix,
-        { target: 'http://127.0.0.1:3100', changeOrigin: false },
+        {
+          target: process.env['FERRUM_API_ORIGIN'] ?? 'http://127.0.0.1:3100',
+          changeOrigin: false,
+        },
       ])
     ),
   },
