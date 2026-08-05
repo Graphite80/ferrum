@@ -40,6 +40,19 @@ export default defineConfig({
       devOptions: { enabled: false, type: 'module' },
     }),
   ],
-  server: { port: 5173, strictPort: true },
+  // Sync targets the origin the page came from, so the dev server has to answer
+  // for the API too or nothing behind sign-in can be exercised without building.
+  // The target is dev-server.ts's default port; it simply 502s when not running,
+  // which is the same shape as an offline server and is handled.
+  server: {
+    port: 5173,
+    strictPort: true,
+    proxy: Object.fromEntries(
+      ['/health', '/ready', '/auth', '/dev', '/sync', '/link', '/telegram'].map(prefix => [
+        prefix,
+        { target: 'http://127.0.0.1:3100', changeOrigin: false },
+      ])
+    ),
+  },
   build: { target: 'es2022', sourcemap: 'hidden' },
 });

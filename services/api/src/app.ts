@@ -132,29 +132,34 @@ export function createApp({
     app.post('/telegram/webhook', c => handleUpdate(c));
   }
 
-  if (staticDir !== undefined && staticDir !== '') {
-    app.use('/*', async (c, next) => {
-      if (isApiPath(c.req.path) || (c.req.method !== 'GET' && c.req.method !== 'HEAD')) {
-        return c.json({ error: 'not_found' }, 404);
-      }
-      await next();
-      // Without an explicit header the origin sends none, the edge applies a
-      // four-hour default and browsers fall back to heuristic freshness — so a
-      // released index.html can keep pointing at the previous build's bundles
-      // for hours, which is the one cache failure no amount of clearing fixes.
-      // /assets/ filenames carry a content hash, so they are safe to pin
-      // forever; everything else (index.html, the service worker, the manifest)
-      // is a mutable entry point and must be revalidated every time.
-      if (c.res.ok) {
-        c.res.headers.set(
-          'cache-control',
-          c.req.path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache'
-        );
-      }
-    });
-    app.use('/*', serveStatic({ root: staticDir }));
-    app.use('/*', serveStatic({ root: staticDir, rewriteRequestPath: () => '/index.html' }));
-  }
+  if (staticDir !== undefined && staticDir !== '') mountStaticFallback(app, staticDir);
 
   return app;
+}
+
+// Separate from createApp because it must be the LAST thing mounted: it answers
+// for everything, so any route registered after it is unreachable. dev-server.ts
+// adds a route of its own and therefore mounts this itself, afterwards.
+export function mountStaticFallback(app: Hono<AppEnv>, staticDir: string): void {
+  app.use('/*', async (c, next) => {
+    if (isApiPath(c.req.path) || (c.req.method !== 'GET' && c.req.method !== 'HEAD')) {
+      return c.json({ error: 'not_found' }, 404);
+    }
+    await next();
+    // Without an explicit header the origin sends none, the edge applies a
+    // four-hour default and browsers fall back to heuristic freshness — so a
+    // released index.html can keep pointing at the previous build's bundles
+    // for hours, which is the one cache failure no amount of clearing fixes.
+    // /assets/ filenames carry a content hash, so they are safe to pin
+    // forever; everything else (index.html, the service worker, the manifest)
+    // is a mutable entry point and must be revalidated every time.
+    if (c.res.ok) {
+      c.res.headers.set(
+        'cache-control',
+        c.req.path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache'
+      );
+    }
+  });
+  app.use('/*', serveStatic({ root: staticDir }));
+  app.use('/*', serveStatic({ root: staticDir, rewriteRequestPath: () => '/index.html' }));
 }

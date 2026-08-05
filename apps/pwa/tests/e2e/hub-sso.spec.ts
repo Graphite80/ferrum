@@ -93,7 +93,7 @@ test.describe('signing in from the life-as-code hub', () => {
 
     await page.goto(appUrl);
     await page.getByTestId('open-settings').click();
-    await expect(page.getByTestId('sync-server-url')).toHaveValue(appUrl);
+    await expect(page.getByTestId('sync-token')).not.toHaveValue('');
     await expect(page.getByTestId('sync-last-success')).not.toHaveText('never', {
       timeout: 15_000,
     });
@@ -105,16 +105,16 @@ test.describe('signing in from the life-as-code hub', () => {
   }) => {
     await page.goto(appUrl);
     await page.getByTestId('open-settings').click();
-    await expect(page.getByTestId('sync-server-url')).toHaveValue('');
+    await expect(page.getByTestId('sync-token')).toHaveValue('');
 
     await page.getByTestId('hub-sign-in').click();
     await expect(page.getByTestId('hub-sign-in-message')).toContainText('Not signed in');
-    await expect(page.getByTestId('sync-server-url')).toHaveValue('');
+    await expect(page.getByTestId('sync-token')).toHaveValue('');
 
     await context.addCookies([{ name: 'lac-sso', value: ticketFor('9', 'nikolay'), url: appUrl }]);
     await page.getByTestId('hub-sign-in').click();
     await expect(page.getByTestId('hub-sign-in-message')).toContainText('Signed in');
-    await expect(page.getByTestId('sync-server-url')).toHaveValue(appUrl);
+    await expect(page.getByTestId('sync-token')).not.toHaveValue('');
     await expect(page.getByTestId('sync-last-success')).not.toHaveText('never', {
       timeout: 15_000,
     });
@@ -127,7 +127,7 @@ test.describe('signing in from the life-as-code hub', () => {
 
     await page.goto(appUrl);
     await page.getByTestId('open-settings').click();
-    await expect(page.getByTestId('sync-server-url')).toHaveValue('');
+    await expect(page.getByTestId('sync-token')).toHaveValue('');
     await page.getByTestId('hub-sign-in').click();
     await expect(page.getByTestId('hub-sign-in-message')).toContainText('Not signed in');
   });

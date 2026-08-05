@@ -5,9 +5,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 
+// The app is served by the sync server itself, the way production serves it:
+// sync targets the origin the page came from, so a preview server with no API
+// behind it cannot exercise a single sync path.
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '../../../..');
 const apiDir = path.join(repoRoot, 'services/api');
+const staticDir = path.join(repoRoot, 'apps/pwa/dist');
 const tsxCli = path.join(repoRoot, 'node_modules/tsx/dist/cli.mjs');
 const SYNC_PORT = 3411;
 const syncServerUrl = `http://127.0.0.1:${SYNC_PORT}`;
@@ -32,7 +37,7 @@ async function waitForHealth(timeoutMillis = 30_000): Promise<void> {
 async function startSyncServer(): Promise<void> {
   serverProcess = spawn(process.execPath, [tsxCli, 'src/dev-server.ts'], {
     cwd: apiDir,
-    env: { ...process.env, PORT: String(SYNC_PORT), PGLITE_DIR: dataDir },
+    env: { ...process.env, PORT: String(SYNC_PORT), PGLITE_DIR: dataDir, STATIC_DIR: staticDir },
     stdio: 'ignore',
   });
   await waitForHealth();
@@ -59,9 +64,8 @@ async function mintToken(): Promise<string> {
 }
 
 async function configureSync(page: Page, token: string): Promise<void> {
-  await page.goto('/');
+  await page.goto(syncServerUrl);
   await page.getByTestId('open-settings').click();
-  await page.getByTestId('sync-server-url').fill(syncServerUrl);
   await page.getByTestId('sync-token').fill(token);
   await page.getByTestId('sync-save').click();
   await expect(page.getByTestId('sync-last-success')).not.toHaveText('never', { timeout: 15_000 });

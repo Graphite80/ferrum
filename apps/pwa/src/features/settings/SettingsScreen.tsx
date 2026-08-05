@@ -129,7 +129,6 @@ function SyncCardBody({
   pending: number | undefined;
   status: SyncStatus;
 }) {
-  const [serverUrl, setServerUrl] = useState(config?.serverUrl ?? '');
   const [token, setToken] = useState(config?.syncToken ?? '');
   const [hubMessage, setHubMessage] = useState<string | null>(null);
   const loaded = config !== undefined;
@@ -143,7 +142,6 @@ function SyncCardBody({
         // Re-read rather than assume: the fields must show the token that was
         // actually stored, or the next Save would overwrite it with a blank.
         const saved = await loadSyncConfig();
-        setServerUrl(saved.serverUrl ?? '');
         setToken(saved.syncToken ?? '');
         requestSync('manual');
       })
@@ -156,12 +154,8 @@ function SyncCardBody({
   };
 
   const save = () => {
-    const trimmedUrl = serverUrl.trim();
     const trimmedToken = token.trim();
-    void saveSyncConfig({
-      serverUrl: trimmedUrl === '' ? null : trimmedUrl,
-      syncToken: trimmedToken === '' ? null : trimmedToken,
-    }).then(() => {
+    void saveSyncConfig({ syncToken: trimmedToken === '' ? null : trimmedToken }).then(() => {
       requestSync('manual');
     });
   };
@@ -170,8 +164,8 @@ function SyncCardBody({
     <div className={card({ className: 'flex flex-col gap-3 p-4' })} data-testid="sync-settings">
       <p className={eyebrow()}>Sync</p>
       <p className="text-xs text-ash">
-        Optional. Ferrum works fully offline without a server; add one to back up history and share
-        it across devices.
+        Optional. Ferrum works fully offline; signing in with {HUB_NAME} backs your history up there
+        and shares it across your devices.
       </p>
       <button
         type="button"
@@ -187,20 +181,6 @@ function SyncCardBody({
           {hubMessage}
         </p>
       )}
-      <label className="flex flex-col gap-1">
-        <span className={eyebrow()}>Server URL</span>
-        <input
-          type="url"
-          className={INPUT}
-          placeholder="https://ferrum.example.com"
-          value={serverUrl}
-          disabled={!loaded}
-          onChange={event => {
-            setServerUrl(event.target.value);
-          }}
-          data-testid="sync-server-url"
-        />
-      </label>
       <label className="flex flex-col gap-1">
         <span className={eyebrow()}>Access token</span>
         <input

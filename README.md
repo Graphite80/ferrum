@@ -8,18 +8,20 @@ your workout, and whose recommendations you can audit.
 
 ## Status
 
-Early. The domain core, the offline logger and the exercise library work; sync, programs and the
-recommendation engine are not finished. There is no hosted instance and no account system yet.
-Nothing here has run on a real iPhone.
+Early. The domain core, the offline logger, the exercise library and sync work; programs and the
+recommendation engine are not finished. It runs at `ferrum.life-as-code.com` and signs in with a
+life-as-code account — there is no password of its own. Nothing here has run on a real iPhone.
 
 ## What works today
 
 - Start a routine, log prefilled sets in one tap, rest timer, finish, history — entirely offline.
 - Every mutation is an append-only event; the session is rebuilt by replaying them. Reloading,
   going offline, force-quitting or undoing does not lose a completed set.
-- 80 curated exercise definitions with honest load semantics: a push-up is not 100% of bodyweight,
+- 118 curated exercise definitions with honest load semantics: a push-up is not 100% of bodyweight,
   a Smith bar is not 20 kg, and a cable stack marked "50" is a marking rather than a mass.
-- Import from a personal training database; Hevy and Strong CSV adapters are in progress.
+- Import from a personal training database, Hevy CSV, Strong CSV and Telegram shorthand.
+- Sync across devices against your life-as-code account, and only that account: history flows in
+  on first sign-in and finished workouts flow back.
 
 ## Requirements
 
@@ -32,6 +34,14 @@ npm install
 npm run type-check
 npm run test
 npm run dev            # http://localhost:5173
+```
+
+The app syncs to the origin it is served from and nowhere else, so anything behind
+sign-in needs the API answering on that origin. In development the Vite server
+proxies the API paths to `dev-server.ts` on port 3100:
+
+```bash
+npm run dev --workspace @ferrum/api    # in a second terminal
 ```
 
 Build and preview the installable app:

@@ -23,8 +23,12 @@ import {
 } from '../db/event-store.ts';
 import { requestHubToken, type HubSignInOutcome } from './sso.ts';
 
+// Ferrum syncs to one place: the life-as-code account it signs in with, served
+// from this app's own origin. There is deliberately no server field — a second
+// address to type is a second thing to get wrong, and every path that made a
+// custom one work (the identity cookie, the hub backfill, the return leg) is
+// same-origin by construction anyway.
 export interface SyncConfig {
-  readonly serverUrl: string | null;
   readonly syncToken: string | null;
 }
 
@@ -94,11 +98,6 @@ class ClockDriftSyncError extends Error {
 
 type StatusListener = (status: SyncStatus) => void;
 
-interface SyncTarget {
-  readonly serverUrl: string;
-  readonly syncToken: string;
-}
-
 export class SyncClient {
   private status: SyncStatus = {
     configured: false,
@@ -131,10 +130,7 @@ export class SyncClient {
   }
 
   noteConfigSaved(config: SyncConfig): void {
-    this.publish({
-      configured: config.serverUrl !== null && config.syncToken !== null,
-      lastError: null,
-    });
+    this.publish({ configured: config.syncToken !== null, lastError: null });
   }
 
   // The unacknowledged count is the write signal: pulled events land already
@@ -161,7 +157,7 @@ export class SyncClient {
     this.started = true;
     const [state, config] = await Promise.all([this.deps.loadState(), this.deps.loadConfig()]);
     this.publish({
-      configured: config.serverUrl !== null && config.syncToken !== null,
+      configured: config.syncToken !== null,
       cursor: state.cursor,
       lastSuccessAtMillis: state.lastSuccessAtMillis,
       driftMessage: state.driftMessage,
@@ -223,17 +219,17 @@ export class SyncClient {
   private async runCycle(): Promise<void> {
     try {
       const config = await this.deps.loadConfig();
-      if (config.serverUrl === null || config.syncToken === null) {
+      const syncToken = config.syncToken;
+      if (syncToken === null) {
         this.publish({ configured: false, syncing: false });
         return;
       }
-      const target = { serverUrl: config.serverUrl, syncToken: config.syncToken };
       this.publish({ configured: true, syncing: true });
       // Purges go first: the server must have forgotten the session before the
       // pull that would otherwise hand it straight back.
-      await this.pushPurges(target);
-      await this.pushAll(target);
-      await this.pullAll(target);
+      await this.pushPurges(syncToken);
+      await this.pushAll(syncToken);
+      await this.pullAll(syncToken);
       this.failureCount = 0;
       const now = this.deps.now();
       await this.deps.saveState({ lastSuccessAtMillis: now, driftMessage: null });
@@ -264,25 +260,28 @@ export class SyncClient {
     }
   }
 
+  // The path is relative on purpose: it resolves against the page's own origin,
+  // which is the only server this app talks to, and keeps the client free of any
+  // window access the injected deps would otherwise have to fake.
   private async callServer(
-    target: SyncTarget,
+    syncToken: string,
     path: string,
     init: { method: 'GET' } | { method: 'POST'; body: string }
   ): Promise<Response> {
-    const headers: Record<string, string> = { authorization: `Bearer ${target.syncToken}` };
+    const headers: Record<string, string> = { authorization: `Bearer ${syncToken}` };
     if (init.method === 'POST') headers['content-type'] = 'application/json';
-    return this.deps.fetch(`${target.serverUrl.replace(/\/+$/, '')}${path}`, {
+    return this.deps.fetch(path, {
       ...init,
       headers,
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MILLIS),
     });
   }
 
-  private async pushPurges(target: SyncTarget): Promise<void> {
+  private async pushPurges(syncToken: string): Promise<void> {
     for (;;) {
       const aggregateIds = await this.deps.pendingPurges(PURGE_MAX_AGGREGATES);
       if (aggregateIds.length === 0) return;
-      const response = await this.callServer(target, '/sync/purge', {
+      const response = await this.callServer(syncToken, '/sync/purge', {
         method: 'POST',
         body: JSON.stringify(serializePurgeRequest({ aggregateIds })),
       });
@@ -294,7 +293,7 @@ export class SyncClient {
     }
   }
 
-  private async pushAll(target: SyncTarget): Promise<void> {
+  private async pushAll(syncToken: string): Promise<void> {
     for (;;) {
       const batch = await this.deps.unacknowledgedBatch(PUSH_BATCH_LIMIT);
       const first = batch[0];
@@ -303,7 +302,7 @@ export class SyncClient {
         deviceId: first.envelope.deviceId,
         events: batch.map(row => row.envelope),
       });
-      const response = await this.callServer(target, '/sync/push', {
+      const response = await this.callServer(syncToken, '/sync/push', {
         method: 'POST',
         body: JSON.stringify(request),
       });
@@ -324,13 +323,13 @@ export class SyncClient {
   // The pull cursor only ever advances along pull pages. The cursor a push returns
   // is the head of the whole per-user log; jumping there would skip any events
   // another device pushed at lower sequences than our own batch.
-  private async pullAll(target: SyncTarget): Promise<void> {
+  private async pullAll(syncToken: string): Promise<void> {
     const state = await this.deps.loadState();
     let cursor = state.cursor;
     let purgeCursor = state.purgeCursor;
     for (;;) {
       const response = await this.callServer(
-        target,
+        syncToken,
         `/sync/pull?after=${String(cursor)}&purgedAfter=${String(purgeCursor)}` +
           `&limit=${String(PULL_DEFAULT_LIMIT)}`,
         { method: 'GET' }
@@ -348,8 +347,8 @@ export class SyncClient {
           this.deps.now()
         );
       }
-      // A server restored from backup (or a wrong URL) can hand back a smaller
-      // cursor; regressing ours would re-pull the same pages forever.
+      // A server restored from backup can hand back a smaller cursor; regressing
+      // ours would re-pull the same pages forever.
       cursor = Math.max(cursor, parsed.cursor);
       purgeCursor = Math.max(purgeCursor, parsed.purgeCursor);
       await this.deps.saveState({ cursor, purgeCursor });
@@ -361,17 +360,11 @@ export class SyncClient {
 
 export async function loadSyncConfig(): Promise<SyncConfig> {
   const record = await db.settings.get('syncConfig');
-  return record?.key === 'syncConfig'
-    ? { serverUrl: record.serverUrl, syncToken: record.syncToken }
-    : { serverUrl: null, syncToken: null };
+  return record?.key === 'syncConfig' ? { syncToken: record.syncToken } : { syncToken: null };
 }
 
 export async function saveSyncConfig(config: SyncConfig): Promise<void> {
-  await db.settings.put({
-    key: 'syncConfig',
-    serverUrl: config.serverUrl,
-    syncToken: config.syncToken,
-  });
+  await db.settings.put({ key: 'syncConfig', syncToken: config.syncToken });
   syncClient.noteConfigSaved(config);
 }
 
@@ -458,9 +451,9 @@ function observePendingPurges(): void {
 
 export type HubSignInResult = HubSignInOutcome | 'already-configured' | 'storage-failed';
 
-// A device that arrives from the hub with nothing stored gets its sync target
-// from the hub itself. An already-configured device is left alone: a manually
-// entered token, or one for a different server, is a deliberate choice.
+// A device that arrives from the hub with nothing stored gets its token from the
+// hub itself. An already-configured device is left alone: a manually entered
+// token is a deliberate choice.
 //
 // This function never rejects, and that is load-bearing rather than defensive:
 // initSync awaits it before it installs the pending-count observers, the online
@@ -473,7 +466,7 @@ export async function signInWithHub({ force = false }: { force?: boolean } = {})
   displayName: string | null;
 }> {
   const existing = await withDatabaseRecovery(loadSyncConfig).catch(() => null);
-  if (!force && existing?.serverUrl != null && existing.syncToken != null) {
+  if (!force && existing?.syncToken != null) {
     return { result: 'already-configured', displayName: null };
   }
   const signIn = await requestHubToken(window.location.origin);
@@ -482,9 +475,7 @@ export async function signInWithHub({ force = false }: { force?: boolean } = {})
     return { result: signIn.outcome, displayName: null };
   }
   try {
-    await withDatabaseRecovery(() =>
-      saveSyncConfig({ serverUrl: window.location.origin, syncToken })
-    );
+    await withDatabaseRecovery(() => saveSyncConfig({ syncToken }));
   } catch (error) {
     console.error('storing the hub sign-in failed', error);
     return { result: 'storage-failed', displayName: null };

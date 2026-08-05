@@ -19,7 +19,7 @@ Read `docs/INVARIANTS.md` before changing anything in `packages/domain`. It is t
 
 ```text
 packages/domain              zero-dependency core: events, projection, load semantics, HLC, time
-packages/exercise-library    93 curated definitions (YAML -> generated TS), ranked search
+packages/exercise-library    118 curated definitions (YAML -> generated TS), ranked search
 packages/exercise-media      technique diagrams: stick rig + IK, per-movement poses, muscle map
 packages/importers           life-as-code JSON, Hevy CSV, Strong CSV, Telegram shorthand
 packages/progression-engine  three versioned deterministic policies + historical replay harness
@@ -111,6 +111,25 @@ Verified July 2026. Do not "simplify" the code that works around these.
 The rest timer is always derived from `endsAt - now`. `setInterval` is a repaint trigger, never the
 source of truth.
 
+## One sync target, never a typed one
+
+The app syncs to the origin it was served from and to nothing else. There is no server field: every
+sync request is a relative path, so it resolves against the page's own origin by construction. The
+only thing Settings still holds is an access token, for local development and the e2e suite, which
+mint one from `/dev/token` or `/auth/bootstrap`.
+
+This is not a simplification of a feature that worked — a custom server address never could work
+for the parts that matter. The hub's identity cookie is same-origin, the first-sign-in backfill and
+the return leg both run inside this API, and a second address to type is a second thing to get
+wrong. Two consequences worth keeping in mind:
+
+- **`npm run dev` proxies the API paths** (`/health /ready /auth /dev /sync /link /telegram`) to
+  `dev-server.ts` on port 3100, because a Vite server that answers only for assets can no longer
+  reach any sync path at all.
+- **The e2e sync drills are served by the API itself** (`STATIC_DIR=apps/pwa/dist`), the shape
+  production uses. `mountStaticFallback` is exported separately from `createApp` for exactly this:
+  it answers for everything, so `dev-server.ts` must register `/dev/bot-import` before it.
+
 ## Single sign-on
 
 life-as-code is the hub and owns the human's account; ferrum is one of its apps and holds no
@@ -135,7 +154,7 @@ Three properties this rests on, none of them incidental:
 - **A one-day cap on ticket lifetime is enforced by the verifier**, not just by the issuer. A stolen
   ticket is a login; the reader is what bounds the damage.
 
-Without `SSO_SIGNING_KEY` the endpoint is not mounted at all and the manual token field in Settings
+Without `SSO_SIGNING_KEY` the endpoint is not mounted at all and the access-token field in Settings
 is the whole story — which is what local development and the e2e suite run against.
 
 ## The history backfill

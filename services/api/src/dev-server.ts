@@ -3,7 +3,7 @@ import { serve } from '@hono/node-server';
 import { PGlite } from '@electric-sql/pglite';
 import { loadExerciseLibrary } from '@ferrum/exercise-library';
 import { extractTelegram, libraryResolver } from '@ferrum/importers';
-import { createApp } from './app.ts';
+import { createApp, mountStaticFallback } from './app.ts';
 import { hashToken } from './auth-tokens.ts';
 import { importForUser } from './bot/imports.ts';
 import { parseShorthand } from './bot/shorthand.ts';
@@ -21,18 +21,21 @@ const pglite = dataDir === undefined || dataDir === '' ? new PGlite() : new PGli
 const db = pgliteDatabase(pglite);
 await migrate(db);
 
-// Both optional and both mirroring main.ts: serving the PWA from the API origin
-// is the only way to exercise the hub's identity cookie, which is same-origin by
-// construction, without standing up the production container.
+// Serving the PWA from the API origin mirrors main.ts, and is now the only shape
+// the app supports: sync targets its own origin, so a preview server with no API
+// behind it cannot exercise a single sync path. The static fallback is mounted
+// after /dev/bot-import below, because it answers for everything.
+const staticDir =
+  process.env.STATIC_DIR === undefined || process.env.STATIC_DIR === ''
+    ? null
+    : process.env.STATIC_DIR;
+
 const app = createApp({
   db,
   enableDevRoutes: true,
   ...(process.env.SSO_SIGNING_KEY === undefined || process.env.SSO_SIGNING_KEY === ''
     ? {}
     : { ssoSigningKey: process.env.SSO_SIGNING_KEY }),
-  ...(process.env.STATIC_DIR === undefined || process.env.STATIC_DIR === ''
-    ? {}
-    : { staticDir: process.env.STATIC_DIR }),
 });
 
 interface BotImportBody {
@@ -114,6 +117,8 @@ app.post('/dev/bot-import', async c => {
     unresolved: outcome.result.unresolved.length,
   });
 });
+
+if (staticDir !== null) mountStaticFallback(app, staticDir);
 
 const server = serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, info => {
   console.log(

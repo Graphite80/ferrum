@@ -4,7 +4,9 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
 
 ## Applicability matrix
 
-- Forge: Forgejo (`git.nikolay-eremeev.com/nikolay-e/ferrum`), no GitHub mirror.
+- Forge: Forgejo (`git.nikolay-eremeev.com/nikolay-e/ferrum`) is authoritative. A `github` remote
+  (`github.com/nikolay-e/ferrum`) exists as a mirror — enumerate issues and PRs on BOTH sides,
+  push only to Forgejo.
 - CI: Argo Workflows via `sensor-ferrum-image` (gitops ci-platform); webhook id 16 on the repo,
   secret from `gitops/kubernetes/secrets/ci-events/forgejo-webhook.enc.yaml`.
 - CD: ArgoCD app `ferrum-production`, namespace `ferrum-production`, image
@@ -93,8 +95,14 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
   write another member's log. Do not "fix" the chat-type guards away.
 - Bot env (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_WEBHOOK_SECRET`) is optional; the server must
   always boot sync-only without it.
-- E2E: `cd apps/pwa && npm run build && npx vite preview --port 4173 ... && CI=1 npx playwright
-test`. The sync spec spawns `services/api` `dev:memory` (PGlite) itself.
+- E2E: `cd apps/pwa && npm run build && CI=1 npx playwright test` — the config starts the preview
+  server itself for the offline drills. The sync, session-naming and hub-sso specs do NOT use it:
+  they spawn `services/api` on PGlite with `STATIC_DIR=apps/pwa/dist` and navigate to that origin,
+  because sync targets the origin the page came from and a preview server has no API behind it.
+  So `npm run build` is a precondition of those three, not a convenience.
+- **There is no sync server field and must not be one again.** Sync is a relative path against the
+  page's own origin; Settings holds only an access token, for dev and e2e. A custom address never
+  worked for the hub cookie, the backfill or the return leg, all of which are same-origin.
 
 ## Known gotchas
 

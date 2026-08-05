@@ -12,6 +12,7 @@ import { expect, test, type Page } from '@playwright/test';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '../../../..');
 const apiDir = path.join(repoRoot, 'services/api');
+const staticDir = path.join(repoRoot, 'apps/pwa/dist');
 const tsxCli = path.join(repoRoot, 'node_modules/tsx/dist/cli.mjs');
 const PORT = 3413;
 const serverUrl = `http://127.0.0.1:${String(PORT)}`;
@@ -36,7 +37,7 @@ test.beforeAll(async () => {
   dataDir = mkdtempSync(path.join(os.tmpdir(), 'ferrum-naming-e2e-'));
   serverProcess = spawn(process.execPath, [tsxCli, 'src/dev-server.ts'], {
     cwd: apiDir,
-    env: { ...process.env, PORT: String(PORT), PGLITE_DIR: dataDir },
+    env: { ...process.env, PORT: String(PORT), PGLITE_DIR: dataDir, STATIC_DIR: staticDir },
     stdio: 'ignore',
   });
   await waitForHealth();
@@ -75,9 +76,8 @@ async function botImport(token: string, day: string, lines: readonly string[]): 
 }
 
 async function configureSync(page: Page, token: string): Promise<void> {
-  await page.goto('/');
+  await page.goto(serverUrl);
   await page.getByTestId('open-settings').click();
-  await page.getByTestId('sync-server-url').fill(serverUrl);
   await page.getByTestId('sync-token').fill(token);
   await page.getByTestId('sync-save').click();
   await expect(page.getByTestId('sync-last-success')).not.toHaveText('never', { timeout: 15_000 });

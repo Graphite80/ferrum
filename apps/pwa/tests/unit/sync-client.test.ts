@@ -23,7 +23,7 @@ interface ArmedTimer {
 class Harness {
   nowMillis = 1_000_000;
   randomValue = 1;
-  config: SyncConfig = { serverUrl: 'https://sync.example', syncToken: 'token' };
+  config: SyncConfig = { syncToken: 'token' };
   batch: PushableEvent[] = [];
   fetchImpl: (url: string) => Promise<Response> = () => Promise.reject(new Error('network down'));
   readonly fetchCalls: string[] = [];

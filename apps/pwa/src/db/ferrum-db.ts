@@ -91,7 +91,9 @@ export interface EquipmentRecord {
 
 export type SettingsRecord =
   | { key: 'settings'; unit: WeightUnit }
-  | { key: 'syncConfig'; serverUrl: string | null; syncToken: string | null };
+  // Records written before the server field was dropped still carry it; nothing
+  // reads it, and Dexie does not index it, so they need no migration.
+  | { key: 'syncConfig'; syncToken: string | null };
 
 export type MetaRecord =
   | { key: 'seeded'; atMillis: number }
