@@ -6,7 +6,9 @@ async function finishWorkout(page: Page, sets: number): Promise<void> {
   await expect(page.getByTestId('session-title')).toBeVisible();
   for (let i = 0; i < sets; i += 1) {
     await page.getByTestId('set-0-done').first().click();
-    await expect(page.getByTestId('set-count')).toContainText(`${String(i + 1)} sets`);
+    await expect(page.getByTestId('set-count')).toContainText(
+      `${String(i + 1)} ${i === 0 ? 'set' : 'sets'}`
+    );
   }
   await page.getByTestId('finish-session').click();
   await expect(page.getByTestId('workout-summary')).toBeVisible();
@@ -81,7 +83,7 @@ test.describe('workout deletion', () => {
     await page.getByTestId('start-routine').click();
     await expect(page.getByTestId('session-title')).toBeVisible();
     await page.getByTestId('set-0-done').first().click();
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
 
     // Leave the workout running and delete it from history detail.
     await page.goBack();
@@ -108,7 +110,7 @@ test.describe('discarding a workout in progress', () => {
     await page.getByTestId('start-routine').click();
     await expect(page.getByTestId('session-title')).toBeVisible();
     await page.getByTestId('set-0-done').first().click();
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
 
     // Cancelling leaves the workout exactly as it was, still accepting sets.
     await page.getByTestId('discard-session').click();
@@ -148,7 +150,7 @@ test.describe('discarding a workout in progress', () => {
     await page.getByTestId('start-routine').click();
     await expect(page.getByTestId('session-title')).toBeVisible();
     await page.getByTestId('set-0-done').first().click();
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
 
     const other = await page.context().newPage();
     await other.goto('/');
@@ -203,7 +205,7 @@ test.describe('a deleted workout stops counting', () => {
     await page.getByTestId('set-0-load').first().click();
     await page.getByTestId('set-0-load-stepper-input').first().fill('200');
     await page.getByTestId('set-0-done').first().click();
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
     await page.getByTestId('finish-session').click();
     await expect(page.getByTestId('workout-summary')).toBeVisible();
     await page.getByTestId('summary-home').click();

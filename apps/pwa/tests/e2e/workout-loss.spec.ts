@@ -43,7 +43,9 @@ test.describe('workout survival', () => {
 
     for (let i = 0; i < 4; i += 1) {
       await page.getByTestId('set-0-done').first().click();
-      await expect(page.getByTestId('set-count')).toContainText(`${String(i + 1)} sets`);
+      await expect(page.getByTestId('set-count')).toContainText(
+        `${String(i + 1)} ${i === 0 ? 'set' : 'sets'}`
+      );
       await page.reload();
       await expect(page.getByTestId('session-title')).toBeVisible();
       expect(await setCount(page)).toBe(i + 1);
@@ -57,7 +59,7 @@ test.describe('workout survival', () => {
     // The counter only moves once the append transaction has committed, so waiting
     // on it is waiting on durability rather than on a repaint.
     await page.getByTestId('set-0-done').first().click();
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
     await page.getByTestId('set-0-done').first().click();
     await expect(page.getByTestId('set-count')).toContainText('2 sets');
 
@@ -83,7 +85,7 @@ test.describe('workout survival', () => {
     const loadInput = page.getByTestId('set-0-load-stepper-input').first();
     await loadInput.fill('87.5');
     await page.getByTestId('set-0-done').first().click();
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
 
     await page.reload();
     await expect(page.getByTestId('previous-label').first()).toContainText('87.5 kg');
@@ -103,7 +105,7 @@ test.describe('workout survival', () => {
     // The deleted set is a reversible tombstone, not a removal, so it is still
     // there to restore after a restart.
     await page.getByTestId('restore-deleted-set').click();
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
   });
 
   test('the rest timer is derived from its end time, not from ticks', async ({ page }) => {

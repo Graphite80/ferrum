@@ -16,6 +16,7 @@ import { exerciseDisplayName, formatDuration, sessionDisplayTitle } from './sess
 import { ScreenShell } from '../../components/ScreenShell.tsx';
 import { StatCard } from '../../components/StatCard.tsx';
 import { button, card, eyebrow, mono } from '../../ui.ts';
+import { formatSetCount } from '../../data/labels.ts';
 
 interface ExerciseSummary {
   readonly key: string;
@@ -191,7 +192,7 @@ function prescribedLabel(slot: RoutineSlotRecord, unit: WeightUnit): string {
 }
 
 function actualLabel(workingCount: number, top: TopSet | null, unit: WeightUnit): string {
-  const sets = `${String(workingCount)} ${workingCount === 1 ? 'set' : 'sets'}`;
+  const sets = formatSetCount(workingCount);
   if (top == null) return sets;
   return `${sets} · top ${formatLoad(kilograms(top.loadKg), { unit })} × ${String(top.reps)}`;
 }

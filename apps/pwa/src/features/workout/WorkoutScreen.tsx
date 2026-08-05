@@ -37,6 +37,7 @@ import {
 } from '../../data/session-controller.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
 import { button, card, eyebrow, mono } from '../../ui.ts';
+import { formatSetCount } from '../../data/labels.ts';
 
 export function WorkoutScreen({
   sessionId,
@@ -237,7 +238,7 @@ export function WorkoutScreen({
             className={mono({ className: 'text-xs font-medium text-ash' })}
             data-testid="set-count"
           >
-            {projection.sets.length} sets
+            {formatSetCount(projection.sets.length)}
           </span>
           {/* The workout keeps running: every set is already durable, so leaving
               is navigation, not a decision about the session. Home resumes

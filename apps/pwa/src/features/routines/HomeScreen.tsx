@@ -6,6 +6,7 @@ import { sessionDisplayTitle } from '../history/session-view.ts';
 import { listRoutines } from '../../data/routine-store.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
 import { button, card, eyebrow, mono } from '../../ui.ts';
+import { formatSetCount } from '../../data/labels.ts';
 import { useLiveData } from '../../components/live-data.ts';
 
 export function HomeScreen({
@@ -75,7 +76,7 @@ export function HomeScreen({
             </span>
           </span>
           <span className={mono({ className: 'shrink-0 text-xs font-medium text-ash' })}>
-            {resumable.sets} sets
+            {formatSetCount(resumable.sets)}
           </span>
         </button>
       )}

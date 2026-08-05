@@ -12,13 +12,13 @@ test.describe('two tabs of the same app', () => {
     await expect(first.getByTestId('session-title')).toBeVisible();
 
     await first.getByTestId('set-0-done').first().click();
-    await expect(first.getByTestId('set-count')).toContainText('1 sets');
+    await expect(first.getByTestId('set-count')).toContainText('1 set');
 
     const second = await context.newPage();
     await second.goto('/');
     // The second tab must resume the same active session, not offer to start a new one.
     await expect(second.getByTestId('session-title')).toBeVisible();
-    await expect(second.getByTestId('set-count')).toContainText('1 sets');
+    await expect(second.getByTestId('set-count')).toContainText('1 set');
 
     await second.getByTestId('set-0-done').first().click();
     await expect(second.getByTestId('set-count')).toContainText('2 sets');

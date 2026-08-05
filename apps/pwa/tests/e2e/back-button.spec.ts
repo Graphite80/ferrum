@@ -7,7 +7,7 @@ test.describe('hardware back navigation', () => {
     await page.getByTestId('start-routine').click();
     await expect(page.getByTestId('session-title')).toBeVisible();
     await page.getByTestId('set-0-done').first().click();
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
     await page.getByTestId('finish-session').click();
     await expect(page.getByTestId('workout-summary')).toBeVisible();
     await page.getByTestId('summary-home').click();
@@ -27,7 +27,7 @@ test.describe('hardware back navigation', () => {
     await page.getByTestId('start-routine').click();
     await expect(page.getByTestId('session-title')).toBeVisible();
     await page.getByTestId('set-0-done').first().click();
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
 
     await page.goBack();
     await expect(page.getByTestId('start-routine')).toBeVisible();
@@ -35,6 +35,6 @@ test.describe('hardware back navigation', () => {
     // The session is still active: a reload resumes straight into it, set intact.
     await page.reload();
     await expect(page.getByTestId('session-title')).toBeVisible();
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
   });
 });

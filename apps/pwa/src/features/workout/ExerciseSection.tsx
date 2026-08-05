@@ -24,6 +24,7 @@ import { PlateSleeve } from './PlateSleeve.tsx';
 import { type SetPatch } from '../../data/session-controller.ts';
 import { SetRow } from './SetRow.tsx';
 import { button, mono } from '../../ui.ts';
+import { formatSetCount } from '../../data/labels.ts';
 
 export interface ExerciseSectionProps {
   readonly exercise: SessionExercise;
@@ -102,7 +103,7 @@ export function ExerciseSection(props: ExerciseSectionProps) {
             data-testid="exercise-set-count"
           >
             {plan.targetSets == null
-              ? `${String(liveSets.length)} sets`
+              ? formatSetCount(liveSets.length)
               : `${String(liveSets.length)}/${String(plan.targetSets)}`}
           </span>
           {liveSets.length === 0 && (

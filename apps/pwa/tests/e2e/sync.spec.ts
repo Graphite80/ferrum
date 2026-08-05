@@ -76,7 +76,9 @@ async function logWorkout(page: Page, sets: number): Promise<void> {
   await page.getByTestId('start-routine').click();
   for (let i = 0; i < sets; i += 1) {
     await page.getByTestId('set-0-done').first().click();
-    await expect(page.getByTestId('set-count')).toContainText(`${String(i + 1)} sets`);
+    await expect(page.getByTestId('set-count')).toContainText(
+      `${String(i + 1)} ${i === 0 ? 'set' : 'sets'}`
+    );
   }
   await page.getByTestId('finish-session').click();
   await expect(page.getByTestId('workout-summary')).toBeVisible();

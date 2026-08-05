@@ -14,7 +14,7 @@ test.describe('getting out of every screen', () => {
   test('a running workout can be left and resumed without ending it', async ({ page }) => {
     await startWorkout(page);
     await page.getByTestId('set-0-done').first().click();
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
 
     // The only exits used to be finish and discard — both of which end the
     // workout. Leaving must not.
@@ -23,12 +23,12 @@ test.describe('getting out of every screen', () => {
 
     const resume = page.getByTestId('resume-workout');
     await expect(resume).toBeVisible();
-    await expect(resume).toContainText('1 sets');
+    await expect(resume).toContainText('1 set');
 
     await resume.click();
     await expect(page.getByTestId('session-title')).toBeVisible();
     // The set is still there: leaving was navigation, not an ending.
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
   });
 
   test('home offers no resume when nothing is running', async ({ page }) => {

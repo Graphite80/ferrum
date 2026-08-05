@@ -5,6 +5,7 @@ import { purgeSession, restoreSession } from '../../data/session-controller.ts';
 import { sessionDisplayTitle } from './session-view.ts';
 import { ScreenShell } from '../../components/ScreenShell.tsx';
 import { button, card, mono } from '../../ui.ts';
+import { formatSetCount } from '../../data/labels.ts';
 import { useLiveData } from '../../components/live-data.ts';
 
 export function HistoryScreen({
@@ -173,7 +174,7 @@ function SessionSummary({ projection }: { projection: SessionProjection }) {
         </span>
       </div>
       <div className={mono({ className: 'mt-1 text-xs font-medium text-ash' })}>
-        {projection.sets.length} sets · {projection.session?.status}
+        {formatSetCount(projection.sets.length)} · {projection.session?.status}
         {projection.session?.amendedAfterFinish === true && ' · edited after finish'}
         {projection.deletedSets.length > 0 && ` · ${String(projection.deletedSets.length)} deleted`}
       </div>

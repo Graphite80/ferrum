@@ -146,7 +146,7 @@ test.describe('the mid-workout logging loop', () => {
   test('undo still works after a reload', async ({ page }) => {
     await startRoutine(page);
     await page.getByTestId('set-0-done').first().click();
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
 
     await page.reload();
     await expect(page.getByTestId('session-title')).toBeVisible();
@@ -163,7 +163,7 @@ test.describe('the mid-workout logging loop', () => {
     await page.getByTestId('set-0-load').first().click();
     await page.getByTestId('set-0-load-stepper-input').first().fill('87.5');
     await page.getByTestId('set-0-done').first().click();
-    await expect(page.getByTestId('set-count')).toContainText('1 sets');
+    await expect(page.getByTestId('set-count')).toContainText('1 set');
     await page.getByTestId('finish-session').click();
     await expect(page.getByTestId('workout-summary')).toBeVisible();
 
