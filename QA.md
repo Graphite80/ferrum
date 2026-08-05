@@ -24,6 +24,23 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
   communication review has nothing to read. Re-check the env every pass; the moment those
   variables appear the review becomes mandatory and `services/api/src/bot/` is its subject.
 
+## Bug channels
+
+Enumerate these every pass; verify against the code rather than against this list, and add any
+channel found in code but missing here.
+
+- **Forgejo issues** — the canonical tracker, and the only one that takes `Fixes #N`.
+- **GitHub mirror issues/PRs** — normally empty, but enumerate rather than assume.
+- **Server-side error log** — `kubectl logs deploy/ferrum-production`. The API logs failures and
+  only failures, so this is a real channel and an empty log is evidence.
+- **Telegram bot reports** — N/A while the bot is unmounted; becomes a channel the moment
+  `TELEGRAM_*` env appears.
+- **No in-app bug queue and no client-error telemetry exist.** `ErrorBoundary` writes to the
+  console and nowhere else, so a render crash on a real device leaves no trace anyone can read.
+  That is a deliberate posture for a local-first app, not an oversight to "fix" by adding an
+  ingest endpoint — but it does mean the monkey run and the Playwright suite are the ONLY
+  evidence of a client-side crash, so neither may be treated as optional.
+
 ## Invariants that bite
 
 - Two suites are the product's core promises and must never be weakened:
@@ -117,11 +134,12 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
   container `minio`). A green run still requires reading the crawler/monkey findings.
 - Monkey seed 1337 previously caught: Stepper `-Infinity` overflow via pasted huge negatives —
   every Stepper exit must stay finite and non-negative.
-- The crawler will always report "Pages visited: 1". Screens DO own URLs now, but every
-  navigation is a `<button>` rather than an `<a href>`, so there is nothing for link-following
-  to follow. UI coverage comes from the monkey run and the Playwright suite, not the crawler.
-  (Adding `seed-pages` to the sensor would raise it, at the cost of a crawl that cannot reach
-  any state behind a tap anyway.)
+- Navigation is `<button>`, never `<a href>`, so link-following reaches nothing and the crawler
+  audits exactly what `seed-pages` names — no more. As of 2026-08-05 the sensor seeds
+  `/,/history,/settings,/routine/new`, which is every address that needs no session id, so
+  "Pages visited: 4" is the healthy number. A drop back to 1 means the seed list was lost.
+  The id-bearing screens (`/workout/<id>`, `/summary/<id>`, `/history/<id>`) remain unreachable
+  to it; those are covered by the monkey run and the Playwright suite.
   **"Pages visited: 0" is a different animal and always a broken run** — it means every seed
   was skipped, and the gate still reports `ok` (upstream `nikolay-e/autoqa#51`). It happened
   on the 2026-07-30 host move: the sensor still named the old host, which by then 301'd to the
