@@ -127,6 +127,15 @@ channel found in code but missing here.
 
 ## Known gotchas
 
+- **A cluster-wide `SandboxChanged` burst is the node, not this app.** Every pod in every namespace
+  getting "Pod sandbox changed, it will be killed and re-created" at the same instant is a
+  containerd/kubelet restart on the single node. Its signature elsewhere: workflow pods die with
+  exit 255, `reason: Unknown`, BOTH containers terminating on the same second — no OOMKilled, no
+  node pressure. Any autoqa run in flight fails for that reason and says nothing useful; re-run it
+  rather than hunting a defect. The API's own restarts in that window are bounded now (it waits up
+  to 90s for Postgres before giving up), so a pod still crash-looping after one means something
+  real.
+
 - CNPG operator ignores `managed.roles` drift (ArgoCD `ignoreDifferences`): a new role must be
   `kubectl patch`-ed into the live cluster AND committed; if the password secret lands after
   the role, the operator may never apply it — `ALTER ROLE ... PASSWORD` from the primary pod,

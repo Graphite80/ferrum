@@ -20,7 +20,34 @@ pool.on('error', error => {
   console.error('pg pool error', error);
 });
 const db = pgDatabase(pool);
-await migrate(db);
+
+// The database and this pod are restarted by the same events — a node reboot, a
+// containerd restart, a CNPG failover — and the pooler is routinely a few seconds
+// behind us. Exiting on the first refused connection turned that into a crash
+// loop whose backoff then kept the API down long after Postgres was ready
+// (observed 2026-08-05: three restarts, all ECONNREFUSED from migrate). Waiting
+// is bounded on purpose: a genuinely wrong DATABASE_URL must still fail loudly
+// rather than leave a pod that never serves and never reports why.
+const STARTUP_DB_DEADLINE_MILLIS = 90_000;
+const STARTUP_DB_RETRY_MILLIS = 3_000;
+
+async function migrateWhenDatabaseAccepts(): Promise<void> {
+  const deadline = Date.now() + STARTUP_DB_DEADLINE_MILLIS;
+  for (;;) {
+    try {
+      await migrate(db);
+      return;
+    } catch (error) {
+      if (Date.now() >= deadline) throw error;
+      console.error(
+        `database not ready, retrying: ${error instanceof Error ? error.message : String(error)}`
+      );
+      await new Promise(resolve => setTimeout(resolve, STARTUP_DB_RETRY_MILLIS));
+    }
+  }
+}
+
+await migrateWhenDatabaseAccepts();
 
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
