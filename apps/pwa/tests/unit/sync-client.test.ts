@@ -168,7 +168,7 @@ describe('sync gating logic', () => {
     expect(harness.fetchCalls).toHaveLength(1);
     expect(harness.armedTimers()).toHaveLength(1);
 
-    for (const trigger of ['online', 'visible', 'append'] as const) {
+    for (const trigger of ['visible', 'poll', 'append'] as const) {
       harness.client.requestSync(trigger);
       await harness.settle();
     }
@@ -180,6 +180,57 @@ describe('sync gating logic', () => {
     expect(harness.fetchCalls).toHaveLength(2);
     // failureCount was reset by manual, so the re-armed backoff is back at base.
     expect(harness.armedTimers()[0]!.delayMillis).toBe(BACKOFF_BASE_MILLIS);
+  });
+
+  // The app has no sync control to press, so recovery cannot depend on a person.
+  // `online` is the one ambient trigger that clears an armed backoff: the network
+  // moving from down to up makes the failures counted so far evidence about a world
+  // that no longer exists. Without this a reconnecting device waits out up to five
+  // minutes for nothing, which is what a "sync now" button existed to skip.
+  test('reconnecting clears the backoff and syncs at once, unlike any other ambient trigger', async () => {
+    const harness = new Harness();
+    harness.client.requestSync('start');
+    await harness.settle();
+
+    // Climb to a backoff long enough that waiting it out would be visible.
+    for (let i = 0; i < 3; i += 1) {
+      harness.fireTimer(harness.armedTimers()[0]!);
+      await harness.settle();
+    }
+    expect(harness.armedTimers()[0]!.delayMillis).toBeGreaterThan(BACKOFF_BASE_MILLIS);
+    const fetchesWhileDown = harness.fetchCalls.length;
+
+    // Ambient nudges still respect the schedule while the server is down.
+    harness.client.requestSync('visible');
+    harness.client.requestSync('poll');
+    await harness.settle();
+    expect(harness.fetchCalls).toHaveLength(fetchesWhileDown);
+
+    harness.serveEmptyPull();
+    harness.client.requestSync('online');
+    await harness.settle();
+    expect(harness.fetchCalls.length).toBeGreaterThan(fetchesWhileDown);
+    expect(harness.client.getStatus().lastSuccessAtMillis).toBe(harness.nowMillis);
+    // A success leaves nothing armed: the schedule is gone, not merely reset.
+    expect(harness.armedTimers()).toHaveLength(0);
+  });
+
+  // Drift is the device's own clock being wrong, and reconnecting says nothing
+  // about that — so `online` must not cancel the hourly gate and leave the client
+  // with no schedule at all.
+  test('reconnecting does not disarm the drift gate', async () => {
+    const harness = new Harness();
+    harness.batch = [realEvent()];
+    harness.serveClockDrift();
+    harness.client.requestSync('start');
+    await harness.settle();
+    expect(harness.armedTimers()[0]!.delayMillis).toBe(DRIFT_RETRY_MILLIS);
+
+    const fetchesAfterDrift = harness.fetchCalls.length;
+    harness.client.requestSync('online');
+    await harness.settle();
+    expect(harness.fetchCalls).toHaveLength(fetchesAfterDrift);
+    expect(harness.armedTimers()[0]!.delayMillis).toBe(DRIFT_RETRY_MILLIS);
   });
 
   test('clock drift arms the hourly gate: ambient triggers stay quiet, manual still syncs', async () => {

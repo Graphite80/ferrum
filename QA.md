@@ -155,6 +155,14 @@ channel found in code but missing here.
   through storage (`apps/pwa/tests/e2e/sync-token.ts`). A pasteable token field is a way to attach
   the wrong account to a device, so a reappearing `sync-token` input is a finding. A custom address never
   worked for the hub cookie, the backfill or the return leg, all of which are same-origin.
+- **Sync is autonomous and has no control to press.** No `sync-now` button: start, local mutation,
+  `online`, `visibilitychange`, `focus`, a five-minute poll while visible and a backoff after
+  failure cover every case a person could have. `online` is the only ambient trigger that clears an
+  armed backoff (recovery must not need a human); the rest stay suppressed so an app switch cannot
+  hammer a server that is down. `apps/pwa/tests/e2e/sync.spec.ts` drains without touching a
+  control, and `apps/pwa/tests/unit/sync-client.test.ts` pins the gate matrix — a pass that finds
+  pending stuck above zero with no error line is looking at a broken trigger, not at a missing
+  button, and re-adding one would hide it.
 - **`/sync/*` grants no cross-origin access, and an `access-control-allow-origin` header on it
   means the middleware came back.** `cors()` was there for the typed server address above; when
   that went, the middleware stayed and its only remaining effect was answering preflights and

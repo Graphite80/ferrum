@@ -43,7 +43,7 @@ export interface SyncStatus {
 }
 
 export type SyncTrigger =
-  'start' | 'append' | 'online' | 'visible' | 'manual' | 'retry' | 'coalesced';
+  'start' | 'append' | 'online' | 'visible' | 'poll' | 'manual' | 'retry' | 'coalesced';
 
 export interface SyncState {
   readonly cursor: number;
@@ -84,6 +84,9 @@ export const APPEND_DEBOUNCE_MILLIS = 2_000;
 export const BACKOFF_BASE_MILLIS = 5_000;
 export const BACKOFF_CAP_MILLIS = 300_000;
 export const DRIFT_RETRY_MILLIS = 3_600_000;
+// Matches the backoff cap: a change made on another device is worth one request
+// every few minutes while the app is on screen, and nothing at all while it is not.
+export const POLL_INTERVAL_MILLIS = 300_000;
 const REQUEST_TIMEOUT_MILLIS = 20_000;
 
 class ClockDriftSyncError extends Error {
@@ -176,15 +179,21 @@ export class SyncClient {
       trigger !== 'retry' &&
       this.deps.now() - this.lastDriftAtMillis < DRIFT_RETRY_MILLIS;
     if (driftGateActive) return;
-    if (trigger === 'manual' && this.retryTimer !== null) {
+    // `online` earns the same clearance as an explicit ask, because it is not an
+    // ambient nudge: the network moved from down to up, which makes every failure
+    // counted so far evidence about a world that no longer exists. Without this
+    // a device that reconnects waits out a backoff of up to five minutes for no
+    // reason — and it is the whole reason a "sync now" control had to exist.
+    const clearsBackoff = trigger === 'manual' || trigger === 'online';
+    if (clearsBackoff && this.retryTimer !== null) {
       this.deps.clearTimer(this.retryTimer);
       this.retryTimer = null;
       this.failureCount = 0;
     }
-    // An armed backoff owns the schedule: ambient triggers (visibility, online,
-    // append) must not turn every app switch into an immediate hammer while the
-    // server is down. Manual and the retry timer itself still pass.
-    if (this.retryTimer !== null && trigger !== 'manual' && trigger !== 'retry') return;
+    // An armed backoff owns the schedule otherwise: visibility, focus, poll and
+    // append must not turn every app switch into an immediate hammer while the
+    // server is down. The retry timer itself still passes.
+    if (this.retryTimer !== null && !clearsBackoff && trigger !== 'retry') return;
     this.cycleInFlight = true;
     void this.runCycle().finally(() => {
       this.cycleInFlight = false;
@@ -499,5 +508,20 @@ export async function initSync(): Promise<void> {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') syncClient.requestSync('visible');
   });
+  // Desktop switches windows without ever changing visibility, so focus is not a
+  // duplicate of the line above; the client coalesces the overlap on mobile.
+  window.addEventListener('focus', () => {
+    syncClient.requestSync('visible');
+  });
+  // Every trigger above is an edge — something changed here. None of them fire
+  // when the change happened on another device, so an open Ferrum would sit on a
+  // stale log until the lifter switched away and back. This is the only reason a
+  // manual control could still have been argued for, so it is wired instead:
+  // while the page is visible, ask anyway. Backgrounded tabs do not poll, and an
+  // armed backoff still suppresses this like any other ambient trigger, so a down
+  // server sees the backoff schedule rather than a tick every five minutes.
+  setInterval(() => {
+    if (document.visibilityState === 'visible') syncClient.requestSync('poll');
+  }, POLL_INTERVAL_MILLIS);
   await syncClient.start();
 }

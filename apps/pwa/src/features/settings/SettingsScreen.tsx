@@ -142,7 +142,8 @@ function SyncCardBody({
       <p className={eyebrow()}>Sync</p>
       <p className="text-xs text-ash">
         Optional. Ferrum works fully offline; signing in with {HUB_NAME} backs your history up there
-        and shares it across your devices.
+        and shares it across your devices. After that it keeps itself in sync — there is nothing to
+        press, and nothing is lost while you are offline.
       </p>
       <button
         type="button"
@@ -158,17 +159,6 @@ function SyncCardBody({
           {hubMessage}
         </p>
       )}
-      <button
-        type="button"
-        className={button({ intent: 'secondary', className: 'w-full' })}
-        data-testid="sync-now"
-        disabled={!status.configured}
-        onClick={() => {
-          requestSync('manual');
-        }}
-      >
-        {status.syncing ? 'Syncing…' : 'Sync now'}
-      </button>
       <p className="text-xs text-ash" data-testid="sync-status-line">
         <span className={mono({ className: 'font-medium' })} data-testid="sync-pending">
           {pending ?? status.pendingCount}
@@ -183,6 +173,7 @@ function SyncCardBody({
             ? 'never'
             : new Date(status.lastSuccessAtMillis).toLocaleTimeString()}
         </span>
+        {status.syncing && <span data-testid="sync-active"> · syncing…</span>}
       </p>
       {status.lastError !== null && (
         <p className="text-xs text-plate-red" data-testid="sync-error">

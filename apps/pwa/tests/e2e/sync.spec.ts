@@ -85,11 +85,17 @@ async function logWorkout(page: Page, sets: number): Promise<void> {
   await page.getByTestId('summary-home').click();
 }
 
-async function syncNowExpectDrained(page: Page): Promise<void> {
+// There is no sync control to press: sync is autonomous. So this waits for the two
+// halves to happen on their own. Pushes drain because every local mutation arms a
+// cycle after the append debounce. A pull needs an edge — nothing here can know
+// another device wrote — and 'start' is the edge a returning app fires, which is
+// what the reload produces. Neither half touches a button, which is the property.
+async function expectSyncedByItself(page: Page): Promise<void> {
   await page.getByTestId('open-settings').click();
-  await page.getByTestId('sync-now').click();
-  await expect(page.getByTestId('sync-pending')).toHaveText('0', { timeout: 15_000 });
+  await expect(page.getByTestId('sync-pending')).toHaveText('0', { timeout: 20_000 });
   await page.getByTestId('settings-back').click();
+  await page.reload();
+  await expect(page.getByTestId('start-routine')).toBeVisible();
 }
 
 test.beforeAll(async () => {
@@ -111,7 +117,7 @@ test.describe('sync across devices', () => {
     const pageA = await deviceA.newPage();
     await configureSync(pageA, token);
     await logWorkout(pageA, 2);
-    await syncNowExpectDrained(pageA);
+    await expectSyncedByItself(pageA);
 
     await pageA.getByTestId('open-history').click();
     await expect(pageA.getByTestId('pending-events')).toContainText('0 events not yet synced');
@@ -136,9 +142,9 @@ test.describe('sync across devices', () => {
     await pageB.getByTestId('back-home').click();
 
     await logWorkout(pageB, 1);
-    await syncNowExpectDrained(pageB);
+    await expectSyncedByItself(pageB);
 
-    await syncNowExpectDrained(pageA);
+    await expectSyncedByItself(pageA);
     await pageA.getByTestId('open-history').click();
     await expect(pageA.getByTestId('history-item')).toHaveCount(2);
     await expect(pageA.getByTestId('pending-events')).toContainText('0 events not yet synced');
@@ -156,7 +162,7 @@ test.describe('sync across devices', () => {
     const pageA = await deviceA.newPage();
     await configureSync(pageA, token);
     await logWorkout(pageA, 1);
-    await syncNowExpectDrained(pageA);
+    await expectSyncedByItself(pageA);
 
     const deviceB = await browser.newContext();
     const pageB = await deviceB.newPage();
@@ -171,9 +177,9 @@ test.describe('sync across devices', () => {
     await pageA.getByTestId('confirm-delete-workout').click();
     await expect(pageA.getByTestId('history-item')).toHaveCount(0);
     await pageA.getByTestId('back-home').click();
-    await syncNowExpectDrained(pageA);
+    await expectSyncedByItself(pageA);
 
-    await syncNowExpectDrained(pageB);
+    await expectSyncedByItself(pageB);
     await pageB.getByTestId('open-history').click();
     await expect(pageB.getByTestId('history-item')).toHaveCount(0);
     await expect(pageB.getByTestId('show-deleted-toggle')).toHaveText('Show deleted (1)');
@@ -191,7 +197,7 @@ test.describe('sync across devices', () => {
     const pageA = await deviceA.newPage();
     await configureSync(pageA, token);
     await logWorkout(pageA, 1);
-    await syncNowExpectDrained(pageA);
+    await expectSyncedByItself(pageA);
 
     const deviceB = await browser.newContext();
     const pageB = await deviceB.newPage();
@@ -209,19 +215,19 @@ test.describe('sync across devices', () => {
     await pageA.getByTestId('confirm-purge-session').click();
     await expect(pageA.getByTestId('history-empty')).toBeVisible();
     await pageA.getByTestId('back-home').click();
-    await syncNowExpectDrained(pageA);
+    await expectSyncedByItself(pageA);
 
     // Device B learns from the purge journal, not from an event: the log it holds
     // has no record of this, and the server has nothing left to send.
-    await syncNowExpectDrained(pageB);
+    await expectSyncedByItself(pageB);
     await pageB.getByTestId('open-history').click();
     await expect(pageB.getByTestId('history-empty')).toBeVisible();
     await expect(pageB.getByTestId('show-deleted-toggle')).toHaveCount(0);
     await pageB.getByTestId('back-home').click();
 
     // And it stays erased: another round trip must not resurrect it from either side.
-    await syncNowExpectDrained(pageA);
-    await syncNowExpectDrained(pageB);
+    await expectSyncedByItself(pageA);
+    await expectSyncedByItself(pageB);
     await pageA.getByTestId('open-history').click();
     await expect(pageA.getByTestId('history-empty')).toBeVisible();
 
@@ -237,7 +243,7 @@ test.describe('sync across devices', () => {
     const page = await context.newPage();
     await configureSync(page, token);
     await logWorkout(page, 2);
-    await syncNowExpectDrained(page);
+    await expectSyncedByItself(page);
 
     // A Telegram shorthand message lands server-side through the real bot
     // import path, on a day of its own so the session is unmistakable.
@@ -261,7 +267,7 @@ test.describe('sync across devices', () => {
     expect(outcome.unresolved).toBe(0);
     expect(outcome.accepted).toBeGreaterThan(0);
 
-    await syncNowExpectDrained(page);
+    await expectSyncedByItself(page);
     await page.getByTestId('open-history').click();
     await expect(page.getByTestId('history-item')).toHaveCount(2, { timeout: 15_000 });
     const botSession = page.getByTestId('history-item').filter({ hasText: botDay });
@@ -296,7 +302,7 @@ test.describe('sync across devices', () => {
     // After folding the bot's clock on pull, a fresh local workout must still
     // produce an ordering the server accepts — drained, no drift, no error.
     await logWorkout(page, 1);
-    await syncNowExpectDrained(page);
+    await expectSyncedByItself(page);
     await page.getByTestId('open-settings').click();
     await expect(page.getByTestId('sync-error')).toHaveCount(0);
     await expect(page.getByTestId('sync-drift-warning')).toHaveCount(0);
@@ -331,7 +337,15 @@ test.describe('sync across devices', () => {
 
     // Same data directory, so users and tokens survive the restart.
     await startSyncServer();
-    await syncNowExpectDrained(page);
+    // A failed cycle armed a backoff, and ambient triggers deliberately do not
+    // hammer through one. Connectivity returning is the exception, because it makes
+    // every failure counted so far evidence about a world that is gone — so the
+    // client resets the schedule on `online` and syncs at once. This is the recovery
+    // that used to need a person pressing a button.
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+    await expectSyncedByItself(page);
 
     await page.getByTestId('open-history').click();
     await expect(page.getByTestId('pending-events')).toContainText('0 events not yet synced');

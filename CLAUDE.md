@@ -102,8 +102,14 @@ Verified July 2026. Do not "simplify" the code that works around these.
 - **An in-flight IDBTransaction dies when the process is suspended** (WebKit 202705). Every append
   is one short transaction that commits before the UI acknowledges the set. Never hold a
   transaction open across taps.
-- **Background Sync does not exist on iOS and is not planned.** Sync must be driven by app start,
-  local mutation, `online`, `visibilitychange`, focus and manual retry.
+- **Background Sync does not exist on iOS and is not planned.** Sync is driven by app start, local
+  mutation (debounced), `online`, `visibilitychange`, `focus`, a five-minute poll while the page is
+  visible, and an exponential backoff after failure. There is no manual retry and no control to
+  press: the lifter cannot help, and a button during an outage only produces another failure. The
+  one thing the button did that ambient triggers could not was escape an armed backoff, so
+  `online` now clears it — a network moving from down to up makes every failure counted so far
+  evidence about a world that is gone. `visible`, `focus`, `poll` and `append` stay suppressed
+  while a backoff is armed, or every app switch would hammer a server that is already down.
 - **Web Push cannot wake the app**; `notificationclick` does not fire when the PWA is closed. Push
   is not a rest timer and not a sync trigger.
 - **Cross-domain navigation exits standalone mode** and cookies are not shared with Safari, so
