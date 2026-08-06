@@ -10,8 +10,9 @@ SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
 ADB="$SDK/platform-tools/adb"
 APK="app/build/outputs/apk/release/app-release.apk"
 KEYSTORE="$PWD/keystore.jks" # gitignored
+INSTALL_LOG="$(mktemp)"
 
-cleanup() { rm -f "$KEYSTORE"; }
+cleanup() { rm -f "$KEYSTORE" "$INSTALL_LOG"; }
 trap cleanup EXIT
 
 [[ -x "$ADB" ]] || {
@@ -56,7 +57,6 @@ if [[ "${1:-}" == "--build-only" ]]; then
 fi
 
 echo "==> Installing on $("$ADB" devices | sed -n 2p | cut -f1)"
-INSTALL_LOG="$(mktemp)"
 if ! "$ADB" install -r -d "$APK" 2>"$INSTALL_LOG"; then
   if grep -q "INSTALL_FAILED_UPDATE_INCOMPATIBLE\|signatures do not match" "$INSTALL_LOG"; then
     echo "==> Installed copy is signed with a different key — uninstalling once, then reinstalling"

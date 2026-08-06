@@ -50,6 +50,12 @@ not match the APK to the site. In order of likelihood:
 `app/build.gradle` is the single source of truth for what Bubblewrap would call the TWA manifest,
 and this module is built with Gradle directly — Bubblewrap itself is not a dependency and no
 `twa-manifest.json` is kept, because a second copy of the same values is a second thing to
-forget. Launcher, splash and notification icons are resized from
+forget. Launcher and splash icons are resized from
 `apps/pwa/public/icons/ferrum-icon-512{,-maskable}.png`; the values in `app/build.gradle` mirror
 `apps/pwa/public/manifest.webmanifest`, which Chrome fetches at run time and compares.
+
+The template's notification delegation and launcher shortcuts are both deliberately absent —
+nothing in the PWA posts a notification and no shortcut is defined, so keeping them would declare
+`POST_NOTIFICATIONS`, export a service any app on the device could bind to, and prompt the lifter
+on first launch for a capability that does not exist. Add either back in the same change that
+first uses it.

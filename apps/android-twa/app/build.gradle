@@ -32,19 +32,19 @@ def twaManifest = [
     themeColor: '#101317',
     backgroundColor: '#101317',
     webManifestUrl: 'https://ferrum.life-as-code.com/manifest.webmanifest',
-    // The rest timer is the one thing that must survive the app being backgrounded,
-    // and a notification is how the browser surfaces it. Delegation lets Chrome post
-    // it under this app's identity instead of its own.
-    enableNotifications: true,
-    shortcuts: [],
     splashScreenFadeOutDuration: 300,
     // 'customtabs' rather than 'webview': the offline log lives in IndexedDB, and a
     // WebView fallback would open the app against a different storage partition —
     // a lifter would find an empty history and nowhere to get it back from.
     fallbackType: 'customtabs',
-    enableSiteSettingsShortcut: 'true',
     orientation: 'portrait',
 ]
+
+// Notification delegation is deliberately absent. Nothing in the PWA calls the
+// Notification API, so enabling it would declare POST_NOTIFICATIONS, export a service
+// any app on the device could bind to, and prompt the lifter on first launch for a
+// capability that does not exist. Add it back in the same change that first posts a
+// notification, not before.
 
 android {
     compileSdkVersion 36
@@ -83,16 +83,9 @@ android {
         resValue "color", "backgroundColor", twaManifest.backgroundColor
 
         resValue "string", "providerAuthority", twaManifest.applicationId + '.fileprovider'
-        resValue "bool", "enableNotification", twaManifest.enableNotifications.toString()
         resValue "integer", "splashScreenFadeOutDuration", twaManifest.splashScreenFadeOutDuration.toString()
         resValue "string", "fallbackType", twaManifest.fallbackType
-        resValue "bool", "enableSiteSettingsShortcut", twaManifest.enableSiteSettingsShortcut
         resValue "string", "orientation", twaManifest.orientation
-
-        twaManifest.shortcuts.eachWithIndex { shortcut, index ->
-            resValue "string", "shortcut_name_$index", "$shortcut.name"
-            resValue "string", "shortcut_short_name_$index", "$shortcut.short_name"
-        }
     }
 
     buildTypes {
@@ -110,43 +103,6 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 }
-
-task generateShortcutsFile {
-    assert twaManifest.shortcuts.size() < 5, "You can have at most 4 shortcuts."
-    twaManifest.shortcuts.eachWithIndex { s, i ->
-        assert s.name != null, 'Missing `name` in shortcut #' + i
-        assert s.short_name != null, 'Missing `short_name` in shortcut #' + i
-        assert s.url != null, 'Missing `url` in shortcut #' + i
-        assert s.icon != null, 'Missing `icon` in shortcut #' + i
-    }
-
-    def shortcutsFile = new File("$projectDir/src/main/res/xml", "shortcuts.xml")
-
-    def xmlWriter = new StringWriter()
-    def xmlMarkup = new groovy.xml.MarkupBuilder(new IndentPrinter(xmlWriter, "    ", true))
-
-    xmlMarkup
-        .'shortcuts'('xmlns:android': 'http://schemas.android.com/apk/res/android') {
-            twaManifest.shortcuts.eachWithIndex { s, i ->
-                'shortcut'(
-                        'android:shortcutId': 'shortcut' + i,
-                        'android:enabled': 'true',
-                        'android:icon': '@drawable/' + s.icon,
-                        'android:shortcutShortLabel': '@string/shortcut_short_name_' + i,
-                        'android:shortcutLongLabel': '@string/shortcut_name_' + i) {
-                    'intent'(
-                            'android:action': 'android.intent.action.MAIN',
-                            'android:targetPackage': twaManifest.applicationId,
-                            'android:targetClass': twaManifest.applicationId + '.LauncherActivity',
-                            'android:data': s.url)
-                    'categories'('android:name': 'android.intent.category.LAUNCHER')
-                }
-            }
-        }
-    shortcutsFile.text = xmlWriter.toString() + '\n'
-}
-
-preBuild.dependsOn(generateShortcutsFile)
 
 dependencies {
     implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.6.2'
