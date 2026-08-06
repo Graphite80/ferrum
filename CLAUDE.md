@@ -117,9 +117,17 @@ source of truth.
 ## One sync target, never a typed one
 
 The app syncs to the origin it was served from and to nothing else. There is no server field: every
-sync request is a relative path, so it resolves against the page's own origin by construction. The
-only thing Settings still holds is an access token, for local development and the e2e suite, which
-mint one from `/dev/token` or `/auth/bootstrap`.
+sync request is a relative path, so it resolves against the page's own origin by construction. There
+is no token field either — Settings offers exactly one way in, "Sign in with life-as-code", because
+that is the only way a human can get a credential. A field for pasting one outlived its purpose the
+moment SSO landed: nobody outside this repo can obtain a token, and a text input that accepts one is
+a way to attach the wrong account, or somebody else's, to a device.
+
+The e2e suite still needs a token — `/dev/token` is how it gets a synced account with no hub in the
+picture — so it writes the same `settings` record `saveSyncConfig` writes and reloads
+(`apps/pwa/tests/e2e/sync-token.ts`). The reload is the point rather than a workaround: a linked
+device reads its token at start-up on every launch, so installing one this way exercises the
+production path instead of a control that only tests could reach.
 
 This is not a simplification of a feature that worked — a custom server address never could work
 for the parts that matter. The hub's identity cookie is same-origin, the first-sign-in backfill and
@@ -177,8 +185,9 @@ Three properties this rests on, none of them incidental:
 - **A one-day cap on ticket lifetime is enforced by the verifier**, not just by the issuer. A stolen
   ticket is a login; the reader is what bounds the damage.
 
-Without `SSO_SIGNING_KEY` the endpoint is not mounted at all and the access-token field in Settings
-is the whole story — which is what local development and the e2e suite run against.
+Without `SSO_SIGNING_KEY` the endpoint is not mounted at all, so Sign in reports that it could not
+reach the hub and the only way to a synced account is `/dev/token` written straight into storage —
+which is what local development and the e2e suite run against.
 
 ## The history backfill
 

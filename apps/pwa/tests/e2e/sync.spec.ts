@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
+import { installSyncToken } from './sync-token.ts';
 
 // The app is served by the sync server itself, the way production serves it:
 // sync targets the origin the page came from, so a preview server with no API
@@ -65,9 +66,8 @@ async function mintToken(): Promise<string> {
 
 async function configureSync(page: Page, token: string): Promise<void> {
   await page.goto(syncServerUrl);
+  await installSyncToken(page, token);
   await page.getByTestId('open-settings').click();
-  await page.getByTestId('sync-token').fill(token);
-  await page.getByTestId('sync-save').click();
   await expect(page.getByTestId('sync-last-success')).not.toHaveText('never', { timeout: 15_000 });
   await page.getByTestId('settings-back').click();
 }

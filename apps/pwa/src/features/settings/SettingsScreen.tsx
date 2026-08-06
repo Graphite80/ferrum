@@ -7,7 +7,6 @@ import {
   getSyncStatus,
   loadSyncConfig,
   requestSync,
-  saveSyncConfig,
   signInWithHub,
   subscribeSyncStatus,
   type HubSignInResult,
@@ -19,17 +18,13 @@ import { StatCard } from '../../components/StatCard.tsx';
 import { HUB_NAME, HUB_URL } from '../../hub.ts';
 import { button, card, eyebrow, mono } from '../../ui.ts';
 
-const INPUT = card({
-  className: 'tap-target px-4 text-base text-chalk outline-none placeholder:text-ash',
-});
-
 const HUB_SIGN_IN_MESSAGES: Record<HubSignInResult, (displayName: string | null) => string> = {
   granted: displayName =>
     displayName === null
       ? `Signed in with ${HUB_NAME}.`
       : `Signed in with ${HUB_NAME} as ${displayName}.`,
   'no-identity': () => `Not signed in to ${HUB_NAME} in this browser. Open it, log in, come back.`,
-  unavailable: () => `Could not reach ${HUB_NAME} sign-in. Enter a token below instead.`,
+  unavailable: () => `Could not reach ${HUB_NAME} sign-in. Your log is safe here; try again later.`,
   'storage-failed': () => 'Signed in, but this device could not store it. Try again.',
   'already-configured': () => 'Already configured.',
 };
@@ -103,21 +98,15 @@ function HubCard() {
 }
 
 // The sync status is network state owned by the sync client's pub/sub; only the
-// database reads (config, pending count) are live queries. The remount key seeds
-// the input fields exactly once, when the stored config first arrives.
+// database reads (config, pending count) are live queries. The config is read for
+// one reason: until it has arrived nobody knows whether this device is already
+// linked, and offering Sign in before then invites a click that means nothing.
 function SyncCard() {
   const config = useLiveData(loadSyncConfig);
   const pending = useLiveData(unacknowledgedCount);
   const status = useSyncExternalStore(subscribeSyncStatus, getSyncStatus);
 
-  return (
-    <SyncCardBody
-      key={config === undefined ? 'loading' : 'ready'}
-      config={config}
-      pending={pending}
-      status={status}
-    />
-  );
+  return <SyncCardBody config={config} pending={pending} status={status} />;
 }
 
 function SyncCardBody({
@@ -129,20 +118,15 @@ function SyncCardBody({
   pending: number | undefined;
   status: SyncStatus;
 }) {
-  const [token, setToken] = useState(config?.syncToken ?? '');
   const [hubMessage, setHubMessage] = useState<string | null>(null);
   const loaded = config !== undefined;
 
   const signIn = () => {
     setHubMessage('Signing in…');
     void signInWithHub({ force: true })
-      .then(async ({ result, displayName }) => {
+      .then(({ result, displayName }) => {
         setHubMessage(HUB_SIGN_IN_MESSAGES[result](displayName));
         if (result !== 'granted') return;
-        // Re-read rather than assume: the fields must show the token that was
-        // actually stored, or the next Save would overwrite it with a blank.
-        const saved = await loadSyncConfig();
-        setToken(saved.syncToken ?? '');
         requestSync('manual');
       })
       // Without this the button leaves "Signing in…" on screen for good, which
@@ -151,13 +135,6 @@ function SyncCardBody({
         console.error('hub sign-in failed', error);
         setHubMessage('Sign-in failed on this device. Try again.');
       });
-  };
-
-  const save = () => {
-    const trimmedToken = token.trim();
-    void saveSyncConfig({ syncToken: trimmedToken === '' ? null : trimmedToken }).then(() => {
-      requestSync('manual');
-    });
   };
 
   return (
@@ -181,41 +158,17 @@ function SyncCardBody({
           {hubMessage}
         </p>
       )}
-      <label className="flex flex-col gap-1">
-        <span className={eyebrow()}>Access token</span>
-        <input
-          type="password"
-          className={INPUT}
-          placeholder="Token"
-          value={token}
-          disabled={!loaded}
-          onChange={event => {
-            setToken(event.target.value);
-          }}
-          data-testid="sync-token"
-        />
-      </label>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          className={button({ className: 'flex-1' })}
-          data-testid="sync-save"
-          onClick={save}
-        >
-          Save
-        </button>
-        <button
-          type="button"
-          className={button({ intent: 'secondary', className: 'flex-1' })}
-          data-testid="sync-now"
-          disabled={!status.configured}
-          onClick={() => {
-            requestSync('manual');
-          }}
-        >
-          {status.syncing ? 'Syncing…' : 'Sync now'}
-        </button>
-      </div>
+      <button
+        type="button"
+        className={button({ intent: 'secondary', className: 'w-full' })}
+        data-testid="sync-now"
+        disabled={!status.configured}
+        onClick={() => {
+          requestSync('manual');
+        }}
+      >
+        {status.syncing ? 'Syncing…' : 'Sync now'}
+      </button>
       <p className="text-xs text-ash" data-testid="sync-status-line">
         <span className={mono({ className: 'font-medium' })} data-testid="sync-pending">
           {pending ?? status.pendingCount}

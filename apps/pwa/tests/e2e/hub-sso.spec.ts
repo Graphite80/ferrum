@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import { expectNoStoredToken, expectStoredToken } from './sync-token.ts';
 
 // The hub's identity cookie only reaches ferrum because the two are served from
 // hosts of one registrable domain — so this drill runs the PWA off the API's own
@@ -98,7 +99,7 @@ test.describe('signing in from the life-as-code hub', () => {
 
     await page.goto(appUrl);
     await page.getByTestId('open-settings').click();
-    await expect(page.getByTestId('sync-token')).toHaveValue('');
+    await expectNoStoredToken(page);
     await expect(page.getByTestId('sync-last-success')).toHaveText('never');
     // Not merely "no token stored" — the app never asked the hub at all.
     expect(ssoCalls).toEqual([]);
@@ -106,7 +107,7 @@ test.describe('signing in from the life-as-code hub', () => {
     // And asking still works, from the same cookie.
     await page.getByTestId('hub-sign-in').click();
     await expect(page.getByTestId('hub-sign-in-message')).toContainText('Signed in');
-    await expect(page.getByTestId('sync-token')).not.toHaveValue('');
+    await expectStoredToken(page);
     await expect(page.getByTestId('sync-last-success')).not.toHaveText('never', {
       timeout: 15_000,
     });
@@ -127,7 +128,7 @@ test.describe('signing in from the life-as-code hub', () => {
     // the reload lands straight back on it.
     await page.reload();
     await expect(page.getByTestId('settings')).toBeVisible();
-    await expect(page.getByTestId('sync-token')).not.toHaveValue('');
+    await expectStoredToken(page);
     await expect(page.getByTestId('sync-last-success')).not.toHaveText('never', {
       timeout: 15_000,
     });
@@ -139,16 +140,16 @@ test.describe('signing in from the life-as-code hub', () => {
   }) => {
     await page.goto(appUrl);
     await page.getByTestId('open-settings').click();
-    await expect(page.getByTestId('sync-token')).toHaveValue('');
+    await expectNoStoredToken(page);
 
     await page.getByTestId('hub-sign-in').click();
     await expect(page.getByTestId('hub-sign-in-message')).toContainText('Not signed in');
-    await expect(page.getByTestId('sync-token')).toHaveValue('');
+    await expectNoStoredToken(page);
 
     await context.addCookies([{ name: 'lac-sso', value: ticketFor('9', 'nikolay'), url: appUrl }]);
     await page.getByTestId('hub-sign-in').click();
     await expect(page.getByTestId('hub-sign-in-message')).toContainText('Signed in');
-    await expect(page.getByTestId('sync-token')).not.toHaveValue('');
+    await expectStoredToken(page);
     await expect(page.getByTestId('sync-last-success')).not.toHaveText('never', {
       timeout: 15_000,
     });
@@ -161,7 +162,7 @@ test.describe('signing in from the life-as-code hub', () => {
 
     await page.goto(appUrl);
     await page.getByTestId('open-settings').click();
-    await expect(page.getByTestId('sync-token')).toHaveValue('');
+    await expectNoStoredToken(page);
     await page.getByTestId('hub-sign-in').click();
     await expect(page.getByTestId('hub-sign-in-message')).toContainText('Not signed in');
   });

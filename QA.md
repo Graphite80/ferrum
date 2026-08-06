@@ -150,7 +150,10 @@ channel found in code but missing here.
   because sync targets the origin the page came from and a preview server has no API behind it.
   So `npm run build` is a precondition of those three, not a convenience.
 - **There is no sync server field and must not be one again.** Sync is a relative path against the
-  page's own origin; Settings holds only an access token, for dev and e2e. A custom address never
+  page's own origin, and **Settings holds no token field either** — "Sign in with life-as-code" is
+  the only way in, because it is the only way a human can get a credential; the suite installs one
+  through storage (`apps/pwa/tests/e2e/sync-token.ts`). A pasteable token field is a way to attach
+  the wrong account to a device, so a reappearing `sync-token` input is a finding. A custom address never
   worked for the hub cookie, the backfill or the return leg, all of which are same-origin.
 - **`/sync/*` grants no cross-origin access, and an `access-control-allow-origin` header on it
   means the middleware came back.** `cors()` was there for the typed server address above; when

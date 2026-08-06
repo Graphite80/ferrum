@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
+import { installSyncToken } from './sync-token.ts';
 
 // An imported workout carries no title of its own — the source has none — so
 // without a derived name a history of hundreds of them reads as the same word
@@ -77,9 +78,8 @@ async function botImport(token: string, day: string, lines: readonly string[]): 
 
 async function configureSync(page: Page, token: string): Promise<void> {
   await page.goto(serverUrl);
+  await installSyncToken(page, token);
   await page.getByTestId('open-settings').click();
-  await page.getByTestId('sync-token').fill(token);
-  await page.getByTestId('sync-save').click();
   await expect(page.getByTestId('sync-last-success')).not.toHaveText('never', { timeout: 15_000 });
   await page.getByTestId('settings-back').click();
 }
