@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
-import { cors } from 'hono/cors';
 import {
   PULL_DEFAULT_LIMIT,
   PULL_MAX_LIMIT,
@@ -26,10 +25,11 @@ export interface SyncRouteOptions {
 export function syncRoutes(db: Database, options: SyncRouteOptions = {}): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
-  // The PWA may be installed from one origin and pointed at a server on another.
-  // Auth is a bearer token, never a cookie, so an open CORS policy grants nothing
-  // an attacker's page could not already do with a stolen token.
-  app.use('/sync/*', cors());
+  // No CORS. It was here for a PWA installed on one origin and pointed at a server
+  // on another, which is not a thing any more — sync is a relative path against the
+  // page's own origin. What the middleware still did was answer preflights on a
+  // public endpoint and parse Access-Control-Request-Headers, which is where
+  // GHSA-8j4g-w8fx-2239 (ReDoS) lives. Same-origin needs none of it.
   app.use('/sync/*', requireAuth(db));
   app.use('/sync/push', bodyLimit({ maxSize: 5 * 1024 * 1024 }));
 

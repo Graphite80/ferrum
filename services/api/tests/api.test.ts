@@ -247,6 +247,28 @@ describe('auth', () => {
     const response = await fetch(`${baseUrl}/auth/revoke-all`, { method: 'POST' });
     expect(response.status).toBe(401);
   });
+
+  // Sync is a relative path against the page's own origin, so no browser ever needs
+  // a preflight here. An allow header would mean the CORS middleware is back, and
+  // with it the Access-Control-Request-Headers parsing behind GHSA-8j4g-w8fx-2239.
+  it('grants no cross-origin access to the sync routes', async () => {
+    const preflight = await fetch(`${baseUrl}/sync/push`, {
+      method: 'OPTIONS',
+      headers: {
+        origin: 'https://attacker.example',
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'authorization,content-type',
+      },
+    });
+    expect(preflight.headers.get('access-control-allow-origin')).toBeNull();
+    expect(preflight.headers.get('access-control-allow-headers')).toBeNull();
+
+    const authed = await createToken();
+    const push = await fetch(`${baseUrl}/sync/pull?after=0`, {
+      headers: { authorization: `Bearer ${authed.token}`, origin: 'https://attacker.example' },
+    });
+    expect(push.headers.get('access-control-allow-origin')).toBeNull();
+  });
 });
 
 describe('push validation', () => {
