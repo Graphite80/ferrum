@@ -1,0 +1,2 @@
+-keep class com.ferrum.app.** { *; }
+-keep class com.google.androidbrowserhelper.** { *; }

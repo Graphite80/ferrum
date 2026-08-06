@@ -9,3 +9,5 @@ node_modules
 fixtures
 docs
 *.md
+# The Android shell is built by Gradle onto a phone, never into this image.
+apps/android-twa

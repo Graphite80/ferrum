@@ -10,6 +10,7 @@ export default {
         'progression',
         'importers',
         'pwa',
+        'android',
         'infra',
         'ci',
         'deps',

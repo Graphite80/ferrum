@@ -3,6 +3,10 @@ dist
 coverage
 package-lock.json
 
+# Gradle output for the Android wrapper: hundreds of generated JSON files.
+apps/android-twa/.gradle
+apps/android-twa/app/build
+
 # Captured verbatim from the source system. Reformatting would churn the file the
 # domain model is derived from and make diffs against a fresh capture meaningless.
 fixtures

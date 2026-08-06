@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.ferrum.app",
+      "sha256_cert_fingerprints": [
+        "26:E3:57:03:0C:F9:31:C0:22:DA:10:DA:D2:5A:ED:02:AD:42:3D:D2:D9:91:83:D9:72:D8:97:EF:70:E2:A7:3E"
+      ]
+    }
+  }
+]

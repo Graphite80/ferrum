@@ -26,6 +26,7 @@ packages/progression-engine  three versioned deterministic policies + historical
 packages/sync-protocol       push/pull wire format: validation, cursors, idempotency keys
 services/api                 Hono + Postgres: sync endpoints, Telegram bot, serves the PWA
 apps/pwa                     React 19 + Vite + Dexie offline logger (Hevy-grade loop)
+apps/android-twa             Android shell: Trusted Web Activity around the deployed PWA
 fixtures/                    real training history, the source of truth for edge cases
 docs/INVARIANTS.md           the domain contract
 Dockerfile                   one container: API + static PWA, GIT_SHA sed in builder stage
@@ -47,6 +48,8 @@ npm run dev                 # vite dev server for apps/pwa
 cd apps/pwa && npm run build
 cd apps/pwa && npx vite preview --port 4173 --strictPort --host 127.0.0.1
 cd apps/pwa && CI=1 BASE_URL=http://127.0.0.1:4173 npx playwright test   # workout-loss drills
+
+cd apps/android-twa && ./dev-install.sh    # signed APK onto the connected device (--build-only)
 
 npm run generate --workspace @ferrum/exercise-library   # after editing src/data/*.yaml
 
@@ -230,6 +233,23 @@ row instead of duplicating it.
 
 The hub's `DataSource` gained a `ferrum` member for this, so its sync-status surface can tell these
 rows apart from Hevy's.
+
+## The Android shell
+
+`apps/android-twa` is a Trusted Web Activity pointed at `https://ferrum.life-as-code.com`, so an
+Android lifter gets a launcher icon and no browser chrome while the logger, the event log and the
+sync path stay exactly the ones the PWA already ships. There is no second implementation and
+nothing Android-specific in `packages/` — which is the point: an Android bug here is a PWA bug.
+
+The whole thing hangs on a Digital Asset Links pair, and it fails in one direction only. The site
+half is `apps/pwa/public/.well-known/assetlinks.json`, naming the APK's signing certificate; the
+app half is `assetStatements` in `app/src/main/res/values/strings.xml`, naming the site. When they
+do not match, nothing errors — the app opens as a Custom Tab with a URL bar across the top.
+
+A missing site half is the trap: `/.well-known/assetlinks.json` is not an API prefix, so the
+single-page fallback answers it with `index.html` and a **200**. Only the content type tells the
+two apart, which is what `apps/pwa/tests/e2e/pwa.spec.ts` asserts. Details, and the key discipline
+that keeps upgrades installing in place, in `apps/android-twa/README.md`.
 
 ## Git
 

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!--
+    Half of the Digital Asset Links pair. The other half is served from
+    https://ferrum.life-as-code.com/.well-known/assetlinks.json (see
+    services/api/src/routes/assetlinks.ts) and names this APK's signing certificate.
+    Both must be present, or Chrome falls back to a Custom Tab with a visible URL bar.
+  -->
+  <string name="assetStatements">
+    [{
+        \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+        \"target\": {
+            \"namespace\": \"web\",
+            \"site\": \"https://ferrum.life-as-code.com\"
+        }
+    }]
+  </string>
+</resources>
