@@ -15,7 +15,7 @@
     "@ferrum/progression-engine": "*",
     "@ferrum/sync-protocol": "*",
     "@grammyjs/auto-retry": "^2.0.2",
-    "@hono/node-server": "^1.19.0",
+    "@hono/node-server": "^2.0.0",
     "drizzle-orm": "^0.45.2",
     "grammy": "^1.45.1",
     "hono": "^4.9.0",
