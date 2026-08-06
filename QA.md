@@ -15,7 +15,28 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
   https://ferrum.nikolay-eremeev.com must answer 301 to it — check both every pass.
 - Postgres: role/db `ferrum_production` on shared CNPG via pooler; password secret
   `shared-postgres-ferrum-production` (shared-database ns) → ExternalSecret `ferrum-postgres`.
-- SonarCloud: no project configured — skip, note as N/A.
+- SonarCloud: no project configured — skip, note as N/A. Verify rather than assume, it is one
+  call: `api/projects/search?organization=nikolay-e&q=ferrum` returning `total: 0`.
+- Android: `apps/android-twa` is a Trusted Web Activity over the deployed PWA, so every web
+  finding is an Android finding and there is nothing app-specific to smoke. Its one own surface
+  is the Digital Asset Links pair — `/.well-known/assetlinks.json` must answer
+  **`application/json`**, because a missing file is served as `index.html` with a 200 and the
+  only symptom is a URL bar in the app. `apps/pwa/tests/e2e/pwa.spec.ts` asserts the content type;
+  the fingerprint in it must equal what `apps/android-twa/dev-install.sh` prints. Nothing in CI
+  builds the APK — a pass that changed the Android module must build it locally.
+- Test accounts: the production write smoke mints a real account via `POST /auth/bootstrap`, and
+  `mintToken` creates a **new user row every call** (issue #1). Revoke it, then delete it before
+  the pass ends — otherwise the row is there forever. Count `users` at the start of a pass;
+  anything above the hub-linked accounts is a previous pass's litter. On the CNPG primary
+  (`shared-database`, `psql -d ferrum_production`), scoped so it can only ever hit a QA row:
+
+  ```sql
+  delete from users
+   where id in ('<the id you minted>')
+     and id not in (select user_id from user_identities)
+     and id not in (select user_id from events);
+  ```
+
 - Schemathesis: N/A — the API publishes no OpenAPI document, so the autoqa gate is correctly
   disabled. Cover the routes with `services/api/tests/api.test.ts` and the manual smoke below.
 - Health: `/health` = liveness (static); `/ready` = readiness (checks Postgres).
@@ -29,8 +50,15 @@ Project-specific invariants for `/qa`. Generic patterns live in `~/.claude/qa-re
 Enumerate these every pass; verify against the code rather than against this list, and add any
 channel found in code but missing here.
 
-- **Forgejo issues** — the canonical tracker, and the only one that takes `Fixes #N`.
-- **GitHub mirror issues/PRs** — normally empty, but enumerate rather than assume.
+- **Forgejo issues** — the canonical tracker, and the only one that takes `Fixes #N`. One of them
+  is not a report: **#3 "Dependency Dashboard" is Renovate's own control surface**, regenerated
+  from its config on every run. Read its Vulnerabilities section (it is a real security signal),
+  but do not triage or close the issue itself — `npm audit --omit=dev` is the check that finds
+  what Renovate's advisory data misses, which is how the `hono` CORS ReDoS was found while the
+  dashboard listed one CVE.
+- **GitHub mirror issues/PRs** — normally empty, but enumerate rather than assume. The mirror also
+  keeps branches Forgejo has already deleted until the next 8h sync prunes them; a stale
+  `renovate/*` there right after a merge is the mirror lagging, not litter to delete by hand.
 - **Server-side error log** — `kubectl logs deploy/ferrum-production`. The API logs failures and
   only failures, so this is a real channel and an empty log is evidence.
 - **Telegram bot reports** — N/A while the bot is unmounted; becomes a channel the moment
@@ -124,6 +152,14 @@ channel found in code but missing here.
 - **There is no sync server field and must not be one again.** Sync is a relative path against the
   page's own origin; Settings holds only an access token, for dev and e2e. A custom address never
   worked for the hub cookie, the backfill or the return leg, all of which are same-origin.
+- **`/sync/*` grants no cross-origin access, and an `access-control-allow-origin` header on it
+  means the middleware came back.** `cors()` was there for the typed server address above; when
+  that went, the middleware stayed and its only remaining effect was answering preflights and
+  parsing `Access-Control-Request-Headers` on a public endpoint — where GHSA-8j4g-w8fx-2239
+  (ReDoS) lives. Removed 2026-08-06; asserted in `services/api/tests/api.test.ts`, and checkable
+  against production with an `OPTIONS /sync/push` carrying an `origin` header, which must answer
+  401 and no allow headers. Since then an `OPTIONS` on an API path logs a 401/404 warn line —
+  that is the shape now, not a fault.
 
 ## Known gotchas
 
@@ -173,15 +209,27 @@ channel found in code but missing here.
 - Deletion is a tombstone that must stop the workout counting everywhere, not just in list
   views: `allSets` (domain) excludes deleted sessions, and `db/history.ts` guards both the
   prefill and the PR baseline. A new reader over sessions needs the same filter.
-- **Several pushes in one session leave red autoqa runs that are not defects.** Image Updater
-  bumps straight to the newest tag, so an intermediate commit never goes live and its run ends
-  `::error:: main-<sha> never went live within 20m and no newer build superseded this run`. The
-  second clause is wrong — a newer build did — but the supersession check counts opaque asset
-  fingerprints, which carry no ordering, so it cannot distinguish being overtaken from waiting
-  for its own build (upstream `nikolay-e/autoqa#57`; do NOT "fix" it by lowering the
-  `DISTINCT -ge 3` threshold, which reinstates `#55`). Read every ferrum-autoqa run in the pass,
-  not only the last: map each to its `commit-sha` parameter, and for a red intermediate one
-  confirm its content shipped inside a later commit whose run WAS green. Then it is covered.
+- **Several pushes in one session leave autoqa runs that QA'd nothing, and they go GREEN.**
+  Image Updater bumps straight to the newest tag, so an intermediate commit never goes live.
+  As of 2026-08-06 its run ends `Succeeded` with a single line:
+  `::warning:: main-<sha> was NOT tested by this run. Succeeded here means 'delegated', not
+'verified' — confirm ferrum-autoqa-<id> passed before treating main-<sha> as QA'd.`
+  It names its own successor, which is the whole instruction: read every ferrum-autoqa run in the
+  pass, map each to its `commit-sha` parameter, and for a delegated one confirm the named
+  successor went green. Then the intermediate commit is covered. A green checkmark on a
+  delegated run is not coverage — the log's first two lines are what tell them apart
+  (`Live site serves main-<sha> — starting QA` is the trustworthy shape).
+  This replaces the older `::error:: never went live within 20m and no newer build superseded
+this run` wording; upstream `nikolay-e/autoqa#57` is what changed it. Do NOT "fix" the
+  supersession check by lowering the `DISTINCT -ge 3` threshold, which reinstates `#55`.
+- **Merging a pull request builds nothing, so the merge does not deploy.** Renovate
+  authenticates as `ci-bot`, and Forgejo's squash merge stamps the merge commit's author as
+  `ci-bot@nikolay-eremeev.com` — the exact value `sensor-ferrum-image.yaml` filters out with
+  `comparator: "!="`. `main` and the deployed image then diverge silently. Filed as
+  `nikolay-e/gitops#22` (fleet-wide: 19 sensors carry the clause). Until it is fixed, after
+  merging any PR either push a commit or resubmit the workflow by hand, and verify a
+  `ferrum-image-*` exists whose `commit-sha` is the merge SHA — a merged security bump that
+  never shipped looks identical to one that did.
 - Post-deploy autoqa races the rollout it is named for: the sensor submits the autoqa
   workflow in PARALLEL with the image build, so its wait budget has to cover build +
   Image Updater poll + ArgoCD sync + rollout (~12.2m measured). It was 12m and silently
