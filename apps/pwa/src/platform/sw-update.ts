@@ -1,32 +1,44 @@
 // eslint-disable-next-line import/no-unresolved -- virtual module provided by vite-plugin-pwa
 import { registerSW } from 'virtual:pwa-register';
 
-type Listener = (ready: boolean) => void;
+const POLL_INTERVAL_MS = 15 * 60 * 1000;
+const APPLY_RETRY_MS = 30 * 1000;
 
-let updateReady = false;
-let apply: ((reloadPage?: boolean) => Promise<void>) | null = null;
-const listeners = new Set<Listener>();
+// A workout is the one thing a reload would interrupt; every other screen can be
+// swapped under the user without costing anything. The path is the whole state —
+// no store to thread through here.
+const isBusy = (): boolean => window.location.pathname.startsWith('/workout/');
 
-// registerType is 'prompt': the waiting worker stays waiting until the user asks
-// for it. Nothing here ever reloads the page on its own — a swap mid-workout is a
-// data-loss shaped surprise even when no data is actually lost.
+// Silent auto-update: no toast, no button. An update the user has to acknowledge is
+// an update that never lands on a phone kept in a pocket between sets, so the new
+// build is applied the moment it cannot interrupt anyone, and the page reloads into
+// it. registerType stays 'prompt' precisely so this file decides *when*.
 export function initServiceWorker(): void {
-  apply = registerSW({
+  const applyUpdate = registerSW({
+    immediate: true,
     onNeedRefresh() {
-      updateReady = true;
-      for (const listener of listeners) listener(true);
+      const applyIfIdle = (): boolean => {
+        if (isBusy()) return false;
+        void applyUpdate(true);
+        return true;
+      };
+      if (applyIfIdle()) return;
+      const retry = setInterval(() => {
+        if (applyIfIdle()) clearInterval(retry);
+      }, APPLY_RETRY_MS);
+    },
+    onRegisteredSW(_swUrl, registration) {
+      if (!registration) return;
+      const checkForUpdate = (): void => {
+        registration.update().catch(() => {});
+      };
+      // A tab left open for days would otherwise never look. Poll, and also check
+      // the moment the user comes back to it — that is when a stale build is both
+      // most likely and most cheaply replaced.
+      setInterval(checkForUpdate, POLL_INTERVAL_MS);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') checkForUpdate();
+      });
     },
   });
-}
-
-export function subscribeUpdateReady(listener: Listener): () => void {
-  listeners.add(listener);
-  listener(updateReady);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
-export function applyUpdate(): void {
-  void apply?.(true);
 }

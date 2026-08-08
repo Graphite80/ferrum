@@ -11,9 +11,7 @@ import { SettingsScreen } from './features/settings/SettingsScreen.tsx';
 import { loadUnit } from './data/settings-store.ts';
 import { SpikeA } from './features/spike/SpikeA.tsx';
 import { WorkoutScreen } from './features/workout/WorkoutScreen.tsx';
-import { applyUpdate, subscribeUpdateReady } from './platform/sw-update.ts';
 import { initSync } from './sync/sync-client.ts';
-import { button } from './ui.ts';
 
 type Screen =
   | { name: 'home' }
@@ -83,7 +81,6 @@ export function App() {
   const [screen, setScreen] = useState<Screen>(initialScreen);
   const [unit, setUnit] = useState<WeightUnit>('kg');
   const [booted, setBooted] = useState(false);
-  const [updateReady, setUpdateReady] = useState(false);
 
   // Every in-app navigation pushes a history entry, so the Android back gesture
   // walks back through screens instead of exiting the app. Back from the entry
@@ -148,8 +145,6 @@ export function App() {
     })();
   }, []);
 
-  useEffect(() => subscribeUpdateReady(setUpdateReady), []);
-
   if (!booted) {
     return (
       <main className="p-6 text-ash" data-testid="booting">
@@ -158,36 +153,14 @@ export function App() {
     );
   }
 
-  // The update toast never shows over an open workout: applying an update reloads
-  // the page, and mid-workout is exactly the wrong moment to offer that.
-  const showUpdateToast = updateReady && screen.name !== 'workout';
-
   return (
-    <>
-      <CurrentScreen
-        screen={screen}
-        unit={unit}
-        onNavigate={navigate}
-        onReplace={replace}
-        onUnitChanged={setUnit}
-      />
-      {showUpdateToast && (
-        <div
-          className="fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md items-center justify-between gap-3 border-t border-seam bg-forged p-4"
-          data-testid="sw-update-toast"
-        >
-          <span className="text-sm text-chalk">Update ready</span>
-          <button
-            type="button"
-            className={button({ className: 'px-4' })}
-            data-testid="sw-update-restart"
-            onClick={applyUpdate}
-          >
-            Restart
-          </button>
-        </div>
-      )}
-    </>
+    <CurrentScreen
+      screen={screen}
+      unit={unit}
+      onNavigate={navigate}
+      onReplace={replace}
+      onUnitChanged={setUnit}
+    />
   );
 }
 
