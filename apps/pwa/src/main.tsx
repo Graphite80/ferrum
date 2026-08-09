@@ -2,8 +2,16 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { installClientTelemetry } from './platform/client-telemetry.ts';
 import { initServiceWorker } from './platform/sw-update.ts';
 import './index.css';
+
+// An error nobody can see did not get fixed: this app runs offline-first on a
+// phone, so without a report a broken build is just "it stopped working".
+installClientTelemetry({
+  endpoint: '/api/v1/client-errors',
+  appVersion: document.querySelector('meta[name="app-version"]')?.getAttribute('content') ?? 'dev',
+});
 
 initServiceWorker();
 

@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { webhookCallback, type Bot } from 'grammy';
 import { type Database } from './db.ts';
+import { clientErrorRoutes } from './routes/client-errors.ts';
 import { type AppEnv } from './middleware/auth.ts';
 import { authRoutes } from './routes/auth.ts';
 import { linkRoutes } from './routes/link.ts';
@@ -31,7 +32,7 @@ export interface AppOptions {
 // Namespaces the single-page fallback must never answer for. Without this list a
 // POST to a mistyped endpoint, or a GET on a POST-only route, returns index.html
 // with a 200 — a write that reports success while nothing happened.
-const API_PREFIXES = ['/health', '/ready', '/auth', '/dev', '/sync', '/link', '/telegram'];
+const API_PREFIXES = ['/health', '/ready', '/auth', '/dev', '/sync', '/link', '/telegram', '/api'];
 
 function isApiPath(path: string): boolean {
   return API_PREFIXES.some(prefix => path === prefix || path.startsWith(`${prefix}/`));
@@ -119,6 +120,7 @@ export function createApp({
     })
   );
   app.route('/', linkRoutes(db));
+  app.route('/', clientErrorRoutes(log));
 
   if (telegram !== undefined) {
     const handleUpdate = webhookCallback(telegram.bot, 'hono', {

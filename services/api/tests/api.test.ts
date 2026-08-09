@@ -498,6 +498,60 @@ describe('replay on the server output', () => {
   });
 });
 
+// A browser error nobody can see did not get fixed. The reporting path has to work for a
+// client that is broken enough to have lost its session, which is why it takes no auth —
+// and therefore has to refuse anything unbounded or unshaped.
+describe('client error reports', () => {
+  it('logs a shaped report without auth and refuses junk', async () => {
+    const lines: string[] = [];
+    const app = createApp({
+      db,
+      enableDevRoutes: false,
+      log: message => lines.push(message),
+    });
+
+    const accepted = await app.request('/api/v1/client-errors', {
+      method: 'POST',
+      body: JSON.stringify({
+        category: 'runtime',
+        type: 'TypeError',
+        message: 'undefined is not a function',
+        appVersion: 'main-abc1234',
+        route: '/workout/1',
+      }),
+    });
+    expect(accepted.status).toBe(204);
+
+    const entry = JSON.parse(lines.at(-1) ?? '{}') as Record<string, unknown>;
+    expect(entry).toMatchObject({
+      src: 'client_error',
+      category: 'runtime',
+      message: 'undefined is not a function',
+      route: '/workout/1',
+    });
+
+    const noMessage = await app.request('/api/v1/client-errors', {
+      method: 'POST',
+      body: JSON.stringify({ category: 'runtime' }),
+    });
+    expect(noMessage.status).toBe(400);
+
+    const oversized = await app.request('/api/v1/client-errors', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'x'.repeat(20_000) }),
+    });
+    expect(oversized.status).toBe(413);
+  });
+
+  // The SPA fallback answers every unknown GET with index.html. An /api path that fell
+  // through to it would report success while nothing was recorded.
+  it('is not shadowed by the single-page fallback', async () => {
+    const app = createApp({ db, enableDevRoutes: false, staticDir });
+    const response = await app.request('/api/v1/client-errors');
+    expect(response.status).not.toBe(200);
+  });
+});
+
 // A deploy is verified by reading the service's own logs over the QA window. That read
 // is worthless if a failing request says nothing, which is what this service used to do.
 describe('failure logging', () => {
