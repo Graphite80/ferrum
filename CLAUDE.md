@@ -9,13 +9,13 @@ sections below either add detail or explicitly override it.
 
 The ultimate goal is a guiding star — not necessarily achievable, but the direction we always move toward:
 
-**Never lose a set, and turn what actually happened in the gym into the next decision worth making.**
+**Make tracking gym training genuinely comfortable — so comfortable that nothing is ever left unlogged.**
 
 Every decision, every feature, every change must be evaluated against this goal. Code is a means, not the goal.
 
-The gap between what was prescribed and what happened IS the signal. A logger that
-forgets, or that argues with itself after a phone dies mid-workout, has failed at the only
-job that matters.
+Comfort is the whole feature. A logger that costs attention between sets gets abandoned,
+and an abandoned logger has no data to reason from — which is why the gap between what
+was prescribed and what happened can only be a signal if logging stays effortless.
 
 ## What this is
 
