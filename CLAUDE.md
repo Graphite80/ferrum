@@ -3,6 +3,20 @@
 Guidance for Claude Code working in this repository. Inherits everything in `../CLAUDE.md`; the
 sections below either add detail or explicitly override it.
 
+## Ultimate Goal
+
+**THIS IS THE MOST IMPORTANT SECTION IN THIS FILE.**
+
+The ultimate goal is a guiding star — not necessarily achievable, but the direction we always move toward:
+
+**Never lose a set, and turn what actually happened in the gym into the next decision worth making.**
+
+Every decision, every feature, every change must be evaluated against this goal. Code is a means, not the goal.
+
+The gap between what was prescribed and what happened IS the signal. A logger that
+forgets, or that argues with itself after a phone dies mid-workout, has failed at the only
+job that matters.
+
 ## What this is
 
 Ferrum is a local-first strength-training logger that separates **what was prescribed** from **what
