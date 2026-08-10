@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { type WeightUnit, fromKilograms, kilograms, toKilograms } from '@ferrum/domain';
 import { type RoutineRecord, type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 import { ExerciseSearchPanel } from '../workout/ExerciseSearchPanel.tsx';
-import { Stepper } from '../../components/Stepper.tsx';
+import { Stepper, clampReps, clampRir } from '../../components/Stepper.tsx';
 import { displayStep } from '../../data/settings-store.ts';
 import {
   deleteRoutine,
@@ -264,7 +264,7 @@ function SlotEditor({
         value={slot.sets}
         step={1}
         onChange={next => {
-          onPatch({ sets: Math.max(1, Math.round(next)) });
+          onPatch({ sets: Math.max(1, clampReps(next)) });
         }}
         testId={`${prefix}-sets`}
       />
@@ -273,7 +273,7 @@ function SlotEditor({
         value={slot.targetRepMin}
         step={1}
         onChange={next => {
-          const min = Math.max(1, Math.round(next));
+          const min = Math.max(1, clampReps(next));
           onPatch({ targetRepMin: min, targetRepMax: Math.max(min, slot.targetRepMax) });
         }}
         testId={`${prefix}-repmin`}
@@ -283,7 +283,7 @@ function SlotEditor({
         value={slot.targetRepMax}
         step={1}
         onChange={next => {
-          const max = Math.max(1, Math.round(next));
+          const max = Math.max(1, clampReps(next));
           onPatch({ targetRepMax: max, targetRepMin: Math.min(max, slot.targetRepMin) });
         }}
         testId={`${prefix}-repmax`}
@@ -293,7 +293,7 @@ function SlotEditor({
         value={slot.targetRirMin}
         step={1}
         onChange={next => {
-          const min = Math.min(10, Math.max(0, Math.round(next)));
+          const min = clampRir(next);
           onPatch({ targetRirMin: min, targetRirMax: Math.max(min, slot.targetRirMax) });
         }}
         testId={`${prefix}-rirmin`}
@@ -303,7 +303,7 @@ function SlotEditor({
         value={slot.targetRirMax}
         step={1}
         onChange={next => {
-          const max = Math.min(10, Math.max(0, Math.round(next)));
+          const max = clampRir(next);
           onPatch({ targetRirMax: max, targetRirMin: Math.min(max, slot.targetRirMin) });
         }}
         testId={`${prefix}-rirmax`}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { type SetType, type WeightUnit } from '@ferrum/domain';
-import { Stepper } from '../../components/Stepper.tsx';
+import { Stepper, clampLoad, clampReps, clampRir } from '../../components/Stepper.tsx';
 import { button, eyebrow, mono } from '../../ui.ts';
 
 export interface SetRowProps {
@@ -32,6 +32,12 @@ export function SetRow(props: SetRowProps) {
   // choice has to be available before the set is logged, not only as a repair
   // afterwards.
   const [warmup, setWarmup] = useState(false);
+
+  // Tapping a value opens the editor and tapping it again puts it away: without a
+  // second direction the panel could only ever be dismissed by logging a set.
+  const toggleEditor = () => {
+    setExpanded(current => !current);
+  };
 
   return (
     <li className="rounded-md border border-seam bg-forged p-3">
@@ -69,13 +75,12 @@ export function SetRow(props: SetRowProps) {
         <button
           type="button"
           aria-label="Load"
+          aria-expanded={expanded}
           className={mono({
             className:
               'tap-target flex-1 rounded-md border border-seam bg-ingot px-2 text-lg font-medium whitespace-nowrap text-chalk',
           })}
-          onClick={() => {
-            setExpanded(true);
-          }}
+          onClick={toggleEditor}
           data-testid={`set-${String(props.index)}-load`}
         >
           {load} <span className="text-xs text-ash">{props.unit}</span>
@@ -83,13 +88,12 @@ export function SetRow(props: SetRowProps) {
         <button
           type="button"
           aria-label="Reps"
+          aria-expanded={expanded}
           className={mono({
             className:
               'tap-target flex-1 rounded-md border border-seam bg-ingot px-2 text-lg font-medium whitespace-nowrap text-chalk',
           })}
-          onClick={() => {
-            setExpanded(true);
-          }}
+          onClick={toggleEditor}
           data-testid={`set-${String(props.index)}-reps`}
         >
           {reps} <span className="text-xs text-ash">reps</span>
@@ -97,13 +101,12 @@ export function SetRow(props: SetRowProps) {
         <button
           type="button"
           aria-label="Reps in reserve"
+          aria-expanded={expanded}
           className={mono({
             className:
               'tap-target flex-1 rounded-md border border-seam bg-ingot px-2 text-lg font-medium whitespace-nowrap text-chalk',
           })}
-          onClick={() => {
-            setExpanded(true);
-          }}
+          onClick={toggleEditor}
           data-testid={`set-${String(props.index)}-rir`}
         >
           {rir} <span className="text-xs text-ash">RIR</span>
@@ -117,6 +120,10 @@ export function SetRow(props: SetRowProps) {
         type="button"
         className={button({ className: 'mt-2 w-full px-3 font-semibold' })}
         onClick={() => {
+          // Closed before the append rather than after: the row is replaced by a
+          // remount once the event lands, and waiting for that leaves the editor
+          // standing open for the whole write.
+          setExpanded(false);
           props.onComplete({ load, reps, rir, setType: warmup ? 'warmup' : 'working' });
           setWarmup(false);
         }}
@@ -131,21 +138,27 @@ export function SetRow(props: SetRowProps) {
             label="Load"
             value={load}
             step={props.incrementStep}
-            onChange={setLoad}
+            onChange={next => {
+              setLoad(clampLoad(next));
+            }}
             testId={`set-${String(props.index)}-load-stepper`}
           />
           <Stepper
             label="Reps"
             value={reps}
             step={1}
-            onChange={setReps}
+            onChange={next => {
+              setReps(clampReps(next));
+            }}
             testId={`set-${String(props.index)}-reps-stepper`}
           />
           <Stepper
             label="RIR"
             value={rir}
             step={1}
-            onChange={setRir}
+            onChange={next => {
+              setRir(clampRir(next));
+            }}
             testId={`set-${String(props.index)}-rir-stepper`}
           />
         </div>

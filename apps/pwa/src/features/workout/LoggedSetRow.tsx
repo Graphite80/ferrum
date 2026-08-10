@@ -8,7 +8,7 @@ import {
 } from '@ferrum/domain';
 import { displayStep } from '../../data/settings-store.ts';
 import { type SetPatch } from '../../data/session-controller.ts';
-import { Stepper } from '../../components/Stepper.tsx';
+import { Stepper, clampLoad, clampReps, clampRir } from '../../components/Stepper.tsx';
 import { button, eyebrow, mono } from '../../ui.ts';
 
 export interface LoggedSetRowProps {
@@ -98,11 +98,29 @@ export function LoggedSetRow(props: LoggedSetRowProps) {
             label="Load"
             value={load}
             step={displayStep(kilograms(props.incrementKg), props.unit)}
-            onChange={setLoad}
+            onChange={next => {
+              setLoad(clampLoad(next));
+            }}
             testId="amend-load"
           />
-          <Stepper label="Reps" value={reps} step={1} onChange={setReps} testId="amend-reps" />
-          <Stepper label="RIR" value={rir} step={1} onChange={setRir} testId="amend-rir" />
+          <Stepper
+            label="Reps"
+            value={reps}
+            step={1}
+            onChange={next => {
+              setReps(clampReps(next));
+            }}
+            testId="amend-reps"
+          />
+          <Stepper
+            label="RIR"
+            value={rir}
+            step={1}
+            onChange={next => {
+              setRir(clampRir(next));
+            }}
+            testId="amend-rir"
+          />
           <button
             type="button"
             className={button({ intent: 'secondary', className: 'w-full' })}
