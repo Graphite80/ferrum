@@ -33,17 +33,22 @@ export interface ClientTelemetryReport {
   message: string;
   appVersion: string;
   telemetrySessionId: string;
-  fingerprint?: string;
-  route?: string;
-  stack?: string;
-  uaReduced?: string;
-  http?: { status?: number; method?: string; route?: string };
-  audio?: {
-    state?: string;
-    mediaError?: number | null;
-    readyState?: number;
-    networkState?: number;
-  };
+  // Explicitly `| undefined`: the repo compiles with exactOptionalPropertyTypes, and
+  // every one of these is filled from something that may have nothing to say. They
+  // are dropped by JSON.stringify either way.
+  fingerprint?: string | undefined;
+  route?: string | undefined;
+  stack?: string | undefined;
+  uaReduced?: string | undefined;
+  http?: { status?: number; method?: string; route?: string } | undefined;
+  audio?:
+    | {
+        state?: string;
+        mediaError?: number | null;
+        readyState?: number;
+        networkState?: number;
+      }
+    | undefined;
 }
 
 export interface ClientTelemetryOptions {
@@ -154,7 +159,7 @@ class ClientTelemetry implements ClientTelemetryHandle {
         fingerprint,
         route: extra.route ?? this.route ?? currentRoute(),
         stack: rawStack ? this.scrub(truncate(rawStack, MAX_STACK_LENGTH)) : undefined,
-        uaReduced: reduceUserAgent(globalThis.navigator?.userAgent),
+        uaReduced: reduceUserAgent(navigator.userAgent),
         http: extra.http,
         audio: extra.audio,
       };
@@ -167,12 +172,9 @@ class ClientTelemetry implements ClientTelemetryHandle {
   }
 
   install(): void {
-    const win = globalThis.window;
-    if (!win) return;
-
     const onError = (event: ErrorEvent): void => {
       const target = event.target;
-      if (target && target !== win && target instanceof Element) {
+      if (target !== window && target instanceof Element) {
         if (target.tagName === 'AUDIO' || target.tagName === 'VIDEO') return;
         const el = target as Element & { src?: string; href?: string; currentSrc?: string };
         const url = [el.currentSrc, el.src, el.href].find(Boolean) ?? '';
@@ -194,25 +196,32 @@ class ClientTelemetry implements ClientTelemetryHandle {
       const runtimeError = rawError instanceof Error ? rawError : new Error(event.message);
       this.report(runtimeError, 'runtime');
     };
-    win.addEventListener('error', onError, true);
-    this.listeners.push(() => win.removeEventListener('error', onError, true));
+    window.addEventListener('error', onError, true);
+    this.listeners.push(() => {
+      window.removeEventListener('error', onError, true);
+    });
 
     const onRejection = (event: PromiseRejectionEvent): void => {
       this.report(event.reason, 'promise');
     };
-    win.addEventListener('unhandledrejection', onRejection);
-    this.listeners.push(() => win.removeEventListener('unhandledrejection', onRejection));
+    window.addEventListener('unhandledrejection', onRejection);
+    this.listeners.push(() => {
+      window.removeEventListener('unhandledrejection', onRejection);
+    });
 
-    const swContainer = globalThis.navigator?.serviceWorker;
-    if (swContainer) {
-      const onSwMessageError = (): void => {
-        this.report(new Error('Service worker message deserialization error'), 'sw', {
-          type: 'ServiceWorkerMessageError',
-        });
-      };
-      swContainer.addEventListener('messageerror', onSwMessageError);
-      this.listeners.push(() => swContainer.removeEventListener('messageerror', onSwMessageError));
-    }
+    // Typed as always present, absent in fact on an insecure origin: serviceWorker
+    // is a secure-context API, and a dev build served over plain http has none.
+    const swContainer = (navigator as { serviceWorker?: ServiceWorkerContainer }).serviceWorker;
+    if (swContainer === undefined) return;
+    const onSwMessageError = (): void => {
+      this.report(new Error('Service worker message deserialization error'), 'sw', {
+        type: 'ServiceWorkerMessageError',
+      });
+    };
+    swContainer.addEventListener('messageerror', onSwMessageError);
+    this.listeners.push(() => {
+      swContainer.removeEventListener('messageerror', onSwMessageError);
+    });
   }
 
   uninstall(): void {
@@ -250,12 +259,9 @@ class ClientTelemetry implements ClientTelemetryHandle {
       });
       if (new TextEncoder().encode(body).length > KEEPALIVE_BYTE_BUDGET) return;
 
-      const nav = globalThis.navigator;
-      if (nav && typeof nav.sendBeacon === 'function') {
-        if (nav.sendBeacon(this.options.endpoint, body)) return;
-      }
+      if (navigator.sendBeacon(this.options.endpoint, body)) return;
       void globalThis
-        .fetch?.(this.options.endpoint, {
+        .fetch(this.options.endpoint, {
           method: 'POST',
           body,
           keepalive: true,
@@ -275,14 +281,13 @@ export function installClientTelemetry(options: ClientTelemetryOptions): ClientT
 }
 
 function newSessionId(): string {
-  const uuid = globalThis.crypto?.randomUUID?.();
-  if (uuid) return uuid;
-  // Fallback for browsers without randomUUID: still use the CSPRNG (getRandomValues),
-  // never Math.random — keeps the id collision-resistant and avoids the insecure-RNG flag.
-  const buf = globalThis.crypto?.getRandomValues?.(new Uint32Array(2));
-  const rand = buf
-    ? `${(buf[0] ?? 0).toString(36)}${(buf[1] ?? 0).toString(36)}`
-    : Date.now().toString(36);
+  // randomUUID is secure-context only, so it is genuinely missing on an insecure
+  // origin however the DOM types describe it. getRandomValues is not, hence the
+  // fallback still uses the CSPRNG rather than Math.random.
+  const uuid = (crypto as { randomUUID?: () => string }).randomUUID?.();
+  if (uuid !== undefined) return uuid;
+  const buf = crypto.getRandomValues(new Uint32Array(2));
+  const rand = `${(buf[0] ?? 0).toString(36)}${(buf[1] ?? 0).toString(36)}`;
   return `sess-${Date.now().toString(36)}-${rand}`;
 }
 
@@ -311,8 +316,8 @@ function truncate(value: string, max: number): string {
 
 function isThirdPartyUrl(url: string): boolean {
   if (!url) return false;
-  const origin = globalThis.location?.origin;
-  if (!origin || origin === 'null') return false;
+  const origin = globalThis.location.origin;
+  if (origin === 'null') return false;
   try {
     return new URL(url, origin).origin !== origin;
   } catch {
@@ -361,8 +366,8 @@ function reduceUserAgent(ua: string | undefined): string | undefined {
 // templatized so ids never leak (/users/42/x -> /users/:id/x). Keeps the "which
 // page broke" dimension alive in every vendoring app for free.
 function currentRoute(): string | undefined {
-  const path = globalThis.location?.pathname;
-  if (!path) return undefined;
+  const path = globalThis.location.pathname;
+  if (path.length === 0) return undefined;
   return path
     .replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?=\/|$)/gi, '/:id')
     .replace(/\/\d+(?=\/|$)/g, '/:id');
