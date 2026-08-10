@@ -89,6 +89,15 @@ export interface EquipmentRecord {
   lastUsedAtMillis: number;
 }
 
+// Which variant of a family was picked last — barbell or dumbbell bench, seated or
+// standing face pull. A hint for the picker's default, never a fact about training:
+// losing it costs one extra tap, so it stays device-local and out of the event log.
+export interface VariantChoiceRecord {
+  groupId: string;
+  definitionId: string;
+  atMillis: number;
+}
+
 export type SettingsRecord =
   | { key: 'settings'; unit: WeightUnit }
   // Records written before the server field was dropped still carry it; nothing
@@ -115,6 +124,7 @@ export class FerrumDb extends Dexie {
   sessionPlans!: EntityTable<SessionPlanRecord, 'sessionId'>;
   purges!: EntityTable<PurgeRecord, 'aggregateId'>;
   equipment!: EntityTable<EquipmentRecord, 'id'>;
+  variantChoices!: EntityTable<VariantChoiceRecord, 'groupId'>;
   // Table rather than EntityTable: EntityTable's InsertType collapses a
   // discriminated union to its common keys, rejecting every variant's own fields.
   settings!: Table<SettingsRecord, SettingsRecord['key'], SettingsRecord>;
@@ -147,6 +157,9 @@ export class FerrumDb extends Dexie {
     });
     this.version(5).stores({
       equipment: '&id, exerciseDefinitionId',
+    });
+    this.version(6).stores({
+      variantChoices: '&groupId',
     });
   }
 }

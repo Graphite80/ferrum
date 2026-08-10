@@ -44,9 +44,46 @@
 # reps, which rules out per-hand dumbbells for this trainee; it is an alias of the machine
 # lateral raise, where those numbers are stack markings.
 
+# PRESENTATION GROUPS: one search tile per group, the variant chosen inside it.
+# Grouping never merges definitions or histories — a barbell bench and a dumbbell
+# bench mean different things by the number entered (INVARIANTS §1), so each keeps
+# its own id, its own comparison signature and its own previous-set line. What the
+# group removes is six tiles reading "Bench Press (…)" where a lifter wanted one.
+groups:
+  bench_press: Bench Press
+  incline_press: Incline Press
+  chest_fly: Chest Fly
+  shoulder_press: Shoulder Press
+  lateral_raise: Lateral Raise
+  rear_delt_fly: Rear Delt Fly
+  face_pull: Face Pull
+  pull_up: Pull Up
+  dip: Dip
+  lat_pulldown: Lat Pulldown
+  reverse_grip_lat_pulldown: Reverse Grip Lat Pulldown
+  seated_row: Seated Row
+  bent_over_row: Bent Over Row
+  pullover: Pullover
+  squat: Squat
+  romanian_deadlift: Romanian Deadlift
+  hip_thrust: Hip Thrust
+  glute_kickback: Glute Kickback
+  leg_curl: Leg Curl
+  calf_raise: Calf Raise
+  bicep_curl: Bicep Curl
+  preacher_curl: Preacher Curl
+  triceps_pushdown: Triceps Pushdown
+  overhead_triceps_extension: Overhead Triceps Extension
+  shrug: Shrug
+  upright_row: Upright Row
+  crunch: Crunch
+  back_extension: Back Extension
+
 exercises:
   - id: bench_press_barbell
     movementId: horizontal_press
+    group: bench_press
+    variantLabel: Barbell
     name: 'Bench Press (Barbell)'
     aliases:
       - Barbell Bench Press
@@ -77,6 +114,8 @@ exercises:
     revision: 1
   - id: incline_bench_press_barbell
     movementId: incline_press
+    group: incline_press
+    variantLabel: Barbell
     name: 'Incline Bench Press (Barbell)'
     aliases:
       - Barbell Incline Bench Press
@@ -138,6 +177,8 @@ exercises:
     revision: 1
   - id: bench_press_dumbbell
     movementId: horizontal_press
+    group: bench_press
+    variantLabel: Dumbbell
     name: 'Bench Press (Dumbbell)'
     aliases:
       - 'Dumbbell Bench Press'
@@ -167,6 +208,8 @@ exercises:
     revision: 1
   - id: incline_bench_press_dumbbell
     movementId: incline_press
+    group: incline_press
+    variantLabel: Dumbbell
     name: 'Incline Bench Press (Dumbbell)'
     aliases:
       - Dumbbell Incline Bench Press
@@ -196,6 +239,8 @@ exercises:
     revision: 1
   - id: bench_press_smith_machine
     movementId: horizontal_press
+    group: bench_press
+    variantLabel: Smith Machine
     name: 'Bench Press (Smith Machine)'
     aliases:
       - 'Smith Machine Bench Press'
@@ -222,6 +267,8 @@ exercises:
     revision: 1
   - id: chest_press_machine
     movementId: horizontal_press
+    group: bench_press
+    variantLabel: Machine
     name: 'Chest Press (Machine)'
     aliases:
       - Seated Chest Press (Machine)
@@ -251,6 +298,8 @@ exercises:
     revision: 1
   - id: chest_press_machine_plates
     movementId: horizontal_press
+    group: bench_press
+    variantLabel: Machine (Plates)
     name: 'Chest Press (Machine Plates)'
     aliases:
       - Plate Loaded Chest Press
@@ -279,13 +328,14 @@ exercises:
     revision: 1
   - id: seated_chest_fly_cable
     movementId: chest_fly
+    group: chest_fly
+    variantLabel: Seated Cable
     name: 'Seated Chest Flys (Cable)'
+    # The crossover aliases moved to the standing crossovers, where they belong:
+    # they were resolving a standing movement onto a seated machine.
     aliases:
       - Seated Chest Fly (Cable)
       - Cable Chest Fly
-      - Cable Crossover
-      - Cable Fly Crossovers
-      - Low Cable Fly Crossovers
       - Cable Seated Chest Flys
     equipmentType: cable
     laterality: bilateral
@@ -310,6 +360,8 @@ exercises:
     revision: 1
   - id: chest_fly_dumbbell
     movementId: chest_fly
+    group: chest_fly
+    variantLabel: Dumbbell
     name: 'Chest Fly (Dumbbell)'
     aliases:
       - 'Dumbbell Fly'
@@ -335,6 +387,8 @@ exercises:
     revision: 1
   - id: pec_deck_machine
     movementId: chest_fly
+    group: chest_fly
+    variantLabel: Pec Deck
     name: 'Pec Deck (Machine)'
     aliases:
       - Machine Chest Fly
@@ -394,6 +448,8 @@ exercises:
     revision: 1
   - id: dip
     movementId: horizontal_press
+    group: dip
+    variantLabel: Bars
     name: 'Dip'
     aliases:
       - Chest Dip
@@ -426,6 +482,8 @@ exercises:
     revision: 1
   - id: overhead_press_barbell
     movementId: overhead_press
+    group: shoulder_press
+    variantLabel: Barbell
     name: 'Overhead Press (Barbell)'
     aliases:
       - Shoulder Press (Barbell)
@@ -463,6 +521,8 @@ exercises:
     revision: 1
   - id: shoulder_press_dumbbell
     movementId: overhead_press
+    group: shoulder_press
+    variantLabel: Dumbbell
     name: 'Shoulder Press (Dumbbell)'
     aliases:
       - 'Dumbbell Shoulder Press'
@@ -526,6 +586,8 @@ exercises:
     revision: 1
   - id: seated_shoulder_press_machine
     movementId: overhead_press
+    group: shoulder_press
+    variantLabel: Machine
     name: 'Seated Shoulder Press (Machine)'
     aliases:
       - Shoulder Press (Machine)
@@ -555,6 +617,8 @@ exercises:
     revision: 1
   - id: shoulder_press_machine_plates
     movementId: overhead_press
+    group: shoulder_press
+    variantLabel: Machine (Plates)
     name: 'Shoulder Press (Machine Plates)'
     aliases:
       - Plate Loaded Shoulder Press
@@ -583,6 +647,8 @@ exercises:
     revision: 1
   - id: lateral_raise_machine
     movementId: lateral_raise
+    group: lateral_raise
+    variantLabel: Machine
     name: 'Lateral Raise (Machine)'
     aliases:
       - 'Shoulder Lateral Raise'
@@ -610,6 +676,8 @@ exercises:
     revision: 1
   - id: lateral_raise_dumbbell
     movementId: lateral_raise
+    group: lateral_raise
+    variantLabel: Dumbbell
     name: 'Lateral Raise (Dumbbell)'
     aliases:
       - Dumbbell Lateral Raise
@@ -638,6 +706,8 @@ exercises:
     revision: 1
   - id: lateral_raise_cable
     movementId: lateral_raise
+    group: lateral_raise
+    variantLabel: Cable
     name: 'Lateral Raise (Cable)'
     aliases:
       - 'Cable Lateral Raise'
@@ -665,6 +735,8 @@ exercises:
     revision: 1
   - id: rear_delt_fly_dumbbell
     movementId: rear_delt_fly
+    group: rear_delt_fly
+    variantLabel: Dumbbell
     name: 'Rear Delt Fly (Dumbbell)'
     aliases:
       - Bent Over Rear Delt Fly
@@ -695,6 +767,8 @@ exercises:
     revision: 1
   - id: rear_delt_fly_machine
     movementId: rear_delt_fly
+    group: rear_delt_fly
+    variantLabel: Machine
     name: 'Rear Delt Fly (Machine)'
     aliases:
       - Reverse Pec Deck
@@ -725,6 +799,8 @@ exercises:
     revision: 1
   - id: face_pull_cable
     movementId: face_pull
+    group: face_pull
+    variantLabel: Standing
     name: 'Face Pull (Cable)'
     aliases:
       - Face Pull
@@ -755,6 +831,8 @@ exercises:
     revision: 1
   - id: pull_up
     movementId: vertical_pull
+    group: pull_up
+    variantLabel: Bar
     name: 'Pull Up'
     aliases:
       - Wide Grip Pull Up
@@ -823,6 +901,8 @@ exercises:
     revision: 1
   - id: assisted_pull_up_machine
     movementId: vertical_pull
+    group: pull_up
+    variantLabel: Assisted (Machine)
     name: 'Assisted Pull Up (Machine)'
     aliases:
       - Assisted Pull-Up
@@ -859,6 +939,8 @@ exercises:
     revision: 1
   - id: lat_pulldown_cable
     movementId: vertical_pull
+    group: lat_pulldown
+    variantLabel: Cable
     name: 'Lat Pulldown (Cable)'
     aliases:
       - Lat Pulldown
@@ -988,6 +1070,8 @@ exercises:
     revision: 1
   - id: bent_over_row_barbell
     movementId: horizontal_row
+    group: bent_over_row
+    variantLabel: Barbell
     name: 'Bent Over Row (Barbell)'
     aliases:
       - Barbell Row
@@ -1023,6 +1107,8 @@ exercises:
     revision: 1
   - id: dumbbell_row
     movementId: horizontal_row
+    group: bent_over_row
+    variantLabel: Dumbbell
     name: 'Dumbbell Row'
     aliases:
       - Single Arm Dumbbell Row
@@ -1129,6 +1215,8 @@ exercises:
     revision: 1
   - id: seated_row_machine
     movementId: horizontal_row
+    group: seated_row
+    variantLabel: Machine
     name: 'Seated Row (Machine)'
     aliases:
       - Machine Seated Row
@@ -1170,6 +1258,8 @@ exercises:
     revision: 1
   - id: seated_row_cable
     movementId: horizontal_row
+    group: seated_row
+    variantLabel: Cable
     name: 'Seated Row (Cable)'
     aliases:
       - Seated Cable Row
@@ -1277,6 +1367,8 @@ exercises:
     revision: 1
   - id: squat_barbell
     movementId: squat
+    group: squat
+    variantLabel: Barbell
     name: 'Squat (Barbell)'
     aliases:
       - Back Squat
@@ -1341,6 +1433,8 @@ exercises:
     revision: 1
   - id: squat_smith_machine
     movementId: squat
+    group: squat
+    variantLabel: Smith Machine
     name: 'Squat (Smith Machine)'
     aliases:
       - 'Smith Machine Squat'
@@ -1371,6 +1465,8 @@ exercises:
     revision: 1
   - id: squat_machine
     movementId: squat
+    group: squat
+    variantLabel: Machine
     name: 'Squat (Machine)'
     aliases:
       - 'Machine Squat'
@@ -1626,6 +1722,8 @@ exercises:
     revision: 1
   - id: romanian_deadlift_barbell
     movementId: hinge
+    group: romanian_deadlift
+    variantLabel: Barbell
     name: 'Romanian Deadlift (Barbell)'
     aliases:
       - 'RDL (Barbell)'
@@ -1659,6 +1757,8 @@ exercises:
     revision: 1
   - id: romanian_deadlift_dumbbell
     movementId: hinge
+    group: romanian_deadlift
+    variantLabel: Dumbbell
     name: 'Romanian Deadlift (Dumbbell)'
     aliases:
       - 'RDL (Dumbbell)'
@@ -1692,6 +1792,8 @@ exercises:
     revision: 1
   - id: hip_thrust_barbell
     movementId: hip_thrust
+    group: hip_thrust
+    variantLabel: Barbell
     name: 'Hip Thrust (Barbell)'
     aliases:
       - 'Barbell Hip Thrust'
@@ -1721,6 +1823,8 @@ exercises:
     revision: 1
   - id: hip_thrust_machine
     movementId: hip_thrust
+    group: hip_thrust
+    variantLabel: Machine
     name: 'Hip Thrust (Machine)'
     aliases:
       - 'Machine Hip Thrust'
@@ -1748,6 +1852,8 @@ exercises:
     revision: 1
   - id: back_extension
     movementId: back_extension
+    group: back_extension
+    variantLabel: Bodyweight
     name: 'Back Extension'
     aliases:
       - 45 Degree Back Extension
@@ -1777,6 +1883,8 @@ exercises:
     revision: 1
   - id: glute_kickback_cable
     movementId: hip_thrust
+    group: glute_kickback
+    variantLabel: Cable
     name: 'Glute Kickback (Cable)'
     aliases:
       - Cable Kickback
@@ -1832,6 +1940,8 @@ exercises:
     revision: 1
   - id: lying_leg_curl_machine
     movementId: knee_flexion
+    group: leg_curl
+    variantLabel: Lying
     name: 'Lying Leg Curl (Machine)'
     aliases:
       - Lying Hamstring Curl
@@ -1860,6 +1970,8 @@ exercises:
     revision: 1
   - id: seated_leg_curl_machine
     movementId: knee_flexion
+    group: leg_curl
+    variantLabel: Seated
     name: 'Seated Leg Curl (Machine)'
     aliases:
       - Seated Hamstring Curl
@@ -1909,6 +2021,8 @@ exercises:
     revision: 1
   - id: calf_extension_machine
     movementId: calf_raise
+    group: calf_raise
+    variantLabel: Standing (Machine)
     name: 'Calf Extension (Machine)'
     aliases:
       - Standing Calf Raise (Machine)
@@ -1935,6 +2049,8 @@ exercises:
     revision: 1
   - id: seated_calf_raise
     movementId: calf_raise
+    group: calf_raise
+    variantLabel: Seated
     name: 'Seated Calf Raise'
     aliases:
       - 'Seated Calf Raise (Machine Plates)'
@@ -1958,6 +2074,8 @@ exercises:
     revision: 1
   - id: calf_press_leg_press
     movementId: calf_raise
+    group: calf_raise
+    variantLabel: Leg Press
     name: 'Calf Press (Leg Press)'
     aliases:
       - Leg Press Calf Raise
@@ -1986,6 +2104,8 @@ exercises:
     revision: 1
   - id: bicep_curl_barbell
     movementId: elbow_flexion
+    group: bicep_curl
+    variantLabel: Barbell
     name: 'Bicep Curl (Barbell)'
     aliases:
       - 'Barbell Curl'
@@ -2016,6 +2136,8 @@ exercises:
     revision: 1
   - id: bicep_curl_dumbbell
     movementId: elbow_flexion
+    group: bicep_curl
+    variantLabel: Dumbbell
     name: 'Bicep Curl (Dumbbell)'
     aliases:
       - 'Dumbbell Curl'
@@ -2130,6 +2252,8 @@ exercises:
     revision: 1
   - id: preacher_curl_machine
     movementId: elbow_flexion
+    group: preacher_curl
+    variantLabel: Machine
     name: 'Preacher Curl (Machine)'
     aliases:
       - 'Machine Preacher Curl'
@@ -2155,6 +2279,8 @@ exercises:
     revision: 1
   - id: bicep_curl_cable
     movementId: elbow_flexion
+    group: bicep_curl
+    variantLabel: Cable
     name: 'Bicep Curl (Cable)'
     aliases:
       - Cable Curl
@@ -2184,6 +2310,8 @@ exercises:
     revision: 1
   - id: triceps_pushdown
     movementId: elbow_extension
+    group: triceps_pushdown
+    variantLabel: Cable
     name: 'Triceps Pushdown'
     aliases:
       - 'Tricep Pushdown'
@@ -2208,6 +2336,8 @@ exercises:
     revision: 1
   - id: overhead_triceps_extension_cable
     movementId: elbow_extension
+    group: overhead_triceps_extension
+    variantLabel: Cable
     name: 'Overhead Triceps Extension (Cable)'
     aliases:
       - 'Cable Overhead Triceps Extension'
@@ -2231,6 +2361,8 @@ exercises:
     revision: 1
   - id: overhead_triceps_extension_dumbbell
     movementId: elbow_extension
+    group: overhead_triceps_extension
+    variantLabel: Dumbbell
     name: 'Overhead Triceps Extension (Dumbbell)'
     aliases:
       - Dumbbell Overhead Triceps Extension
@@ -2281,6 +2413,8 @@ exercises:
     revision: 1
   - id: triceps_extension_machine
     movementId: elbow_extension
+    group: triceps_pushdown
+    variantLabel: Machine
     name: 'Triceps Extension (Machine)'
     aliases:
       - Machine Triceps Extension
@@ -2388,6 +2522,8 @@ exercises:
     revision: 1
   - id: crunch
     movementId: trunk_flexion
+    group: crunch
+    variantLabel: Bodyweight
     name: 'Crunch'
     aliases:
       - Decline Crunch
@@ -2414,6 +2550,8 @@ exercises:
 
   - id: cable_crunch
     movementId: trunk_flexion
+    group: crunch
+    variantLabel: Cable
     name: 'Cable Crunch'
     aliases:
       - Kneeling Cable Crunch
@@ -2439,6 +2577,8 @@ exercises:
     revision: 1
   - id: ab_crunch_machine
     movementId: trunk_flexion
+    group: crunch
+    variantLabel: Machine
     name: 'Ab Crunch (Machine)'
     aliases:
       - Machine Crunch
@@ -2473,6 +2613,8 @@ exercises:
 
   - id: shrug_barbell
     movementId: shrug
+    group: shrug
+    variantLabel: Barbell
     name: 'Shrug (Barbell)'
     aliases:
       - 'Barbell Shrug'
@@ -2499,6 +2641,8 @@ exercises:
     revision: 1
   - id: shrug_dumbbell
     movementId: shrug
+    group: shrug
+    variantLabel: Dumbbell
     name: 'Shrug (Dumbbell)'
     aliases:
       - 'Dumbbell Shrug'
@@ -2523,6 +2667,8 @@ exercises:
     revision: 1
   - id: upright_row_cable
     movementId: upright_row
+    group: upright_row
+    variantLabel: Cable
     name: 'Upright Row (Cable)'
     aliases:
       - Cable Upright Row
@@ -2549,6 +2695,8 @@ exercises:
     revision: 1
   - id: face_pull_rope_seated
     movementId: face_pull
+    group: face_pull
+    variantLabel: Seated
     name: 'Seated Face Pull (Cable)'
     aliases:
       - Seated Rope Face Pull
@@ -2737,6 +2885,8 @@ exercises:
     revision: 1
   - id: pullover_dumbbell
     movementId: straight_arm_pulldown
+    group: pullover
+    variantLabel: Dumbbell
     name: 'Pullover (Dumbbell)'
     aliases:
       - Dumbbell Pullover
@@ -2793,6 +2943,8 @@ exercises:
     revision: 1
   - id: standing_calf_raise_dumbbell
     movementId: calf_raise
+    group: calf_raise
+    variantLabel: Standing (Dumbbell)
     name: 'Standing Calf Raise (Dumbbell)'
     aliases:
       - Dumbbell Calf Raise
@@ -2818,6 +2970,8 @@ exercises:
     revision: 1
   - id: lat_pulldown_machine
     movementId: vertical_pull
+    group: lat_pulldown
+    variantLabel: Machine
     name: Lat Pulldown (Machine)
     aliases:
       - Vertical Traction TechnoGym
@@ -2873,6 +3027,8 @@ exercises:
     revision: 1
   - id: reverse_grip_lat_pulldown_cable
     movementId: vertical_pull
+    group: reverse_grip_lat_pulldown
+    variantLabel: Cable
     name: Reverse Grip Lat Pulldown (Cable)
     aliases:
       - Reverse Grip Lat Pulldown (Cable)
@@ -2900,6 +3056,8 @@ exercises:
     revision: 1
   - id: pullover_machine
     movementId: straight_arm_pulldown
+    group: pullover
+    variantLabel: Machine
     name: Pullover (Machine)
     aliases:
       - Pullover (Machine)
@@ -2925,6 +3083,8 @@ exercises:
     revision: 1
   - id: assisted_dip_machine
     movementId: horizontal_press
+    group: dip
+    variantLabel: Assisted (Machine)
     name: Assisted Dip (Machine)
     aliases:
       - Chest Dip (Assisted)
@@ -2951,6 +3111,8 @@ exercises:
     revision: 1
   - id: preacher_curl_barbell
     movementId: elbow_flexion
+    group: preacher_curl
+    variantLabel: Barbell
     name: Preacher Curl (Barbell)
     aliases:
       - Preacher Curl (Barbell)
@@ -3188,6 +3350,8 @@ exercises:
     revision: 1
   - id: incline_chest_press_machine
     movementId: incline_press
+    group: incline_press
+    variantLabel: Machine
     name: Incline Chest Press (Machine)
     aliases:
       - Incline Chest Press (Machine)
@@ -3214,6 +3378,8 @@ exercises:
     revision: 1
   - id: glute_kickback_machine
     movementId: hip_thrust
+    group: glute_kickback
+    variantLabel: Machine
     name: Glute Kickback (Machine)
     aliases:
       - Glute Kickback (Machine)
@@ -3237,6 +3403,8 @@ exercises:
     revision: 1
   - id: reverse_grip_lat_pulldown_machine
     movementId: vertical_pull
+    group: reverse_grip_lat_pulldown
+    variantLabel: Machine
     name: Reverse Grip Lat Pulldown (Machine)
     aliases:
       - Lat Machine Close Reverse Grip TechnoGym
@@ -3264,6 +3432,8 @@ exercises:
     revision: 1
   - id: back_extension_machine
     movementId: back_extension
+    group: back_extension
+    variantLabel: Machine
     name: Back Extension (Machine)
     aliases:
       - Back Extension (Machine)
@@ -3290,6 +3460,8 @@ exercises:
     revision: 1
   - id: upright_row_barbell
     movementId: upright_row
+    group: upright_row
+    variantLabel: Barbell
     name: Upright Row (Barbell)
     aliases:
       - Upright Row (Barbell)
@@ -3315,6 +3487,8 @@ exercises:
     revision: 1
   - id: upright_row_dumbbell
     movementId: upright_row
+    group: upright_row
+    variantLabel: Dumbbell
     name: Upright Row (Dumbbell)
     aliases:
       - Upright Row (Dumbbell)
@@ -3340,6 +3514,8 @@ exercises:
     revision: 1
   - id: bench_press_cable
     movementId: horizontal_press
+    group: bench_press
+    variantLabel: Cable
     name: Bench Press (Cable)
     aliases:
       - Bench Press (Cable)
@@ -3365,6 +3541,8 @@ exercises:
     revision: 1
   - id: standing_calf_raise_barbell
     movementId: calf_raise
+    group: calf_raise
+    variantLabel: Standing (Barbell)
     name: Standing Calf Raise (Barbell)
     aliases:
       - Standing Calf Raise (Barbell)
@@ -3407,6 +3585,72 @@ exercises:
         role: primary
       - muscleId: hamstrings
         role: secondary
+    defaultRestSeconds: 90
+    defaultIncrementKg: 2.5
+    userCreated: false
+    revision: 1
+  # Standing crossovers. The library had none: "Cable Crossover" and "Low Cable Fly
+  # Crossovers" were aliases of the SEATED fly, so a lifter looking for the low
+  # crossover was handed a seated machine and the two histories were one history.
+  - id: cable_crossover_high
+    movementId: chest_fly
+    group: chest_fly
+    variantLabel: Crossover (High to Low)
+    name: 'Cable Crossover (High to Low)'
+    aliases:
+      - Cable Crossover
+      - Cable Fly Crossovers
+      - High Cable Crossover
+      - Standing Cable Crossover
+      - Standing Cable Fly
+    equipmentType: cable
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: per_side
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: pectoralis_major
+        role: primary
+      - muscleId: anterior_deltoid
+        role: secondary
+      - muscleId: rotator_cuff
+        role: stabilizer
+      - muscleId: serratus_anterior
+        role: stabilizer
+    defaultRestSeconds: 90
+    defaultIncrementKg: 2.5
+    userCreated: false
+    revision: 1
+  - id: cable_crossover_low
+    movementId: chest_fly
+    group: chest_fly
+    variantLabel: Crossover (Low to High)
+    name: 'Cable Crossover (Low to High)'
+    aliases:
+      - Low Cable Fly Crossovers
+      - Low Cable Crossover
+      - Low Cable Fly
+      - Low to High Cable Fly
+    equipmentType: cable
+    laterality: bilateral
+    loadSemantics: machine_stack
+    loadEntryMode: per_side
+    repCountMode: total
+    rangeOfMotionVariant: full
+    tempoVariant: standard
+    bodyweightFraction: 0
+    muscleRoles:
+      - muscleId: pectoralis_major
+        role: primary
+      - muscleId: anterior_deltoid
+        role: secondary
+      - muscleId: rotator_cuff
+        role: stabilizer
+      - muscleId: serratus_anterior
+        role: stabilizer
     defaultRestSeconds: 90
     defaultIncrementKg: 2.5
     userCreated: false

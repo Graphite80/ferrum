@@ -18,7 +18,7 @@ const movements = Object.entries(readYaml('movements.yaml')).map(([id, movement]
 
 const muscles = Object.entries(readYaml('muscles.yaml')).map(([id, name]) => ({ id, name }));
 
-const { exercises } = readYaml('exercises.yaml');
+const { groups = {}, exercises } = readYaml('exercises.yaml');
 
 const banner = [
   '// GENERATED FILE - do not edit by hand.',
@@ -28,6 +28,8 @@ const banner = [
   '// The YAML is generated into TypeScript rather than read with node:fs so that the same',
   '// module works unchanged in vitest, in a service and in a browser bundle.',
   "import type { RawExercise, RawMovement, RawMuscle } from '../shapes.ts';",
+  '',
+  `export const RAW_GROUPS: Readonly<Record<string, string>> = ${JSON.stringify(groups)};`,
   '',
   `export const RAW_MOVEMENTS: readonly RawMovement[] = ${JSON.stringify(movements)};`,
   '',
@@ -45,5 +47,5 @@ writeFileSync(outputPath, formatted);
 
 globalThis.console.info(
   `${outputPath}: ${movements.length} movements, ${muscles.length} muscles, ` +
-    `${exercises.length} exercises`
+    `${exercises.length} exercises, ${Object.keys(groups).length} groups`
 );

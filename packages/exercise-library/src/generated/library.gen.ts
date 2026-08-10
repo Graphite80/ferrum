@@ -6,6 +6,37 @@
 // module works unchanged in vitest, in a service and in a browser bundle.
 import type { RawExercise, RawMovement, RawMuscle } from '../shapes.ts';
 
+export const RAW_GROUPS: Readonly<Record<string, string>> = {
+  bench_press: 'Bench Press',
+  incline_press: 'Incline Press',
+  chest_fly: 'Chest Fly',
+  shoulder_press: 'Shoulder Press',
+  lateral_raise: 'Lateral Raise',
+  rear_delt_fly: 'Rear Delt Fly',
+  face_pull: 'Face Pull',
+  pull_up: 'Pull Up',
+  dip: 'Dip',
+  lat_pulldown: 'Lat Pulldown',
+  reverse_grip_lat_pulldown: 'Reverse Grip Lat Pulldown',
+  seated_row: 'Seated Row',
+  bent_over_row: 'Bent Over Row',
+  pullover: 'Pullover',
+  squat: 'Squat',
+  romanian_deadlift: 'Romanian Deadlift',
+  hip_thrust: 'Hip Thrust',
+  glute_kickback: 'Glute Kickback',
+  leg_curl: 'Leg Curl',
+  calf_raise: 'Calf Raise',
+  bicep_curl: 'Bicep Curl',
+  preacher_curl: 'Preacher Curl',
+  triceps_pushdown: 'Triceps Pushdown',
+  overhead_triceps_extension: 'Overhead Triceps Extension',
+  shrug: 'Shrug',
+  upright_row: 'Upright Row',
+  crunch: 'Crunch',
+  back_extension: 'Back Extension',
+};
+
 export const RAW_MOVEMENTS: readonly RawMovement[] = [
   { id: 'horizontal_press', name: 'Horizontal Press', pattern: 'horizontal_push' },
   { id: 'incline_press', name: 'Incline Press', pattern: 'horizontal_push' },
@@ -82,6 +113,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'bench_press_barbell',
     movementId: 'horizontal_press',
+    group: 'bench_press',
+    variantLabel: 'Barbell',
     name: 'Bench Press (Barbell)',
     aliases: ['Barbell Bench Press', 'Flat Bench Press (Barbell)', 'Iso lateral Bench Press'],
     equipmentType: 'barbell',
@@ -107,6 +140,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'incline_bench_press_barbell',
     movementId: 'incline_press',
+    group: 'incline_press',
+    variantLabel: 'Barbell',
     name: 'Incline Bench Press (Barbell)',
     aliases: [
       'Barbell Incline Bench Press',
@@ -166,6 +201,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'bench_press_dumbbell',
     movementId: 'horizontal_press',
+    group: 'bench_press',
+    variantLabel: 'Dumbbell',
     name: 'Bench Press (Dumbbell)',
     aliases: ['Dumbbell Bench Press', 'Flat Bench Press (Dumbbell)'],
     equipmentType: 'dumbbell',
@@ -191,6 +228,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'incline_bench_press_dumbbell',
     movementId: 'incline_press',
+    group: 'incline_press',
+    variantLabel: 'Dumbbell',
     name: 'Incline Bench Press (Dumbbell)',
     aliases: ['Dumbbell Incline Bench Press', 'Incline Press (Dumbbell)'],
     equipmentType: 'dumbbell',
@@ -216,6 +255,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'bench_press_smith_machine',
     movementId: 'horizontal_press',
+    group: 'bench_press',
+    variantLabel: 'Smith Machine',
     name: 'Bench Press (Smith Machine)',
     aliases: ['Smith Machine Bench Press'],
     equipmentType: 'smith_machine',
@@ -240,6 +281,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'chest_press_machine',
     movementId: 'horizontal_press',
+    group: 'bench_press',
+    variantLabel: 'Machine',
     name: 'Chest Press (Machine)',
     aliases: [
       'Seated Chest Press (Machine)',
@@ -269,6 +312,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'chest_press_machine_plates',
     movementId: 'horizontal_press',
+    group: 'bench_press',
+    variantLabel: 'Machine (Plates)',
     name: 'Chest Press (Machine Plates)',
     aliases: [
       'Plate Loaded Chest Press',
@@ -297,15 +342,10 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'seated_chest_fly_cable',
     movementId: 'chest_fly',
+    group: 'chest_fly',
+    variantLabel: 'Seated Cable',
     name: 'Seated Chest Flys (Cable)',
-    aliases: [
-      'Seated Chest Fly (Cable)',
-      'Cable Chest Fly',
-      'Cable Crossover',
-      'Cable Fly Crossovers',
-      'Low Cable Fly Crossovers',
-      'Cable Seated Chest Flys',
-    ],
+    aliases: ['Seated Chest Fly (Cable)', 'Cable Chest Fly', 'Cable Seated Chest Flys'],
     equipmentType: 'cable',
     laterality: 'bilateral',
     loadSemantics: 'machine_stack',
@@ -328,6 +368,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'chest_fly_dumbbell',
     movementId: 'chest_fly',
+    group: 'chest_fly',
+    variantLabel: 'Dumbbell',
     name: 'Chest Fly (Dumbbell)',
     aliases: ['Dumbbell Fly', 'Dumbbell Chest Fly'],
     equipmentType: 'dumbbell',
@@ -351,6 +393,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'pec_deck_machine',
     movementId: 'chest_fly',
+    group: 'chest_fly',
+    variantLabel: 'Pec Deck',
     name: 'Pec Deck (Machine)',
     aliases: [
       'Machine Chest Fly',
@@ -406,6 +450,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'dip',
     movementId: 'horizontal_press',
+    group: 'dip',
+    variantLabel: 'Bars',
     name: 'Dip',
     aliases: [
       'Chest Dip',
@@ -437,6 +483,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'overhead_press_barbell',
     movementId: 'overhead_press',
+    group: 'shoulder_press',
+    variantLabel: 'Barbell',
     name: 'Overhead Press (Barbell)',
     aliases: [
       'Shoulder Press (Barbell)',
@@ -471,6 +519,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'shoulder_press_dumbbell',
     movementId: 'overhead_press',
+    group: 'shoulder_press',
+    variantLabel: 'Dumbbell',
     name: 'Shoulder Press (Dumbbell)',
     aliases: [
       'Dumbbell Shoulder Press',
@@ -527,6 +577,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'seated_shoulder_press_machine',
     movementId: 'overhead_press',
+    group: 'shoulder_press',
+    variantLabel: 'Machine',
     name: 'Seated Shoulder Press (Machine)',
     aliases: [
       'Shoulder Press (Machine)',
@@ -556,6 +608,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'shoulder_press_machine_plates',
     movementId: 'overhead_press',
+    group: 'shoulder_press',
+    variantLabel: 'Machine (Plates)',
     name: 'Shoulder Press (Machine Plates)',
     aliases: [
       'Plate Loaded Shoulder Press',
@@ -584,6 +638,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'lateral_raise_machine',
     movementId: 'lateral_raise',
+    group: 'lateral_raise',
+    variantLabel: 'Machine',
     name: 'Lateral Raise (Machine)',
     aliases: ['Shoulder Lateral Raise', 'Machine Lateral Raise'],
     equipmentType: 'machine_stack',
@@ -608,6 +664,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'lateral_raise_dumbbell',
     movementId: 'lateral_raise',
+    group: 'lateral_raise',
+    variantLabel: 'Dumbbell',
     name: 'Lateral Raise (Dumbbell)',
     aliases: [
       'Dumbbell Lateral Raise',
@@ -636,6 +694,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'lateral_raise_cable',
     movementId: 'lateral_raise',
+    group: 'lateral_raise',
+    variantLabel: 'Cable',
     name: 'Lateral Raise (Cable)',
     aliases: ['Cable Lateral Raise', 'Single Arm Lateral Raise (Cable)'],
     equipmentType: 'cable',
@@ -660,6 +720,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'rear_delt_fly_dumbbell',
     movementId: 'rear_delt_fly',
+    group: 'rear_delt_fly',
+    variantLabel: 'Dumbbell',
     name: 'Rear Delt Fly (Dumbbell)',
     aliases: ['Bent Over Rear Delt Fly', 'Reverse Fly (Dumbbell)', 'Dumbbell Rear Delt Fly'],
     equipmentType: 'dumbbell',
@@ -685,6 +747,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'rear_delt_fly_machine',
     movementId: 'rear_delt_fly',
+    group: 'rear_delt_fly',
+    variantLabel: 'Machine',
     name: 'Rear Delt Fly (Machine)',
     aliases: [
       'Reverse Pec Deck',
@@ -715,6 +779,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'face_pull_cable',
     movementId: 'face_pull',
+    group: 'face_pull',
+    variantLabel: 'Standing',
     name: 'Face Pull (Cable)',
     aliases: ['Face Pull', 'Rope Face Pull', 'Cable Face Pull'],
     equipmentType: 'cable',
@@ -740,6 +806,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'pull_up',
     movementId: 'vertical_pull',
+    group: 'pull_up',
+    variantLabel: 'Bar',
     name: 'Pull Up',
     aliases: ['Wide Grip Pull Up', 'Pull Up (Weighted)', 'Wide Pull Up'],
     equipmentType: 'bodyweight',
@@ -795,6 +863,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'assisted_pull_up_machine',
     movementId: 'vertical_pull',
+    group: 'pull_up',
+    variantLabel: 'Assisted (Machine)',
     name: 'Assisted Pull Up (Machine)',
     aliases: ['Assisted Pull-Up', 'Machine Assisted Pull Up', 'Pull Up (Assisted)'],
     equipmentType: 'machine_stack',
@@ -823,6 +893,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'lat_pulldown_cable',
     movementId: 'vertical_pull',
+    group: 'lat_pulldown',
+    variantLabel: 'Cable',
     name: 'Lat Pulldown (Cable)',
     aliases: ['Lat Pulldown', 'Wide Grip Lat Pulldown (Cable)', 'Cable Lat Pulldown'],
     equipmentType: 'cable',
@@ -933,6 +1005,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'bent_over_row_barbell',
     movementId: 'horizontal_row',
+    group: 'bent_over_row',
+    variantLabel: 'Barbell',
     name: 'Bent Over Row (Barbell)',
     aliases: ['Barbell Row', 'Barbell Bent Over Row'],
     equipmentType: 'barbell',
@@ -961,6 +1035,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'dumbbell_row',
     movementId: 'horizontal_row',
+    group: 'bent_over_row',
+    variantLabel: 'Dumbbell',
     name: 'Dumbbell Row',
     aliases: ['Single Arm Dumbbell Row', 'One Arm Dumbbell Row', 'Bent Over Row (Dumbbell)'],
     equipmentType: 'dumbbell',
@@ -1049,6 +1125,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'seated_row_machine',
     movementId: 'horizontal_row',
+    group: 'seated_row',
+    variantLabel: 'Machine',
     name: 'Seated Row (Machine)',
     aliases: [
       'Machine Seated Row',
@@ -1087,6 +1165,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'seated_row_cable',
     movementId: 'horizontal_row',
+    group: 'seated_row',
+    variantLabel: 'Cable',
     name: 'Seated Row (Cable)',
     aliases: [
       'Seated Cable Row',
@@ -1176,6 +1256,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'squat_barbell',
     movementId: 'squat',
+    group: 'squat',
+    variantLabel: 'Barbell',
     name: 'Squat (Barbell)',
     aliases: ['Back Squat', 'Barbell Back Squat', 'Barbell Squat'],
     equipmentType: 'barbell',
@@ -1229,6 +1311,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'squat_smith_machine',
     movementId: 'squat',
+    group: 'squat',
+    variantLabel: 'Smith Machine',
     name: 'Squat (Smith Machine)',
     aliases: ['Smith Machine Squat'],
     equipmentType: 'smith_machine',
@@ -1255,6 +1339,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'squat_machine',
     movementId: 'squat',
+    group: 'squat',
+    variantLabel: 'Machine',
     name: 'Squat (Machine)',
     aliases: ['Machine Squat'],
     equipmentType: 'machine_stack',
@@ -1474,6 +1560,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'romanian_deadlift_barbell',
     movementId: 'hinge',
+    group: 'romanian_deadlift',
+    variantLabel: 'Barbell',
     name: 'Romanian Deadlift (Barbell)',
     aliases: ['RDL (Barbell)', 'Barbell Romanian Deadlift'],
     equipmentType: 'barbell',
@@ -1501,6 +1589,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'romanian_deadlift_dumbbell',
     movementId: 'hinge',
+    group: 'romanian_deadlift',
+    variantLabel: 'Dumbbell',
     name: 'Romanian Deadlift (Dumbbell)',
     aliases: ['RDL (Dumbbell)', 'Dumbbell Romanian Deadlift'],
     equipmentType: 'dumbbell',
@@ -1528,6 +1618,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'hip_thrust_barbell',
     movementId: 'hip_thrust',
+    group: 'hip_thrust',
+    variantLabel: 'Barbell',
     name: 'Hip Thrust (Barbell)',
     aliases: ['Barbell Hip Thrust', 'Glute Bridge (Barbell)'],
     equipmentType: 'barbell',
@@ -1553,6 +1645,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'hip_thrust_machine',
     movementId: 'hip_thrust',
+    group: 'hip_thrust',
+    variantLabel: 'Machine',
     name: 'Hip Thrust (Machine)',
     aliases: ['Machine Hip Thrust', 'Glute Drive (Machine)'],
     equipmentType: 'machine_stack',
@@ -1577,6 +1671,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'back_extension',
     movementId: 'back_extension',
+    group: 'back_extension',
+    variantLabel: 'Bodyweight',
     name: 'Back Extension',
     aliases: [
       '45 Degree Back Extension',
@@ -1606,6 +1702,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'glute_kickback_cable',
     movementId: 'hip_thrust',
+    group: 'glute_kickback',
+    variantLabel: 'Cable',
     name: 'Glute Kickback (Cable)',
     aliases: ['Cable Kickback', 'Cable Glute Kickback', 'Standing Cable Glute Kickbacks'],
     equipmentType: 'cable',
@@ -1659,6 +1757,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'lying_leg_curl_machine',
     movementId: 'knee_flexion',
+    group: 'leg_curl',
+    variantLabel: 'Lying',
     name: 'Lying Leg Curl (Machine)',
     aliases: [
       'Lying Hamstring Curl',
@@ -1688,6 +1788,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'seated_leg_curl_machine',
     movementId: 'knee_flexion',
+    group: 'leg_curl',
+    variantLabel: 'Seated',
     name: 'Seated Leg Curl (Machine)',
     aliases: ['Seated Hamstring Curl', 'Leg Curl TechnoGym', 'Machine Seated Leg Curl'],
     equipmentType: 'machine_stack',
@@ -1737,6 +1839,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'calf_extension_machine',
     movementId: 'calf_raise',
+    group: 'calf_raise',
+    variantLabel: 'Standing (Machine)',
     name: 'Calf Extension (Machine)',
     aliases: [
       'Standing Calf Raise (Machine)',
@@ -1765,6 +1869,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'seated_calf_raise',
     movementId: 'calf_raise',
+    group: 'calf_raise',
+    variantLabel: 'Seated',
     name: 'Seated Calf Raise',
     aliases: ['Seated Calf Raise (Machine Plates)', 'Seated Calf Press'],
     equipmentType: 'machine_plate_loaded',
@@ -1787,6 +1893,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'calf_press_leg_press',
     movementId: 'calf_raise',
+    group: 'calf_raise',
+    variantLabel: 'Leg Press',
     name: 'Calf Press (Leg Press)',
     aliases: [
       'Leg Press Calf Raise',
@@ -1816,6 +1924,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'bicep_curl_barbell',
     movementId: 'elbow_flexion',
+    group: 'bicep_curl',
+    variantLabel: 'Barbell',
     name: 'Bicep Curl (Barbell)',
     aliases: ['Barbell Curl', 'EZ Bar Curl', 'Barbell Bicep Curl'],
     equipmentType: 'barbell',
@@ -1841,6 +1951,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'bicep_curl_dumbbell',
     movementId: 'elbow_flexion',
+    group: 'bicep_curl',
+    variantLabel: 'Dumbbell',
     name: 'Bicep Curl (Dumbbell)',
     aliases: ['Dumbbell Curl', 'Dumbbell Bicep Curl'],
     equipmentType: 'dumbbell',
@@ -1943,6 +2055,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'preacher_curl_machine',
     movementId: 'elbow_flexion',
+    group: 'preacher_curl',
+    variantLabel: 'Machine',
     name: 'Preacher Curl (Machine)',
     aliases: ['Machine Preacher Curl', 'Bicep Curl (Machine)'],
     equipmentType: 'machine_stack',
@@ -1966,6 +2080,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'bicep_curl_cable',
     movementId: 'elbow_flexion',
+    group: 'bicep_curl',
+    variantLabel: 'Cable',
     name: 'Bicep Curl (Cable)',
     aliases: ['Cable Curl', 'Cable Bicep Curl', 'Arm Curl TechnoGym', 'Bicep (Gum)'],
     equipmentType: 'cable',
@@ -1990,6 +2106,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'triceps_pushdown',
     movementId: 'elbow_extension',
+    group: 'triceps_pushdown',
+    variantLabel: 'Cable',
     name: 'Triceps Pushdown',
     aliases: ['Tricep Pushdown', 'Cable Pushdown', 'Rope Pushdown'],
     equipmentType: 'cable',
@@ -2012,6 +2130,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'overhead_triceps_extension_cable',
     movementId: 'elbow_extension',
+    group: 'overhead_triceps_extension',
+    variantLabel: 'Cable',
     name: 'Overhead Triceps Extension (Cable)',
     aliases: ['Cable Overhead Triceps Extension', 'Rope Overhead Extension'],
     equipmentType: 'cable',
@@ -2034,6 +2154,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'overhead_triceps_extension_dumbbell',
     movementId: 'elbow_extension',
+    group: 'overhead_triceps_extension',
+    variantLabel: 'Dumbbell',
     name: 'Overhead Triceps Extension (Dumbbell)',
     aliases: [
       'Dumbbell Overhead Triceps Extension',
@@ -2083,6 +2205,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'triceps_extension_machine',
     movementId: 'elbow_extension',
+    group: 'triceps_pushdown',
+    variantLabel: 'Machine',
     name: 'Triceps Extension (Machine)',
     aliases: [
       'Machine Triceps Extension',
@@ -2180,6 +2304,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'crunch',
     movementId: 'trunk_flexion',
+    group: 'crunch',
+    variantLabel: 'Bodyweight',
     name: 'Crunch',
     aliases: ['Decline Crunch', 'Floor Crunch'],
     equipmentType: 'bodyweight',
@@ -2203,6 +2329,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'cable_crunch',
     movementId: 'trunk_flexion',
+    group: 'crunch',
+    variantLabel: 'Cable',
     name: 'Cable Crunch',
     aliases: ['Kneeling Cable Crunch', 'Rope Crunch'],
     equipmentType: 'cable',
@@ -2226,6 +2354,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'ab_crunch_machine',
     movementId: 'trunk_flexion',
+    group: 'crunch',
+    variantLabel: 'Machine',
     name: 'Ab Crunch (Machine)',
     aliases: [
       'Machine Crunch',
@@ -2256,6 +2386,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'shrug_barbell',
     movementId: 'shrug',
+    group: 'shrug',
+    variantLabel: 'Barbell',
     name: 'Shrug (Barbell)',
     aliases: ['Barbell Shrug'],
     equipmentType: 'barbell',
@@ -2280,6 +2412,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'shrug_dumbbell',
     movementId: 'shrug',
+    group: 'shrug',
+    variantLabel: 'Dumbbell',
     name: 'Shrug (Dumbbell)',
     aliases: ['Dumbbell Shrug'],
     equipmentType: 'dumbbell',
@@ -2303,6 +2437,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'upright_row_cable',
     movementId: 'upright_row',
+    group: 'upright_row',
+    variantLabel: 'Cable',
     name: 'Upright Row (Cable)',
     aliases: ['Cable Upright Row'],
     equipmentType: 'cable',
@@ -2327,6 +2463,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'face_pull_rope_seated',
     movementId: 'face_pull',
+    group: 'face_pull',
+    variantLabel: 'Seated',
     name: 'Seated Face Pull (Cable)',
     aliases: ['Seated Rope Face Pull', 'Cable Seated Face Pull'],
     equipmentType: 'cable',
@@ -2496,6 +2634,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'pullover_dumbbell',
     movementId: 'straight_arm_pulldown',
+    group: 'pullover',
+    variantLabel: 'Dumbbell',
     name: 'Pullover (Dumbbell)',
     aliases: ['Dumbbell Pullover', 'Pullover'],
     equipmentType: 'dumbbell',
@@ -2545,6 +2685,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'standing_calf_raise_dumbbell',
     movementId: 'calf_raise',
+    group: 'calf_raise',
+    variantLabel: 'Standing (Dumbbell)',
     name: 'Standing Calf Raise (Dumbbell)',
     aliases: ['Dumbbell Calf Raise', 'Dumbbell Standing Calf Raise'],
     equipmentType: 'dumbbell',
@@ -2568,6 +2710,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'lat_pulldown_machine',
     movementId: 'vertical_pull',
+    group: 'lat_pulldown',
+    variantLabel: 'Machine',
     name: 'Lat Pulldown (Machine)',
     aliases: ['Vertical Traction TechnoGym', 'Iso-Lateral Wide Pulldown', 'Machine Lat Pulldown'],
     equipmentType: 'machine_stack',
@@ -2616,6 +2760,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'reverse_grip_lat_pulldown_cable',
     movementId: 'vertical_pull',
+    group: 'reverse_grip_lat_pulldown',
+    variantLabel: 'Cable',
     name: 'Reverse Grip Lat Pulldown (Cable)',
     aliases: ['Reverse Grip Lat Pulldown (Cable)', 'Cable Reverse Grip Lat Pulldown'],
     equipmentType: 'cable',
@@ -2640,6 +2786,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'pullover_machine',
     movementId: 'straight_arm_pulldown',
+    group: 'pullover',
+    variantLabel: 'Machine',
     name: 'Pullover (Machine)',
     aliases: ['Pullover (Machine)', 'Machine Pullover'],
     equipmentType: 'machine_stack',
@@ -2663,6 +2811,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'assisted_dip_machine',
     movementId: 'horizontal_press',
+    group: 'dip',
+    variantLabel: 'Assisted (Machine)',
     name: 'Assisted Dip (Machine)',
     aliases: ['Chest Dip (Assisted)', 'Triceps Dip (Assisted)', 'Machine Assisted Dip'],
     equipmentType: 'machine_stack',
@@ -2686,6 +2836,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'preacher_curl_barbell',
     movementId: 'elbow_flexion',
+    group: 'preacher_curl',
+    variantLabel: 'Barbell',
     name: 'Preacher Curl (Barbell)',
     aliases: ['Preacher Curl (Barbell)', 'Barbell Preacher Curl'],
     equipmentType: 'barbell',
@@ -2912,6 +3064,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'incline_chest_press_machine',
     movementId: 'incline_press',
+    group: 'incline_press',
+    variantLabel: 'Machine',
     name: 'Incline Chest Press (Machine)',
     aliases: [
       'Incline Chest Press (Machine)',
@@ -2939,6 +3093,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'glute_kickback_machine',
     movementId: 'hip_thrust',
+    group: 'glute_kickback',
+    variantLabel: 'Machine',
     name: 'Glute Kickback (Machine)',
     aliases: ['Glute Kickback (Machine)', 'Machine Glute Kickback'],
     equipmentType: 'machine_stack',
@@ -2961,6 +3117,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'reverse_grip_lat_pulldown_machine',
     movementId: 'vertical_pull',
+    group: 'reverse_grip_lat_pulldown',
+    variantLabel: 'Machine',
     name: 'Reverse Grip Lat Pulldown (Machine)',
     aliases: ['Lat Machine Close Reverse Grip TechnoGym', 'Machine Reverse Grip Lat Pulldown'],
     equipmentType: 'machine_stack',
@@ -2985,6 +3143,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'back_extension_machine',
     movementId: 'back_extension',
+    group: 'back_extension',
+    variantLabel: 'Machine',
     name: 'Back Extension (Machine)',
     aliases: ['Back Extension (Machine)', 'LowerBack TechnoGym', 'Machine Back Extension'],
     equipmentType: 'machine_stack',
@@ -3008,6 +3168,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'upright_row_barbell',
     movementId: 'upright_row',
+    group: 'upright_row',
+    variantLabel: 'Barbell',
     name: 'Upright Row (Barbell)',
     aliases: ['Upright Row (Barbell)', 'Barbell Upright Row'],
     equipmentType: 'barbell',
@@ -3031,6 +3193,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'upright_row_dumbbell',
     movementId: 'upright_row',
+    group: 'upright_row',
+    variantLabel: 'Dumbbell',
     name: 'Upright Row (Dumbbell)',
     aliases: ['Upright Row (Dumbbell)', 'Dumbbell Upright Row'],
     equipmentType: 'dumbbell',
@@ -3054,6 +3218,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'bench_press_cable',
     movementId: 'horizontal_press',
+    group: 'bench_press',
+    variantLabel: 'Cable',
     name: 'Bench Press (Cable)',
     aliases: ['Bench Press (Cable)', 'Cable Bench Press'],
     equipmentType: 'cable',
@@ -3077,6 +3243,8 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
   {
     id: 'standing_calf_raise_barbell',
     movementId: 'calf_raise',
+    group: 'calf_raise',
+    variantLabel: 'Standing (Barbell)',
     name: 'Standing Calf Raise (Barbell)',
     aliases: ['Standing Calf Raise (Barbell)', 'Barbell Standing Calf Raise'],
     equipmentType: 'barbell',
@@ -3113,6 +3281,69 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
       { muscleId: 'quadriceps', role: 'primary' },
       { muscleId: 'gluteus_maximus', role: 'primary' },
       { muscleId: 'hamstrings', role: 'secondary' },
+    ],
+    defaultRestSeconds: 90,
+    defaultIncrementKg: 2.5,
+    userCreated: false,
+    revision: 1,
+  },
+  {
+    id: 'cable_crossover_high',
+    movementId: 'chest_fly',
+    group: 'chest_fly',
+    variantLabel: 'Crossover (High to Low)',
+    name: 'Cable Crossover (High to Low)',
+    aliases: [
+      'Cable Crossover',
+      'Cable Fly Crossovers',
+      'High Cable Crossover',
+      'Standing Cable Crossover',
+      'Standing Cable Fly',
+    ],
+    equipmentType: 'cable',
+    laterality: 'bilateral',
+    loadSemantics: 'machine_stack',
+    loadEntryMode: 'per_side',
+    repCountMode: 'total',
+    rangeOfMotionVariant: 'full',
+    tempoVariant: 'standard',
+    bodyweightFraction: 0,
+    muscleRoles: [
+      { muscleId: 'pectoralis_major', role: 'primary' },
+      { muscleId: 'anterior_deltoid', role: 'secondary' },
+      { muscleId: 'rotator_cuff', role: 'stabilizer' },
+      { muscleId: 'serratus_anterior', role: 'stabilizer' },
+    ],
+    defaultRestSeconds: 90,
+    defaultIncrementKg: 2.5,
+    userCreated: false,
+    revision: 1,
+  },
+  {
+    id: 'cable_crossover_low',
+    movementId: 'chest_fly',
+    group: 'chest_fly',
+    variantLabel: 'Crossover (Low to High)',
+    name: 'Cable Crossover (Low to High)',
+    aliases: [
+      'Low Cable Fly Crossovers',
+      'Low Cable Crossover',
+      'Low Cable Fly',
+      'Low to High Cable Fly',
+    ],
+    equipmentType: 'cable',
+    laterality: 'bilateral',
+    loadSemantics: 'machine_stack',
+    loadEntryMode: 'per_side',
+    repCountMode: 'total',
+    rangeOfMotionVariant: 'full',
+    tempoVariant: 'standard',
+    bodyweightFraction: 0,
+    muscleRoles: [
+      { muscleId: 'pectoralis_major', role: 'primary' },
+      { muscleId: 'anterior_deltoid', role: 'secondary' },
+      { muscleId: 'rotator_cuff', role: 'stabilizer' },
+      { muscleId: 'serratus_anterior', role: 'stabilizer' },
     ],
     defaultRestSeconds: 90,
     defaultIncrementKg: 2.5,

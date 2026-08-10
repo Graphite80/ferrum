@@ -15,7 +15,7 @@ import {
   type RepCountMode,
   kilograms,
 } from '@ferrum/domain';
-import { RAW_EXERCISES, RAW_MOVEMENTS, RAW_MUSCLES } from './generated/library.gen.ts';
+import { RAW_EXERCISES, RAW_GROUPS, RAW_MOVEMENTS, RAW_MUSCLES } from './generated/library.gen.ts';
 import { type RawExercise, type RawMovement, type RawMuscle } from './shapes.ts';
 
 export { describeSession, regionsOf, type BodyRegion } from './session-label.ts';
@@ -25,14 +25,37 @@ export interface Muscle {
   readonly name: string;
 }
 
+// A group is presentation only. The definitions inside it stay separate records with
+// their own comparison signatures, because a barbell bench and a dumbbell bench do not
+// mean the same thing by the number entered (INVARIANTS §1) — what the group collapses
+// is six tiles reading "Bench Press (…)", not six histories.
+export interface ExerciseVariant {
+  readonly definition: ExerciseDefinition;
+  readonly variantLabel: string | null;
+}
+
+export interface ExerciseGroup {
+  readonly id: string;
+  readonly name: string;
+  readonly movementId: MovementId;
+  // Non-empty by construction: a group is created by its first member, and a
+  // declared group with fewer than two is rejected at load time.
+  readonly variants: readonly [ExerciseVariant, ...ExerciseVariant[]];
+}
+
 export interface ExerciseLibrary {
   readonly all: readonly ExerciseDefinition[];
   readonly byId: ReadonlyMap<ExerciseDefinitionId, ExerciseDefinition>;
   readonly byName: ReadonlyMap<string, ExerciseDefinition>;
   readonly movements: ReadonlyMap<MovementId, Movement>;
   readonly muscles: ReadonlyMap<MuscleId, Muscle>;
+  // Every definition belongs to exactly one group; an ungrouped one is a group of its
+  // own so the picker has a single shape to render.
+  readonly groups: readonly ExerciseGroup[];
+  groupOf(id: ExerciseDefinitionId): ExerciseGroup | undefined;
   resolveAlias(name: string): ExerciseDefinition | undefined;
   search(query: string): readonly ExerciseDefinition[];
+  searchGroups(query: string): readonly ExerciseGroup[];
 }
 
 export class LibraryValidationError extends Error {
@@ -128,14 +151,15 @@ export function normalizeExerciseName(name: string): string {
 let cached: ExerciseLibrary | null = null;
 
 export function loadExerciseLibrary(): ExerciseLibrary {
-  cached ??= buildLibrary(RAW_MOVEMENTS, RAW_MUSCLES, RAW_EXERCISES);
+  cached ??= buildLibrary(RAW_MOVEMENTS, RAW_MUSCLES, RAW_EXERCISES, RAW_GROUPS);
   return cached;
 }
 
 function buildLibrary(
   rawMovements: readonly RawMovement[],
   rawMuscles: readonly RawMuscle[],
-  rawExercises: readonly RawExercise[]
+  rawExercises: readonly RawExercise[],
+  rawGroups: Readonly<Record<string, string>>
 ): ExerciseLibrary {
   const movements = buildMovements(rawMovements);
   const muscles = buildMuscles(rawMuscles);
@@ -187,15 +211,104 @@ function buildLibrary(
     });
   }
 
+  const groups = buildGroups(rawExercises, byId, rawGroups);
+  const groupByDefinition = new Map<ExerciseDefinitionId, ExerciseGroup>();
+  for (const group of groups) {
+    for (const variant of group.variants) groupByDefinition.set(variant.definition.id, group);
+  }
+  const groupSearchEntries = buildGroupSearchEntries(groups, searchEntries);
+
   return {
     all,
     byId,
     byName,
     movements,
     muscles,
+    groups,
+    groupOf: id => groupByDefinition.get(id),
     resolveAlias: name => byNormalizedName.get(normalizeExerciseName(name)),
     search: query => searchLibrary(searchEntries, query),
+    searchGroups: query => searchGroupLibrary(groupSearchEntries, query),
   };
+}
+
+function buildGroups(
+  rawExercises: readonly RawExercise[],
+  byId: ReadonlyMap<ExerciseDefinitionId, ExerciseDefinition>,
+  rawGroups: Readonly<Record<string, string>>
+): readonly ExerciseGroup[] {
+  const members = new Map<string, [ExerciseVariant, ...ExerciseVariant[]]>();
+  const groups: ExerciseGroup[] = [];
+
+  for (const raw of rawExercises) {
+    const definition = byId.get(raw.id as ExerciseDefinitionId);
+    if (definition === undefined) continue;
+
+    if (raw.group === undefined || raw.variantLabel === undefined) {
+      if (raw.group !== undefined || raw.variantLabel !== undefined) {
+        throw new LibraryValidationError(
+          raw.id,
+          raw.group === undefined ? 'group' : 'variantLabel',
+          'group and variantLabel are declared together or not at all'
+        );
+      }
+      // Its own group of one: the picker renders every tile the same way, and a
+      // definition that later joins a family only changes these two lines.
+      groups.push({
+        id: definition.id,
+        name: definition.name,
+        movementId: definition.movementId,
+        variants: [{ definition, variantLabel: null }],
+      });
+      continue;
+    }
+
+    if (!Object.hasOwn(rawGroups, raw.group)) {
+      throw new LibraryValidationError(raw.id, 'group', `undeclared group "${raw.group}"`);
+    }
+    const existing = members.get(raw.group);
+    if (existing === undefined) {
+      const variants: [ExerciseVariant, ...ExerciseVariant[]] = [
+        { definition, variantLabel: raw.variantLabel },
+      ];
+      members.set(raw.group, variants);
+      groups.push({
+        id: raw.group,
+        name: requireNonEmpty(raw.group, 'groups', rawGroups[raw.group] ?? ''),
+        movementId: definition.movementId,
+        variants,
+      });
+      continue;
+    }
+    const first = existing[0].definition;
+    if (first.movementId !== definition.movementId) {
+      throw new LibraryValidationError(
+        raw.id,
+        'group',
+        `group "${raw.group}" spans movements ${first.movementId} and ${definition.movementId}`
+      );
+    }
+    const labelKey = normalizeExerciseName(raw.variantLabel);
+    if (existing.some(variant => normalizeExerciseName(variant.variantLabel ?? '') === labelKey)) {
+      throw new LibraryValidationError(
+        raw.id,
+        'variantLabel',
+        `"${raw.variantLabel}" is already used inside group "${raw.group}"`
+      );
+    }
+    existing.push({ definition, variantLabel: raw.variantLabel });
+  }
+
+  for (const [id, name] of Object.entries(rawGroups)) {
+    const variants = members.get(id);
+    // A group of one is a group nobody needed, and a group of none is a typo that
+    // would otherwise sit in the file forever unnoticed.
+    if (variants === undefined || variants.length < 2) {
+      throw new LibraryValidationError(id, 'groups', `group "${name}" has fewer than two members`);
+    }
+  }
+
+  return groups;
 }
 
 interface SearchEntry {
@@ -232,6 +345,54 @@ function searchLibrary(
   }
   ranked.sort((a, b) => b.score - a.score || a.definition.name.localeCompare(b.definition.name));
   return ranked.map(item => item.definition);
+}
+
+interface GroupSearchEntry {
+  readonly group: ExerciseGroup;
+  readonly memberEntries: readonly SearchEntry[];
+  readonly nameKey: string;
+  readonly nameWords: readonly string[];
+}
+
+function buildGroupSearchEntries(
+  groups: readonly ExerciseGroup[],
+  searchEntries: readonly SearchEntry[]
+): readonly GroupSearchEntry[] {
+  const byDefinition = new Map(searchEntries.map(entry => [entry.definition.id, entry]));
+  return groups.map(group => ({
+    group,
+    memberEntries: group.variants
+      .map(variant => byDefinition.get(variant.definition.id))
+      .filter((entry): entry is SearchEntry => entry !== undefined),
+    nameKey: normalizeExerciseName(group.name),
+    nameWords: labelTokens(group.name),
+  }));
+}
+
+// A group scores as well as its best member, plus the group's own display name, so
+// "bench press" ranks the family whose members are all spelled "Bench Press (…)".
+function searchGroupLibrary(
+  entries: readonly GroupSearchEntry[],
+  query: string
+): readonly ExerciseGroup[] {
+  const normalizedQuery = normalizeExerciseName(query);
+  if (normalizedQuery.length === 0) {
+    return [];
+  }
+  const tokens = labelTokens(query);
+
+  const ranked: { group: ExerciseGroup; score: number }[] = [];
+  for (const entry of entries) {
+    let score = 0;
+    if (entry.nameKey === normalizedQuery) score = 3;
+    else if (tokens.every(token => entry.nameWords.some(word => word.startsWith(token)))) score = 2;
+    for (const member of entry.memberEntries) {
+      score = Math.max(score, scoreEntry(member, tokens, normalizedQuery));
+    }
+    if (score > 0) ranked.push({ group: entry.group, score });
+  }
+  ranked.sort((a, b) => b.score - a.score || a.group.name.localeCompare(b.group.name));
+  return ranked.map(item => item.group);
 }
 
 function scoreEntry(

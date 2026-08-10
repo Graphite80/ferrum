@@ -21,6 +21,8 @@ export interface RawMuscleRole {
 export interface RawExercise {
   readonly id: string;
   readonly movementId: string;
+  readonly group?: string;
+  readonly variantLabel?: string;
   readonly name: string;
   readonly aliases: readonly string[];
   readonly equipmentType: string;

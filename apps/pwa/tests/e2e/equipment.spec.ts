@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { pickExercise } from './pick-exercise.ts';
 
 async function startWorkout(page: Page): Promise<void> {
   await page.goto('/');
@@ -65,8 +66,7 @@ test.describe('machine identity', () => {
   test('free weights are never asked about', async ({ page }) => {
     await startWorkout(page);
     await page.getByTestId('add-exercise').click();
-    await page.getByTestId('exercise-search-input').fill('Bench Press (Barbell)');
-    await page.getByTestId('exercise-search-result').first().click();
+    await pickExercise(page, 'Bench Press (Barbell)', 'Bench Press', 'Barbell');
 
     const sections = page.getByTestId('exercise-section');
     const barbell = sections.filter({ hasText: 'Bench Press (Barbell)' });

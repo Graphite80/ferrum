@@ -33,7 +33,7 @@ Read `docs/INVARIANTS.md` before changing anything in `packages/domain`. It is t
 
 ```text
 packages/domain              zero-dependency core: events, projection, load semantics, HLC, time
-packages/exercise-library    118 curated definitions (YAML -> generated TS), ranked search
+packages/exercise-library    120 curated definitions (YAML -> generated TS), ranked search
 packages/exercise-media      technique diagrams: stick rig + IK, per-movement poses, muscle map
 packages/importers           life-as-code JSON, Hevy CSV, Strong CSV, Telegram shorthand
 packages/progression-engine  three versioned deterministic policies + historical replay harness
@@ -104,6 +104,37 @@ stops the suite from going quietly vacuous.
 it asserts every exercise resolves to a pose, stays inside its canvas, actually moves, and shades
 every primary mover. It cannot see whether a pose looks _right_ — that is what the gallery script
 is for, and a new movement family is not done until it has been looked at.
+
+## One tile per family, never one definition
+
+Roughly seventy of the definitions are equipment or position variants of another — six of them
+spelled "Bench Press (…)". A picker that lists them flat asks the same question six times and
+buries which one this lifter actually trains, so the library carries a `group` + `variantLabel`
+pair and the picker shows one tile per group with the variants inside it, defaulting to the one
+chosen last (`variantChoices`, device-local: losing it costs a tap).
+
+**The grouping stops at the tile.** It is not a step toward merging the definitions, and merging
+them is not a future refactor to finish:
+
+- `equipmentType`, `loadSemantics` and `loadEntryMode` are identity-defining (INVARIANTS §2). A
+  barbell bench enters a total and a dumbbell bench enters one hand — the same number means two
+  different loads, and one definition cannot hold both.
+- `ex:<id>` is stamped into the `comparisonSignature` of every set ever logged. Merging ids is a
+  signature version bump plus a migration of history, to buy nothing the tile does not already buy.
+- Definition names are the join key the hub upserts on (`hub-export.ts`), and the aliases are what
+  every importer resolves against.
+
+So `search()` still returns definitions and is unchanged — the Telegram bot takes `search(query)[0]`
+— and `searchGroups()` is additive. `onPick` still hands over a concrete `ExerciseDefinition`, which
+is why nothing downstream of the picker knows groups exist.
+
+Validation refuses a group that spans movements, one with fewer than two members, a duplicate
+variant label, and a `group` without a `variantLabel`. A one-member group is a group nobody needed;
+add the group and its second member in the same commit.
+
+The two standing cable crossovers were added here rather than grouped: `Cable Crossover` and
+`Low Cable Fly Crossovers` had been aliases of the **seated** cable fly, so a lifter searching for
+the low crossover was handed a seated machine and both movements shared one history.
 
 ## Platform constraints that shaped the code
 

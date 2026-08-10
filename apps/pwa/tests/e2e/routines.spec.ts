@@ -1,10 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
+import { pickExercise } from './pick-exercise.ts';
 
-async function addExerciseInBuilder(page: Page, query: string, name: string): Promise<void> {
+async function addExerciseInBuilder(
+  page: Page,
+  query: string,
+  groupName: string,
+  variantLabel?: string
+): Promise<void> {
   await page.getByTestId('builder-add-exercise').click();
-  await page.getByTestId('exercise-search-input').fill(query);
-  await page.getByTestId('exercise-search-result').filter({ hasText: name }).first().click();
-  await expect(page.getByTestId('exercise-search')).toBeHidden();
+  await pickExercise(page, query, groupName, variantLabel);
 }
 
 test.describe('routine management', () => {
@@ -14,7 +18,7 @@ test.describe('routine management', () => {
 
     await page.getByTestId('new-routine').click();
     await page.getByTestId('routine-name-input').fill('Push day');
-    await addExerciseInBuilder(page, 'bench press barbell', 'Bench Press (Barbell)');
+    await addExerciseInBuilder(page, 'bench press', 'Bench Press', 'Barbell');
     await expect(page.getByTestId('builder-slot')).toHaveCount(1);
 
     await page.getByTestId('slot-0-sets-down').click();

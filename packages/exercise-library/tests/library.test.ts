@@ -6,9 +6,11 @@ import { LibraryValidationError, loadExerciseLibrary } from '../src/index.ts';
 
 // 93 at first curation; 117 once the imported history's own vocabulary was
 // covered end to end; 118 with the bodyweight crunch that history had been
-// filing under the cable one. The count is asserted so growth stays deliberate
-// — a definition added to make one import pass is a duplicate waiting to happen.
-const LIBRARY_SIZE = 118;
+// filing under the cable one; 120 with the two standing cable crossovers whose
+// names had been aliases of the seated fly. The count is asserted so growth stays
+// deliberate — a definition added to make one import pass is a duplicate waiting
+// to happen.
+const LIBRARY_SIZE = 120;
 
 // The names the imported Hevy history uses. They must keep resolving forever: the moment
 // one of them stops matching, an import silently creates a second exercise and splits a
@@ -249,6 +251,87 @@ describe('alias resolution', () => {
   it('does not invent matches for names outside the library', () => {
     expect(library.resolveAlias('Zercher Sandbag Carry')).toBeUndefined();
     expect(library.resolveAlias('')).toBeUndefined();
+  });
+
+  // These names used to resolve onto the seated cable fly, which is a different
+  // movement performed on a different apparatus. Pinned so nobody restores them
+  // there while tidying the alias lists.
+  it('files the crossovers under the standing crossovers, not the seated fly', () => {
+    expect(library.resolveAlias('Cable Crossover')?.id).toBe('cable_crossover_high');
+    expect(library.resolveAlias('Low Cable Fly Crossovers')?.id).toBe('cable_crossover_low');
+    expect(library.resolveAlias('Low Cable Crossover')?.id).toBe('cable_crossover_low');
+    expect(library.resolveAlias('Seated Chest Flys (Cable)')?.id).toBe('seated_chest_fly_cable');
+  });
+});
+
+// Grouping is what the picker shows; it is never what the log records. These tests
+// hold that line: the group carries no identity of its own, so merging tiles can
+// never merge the histories underneath them.
+describe('variant groups', () => {
+  it('places every definition in exactly one group', () => {
+    const placed = library.groups.flatMap(group => group.variants.map(v => v.definition.id));
+    expect(new Set(placed).size).toBe(library.all.length);
+    for (const definition of library.all) {
+      expect(library.groupOf(definition.id)?.variants.map(v => v.definition.id)).toContain(
+        definition.id
+      );
+    }
+  });
+
+  it('labels the members of a shared group and leaves a solitary one unlabelled', () => {
+    const bench = library.groups.find(group => group.id === 'bench_press');
+    expect(bench?.name).toBe('Bench Press');
+    expect(bench?.variants.map(variant => variant.variantLabel)).toEqual([
+      'Barbell',
+      'Dumbbell',
+      'Smith Machine',
+      'Machine',
+      'Machine (Plates)',
+      'Cable',
+    ]);
+
+    const solitary = library.groupOf('chin_up' as never);
+    expect(solitary?.variants).toHaveLength(1);
+    expect(solitary?.variants[0]?.variantLabel).toBeNull();
+  });
+
+  it('keeps a group inside one movement and its labels distinct', () => {
+    for (const group of library.groups) {
+      expect(group.variants.length).toBeGreaterThan(0);
+      const movements = new Set(group.variants.map(variant => variant.definition.movementId));
+      expect(movements.size).toBe(1);
+      const labels = group.variants.map(variant => variant.variantLabel);
+      expect(new Set(labels).size).toBe(labels.length);
+    }
+  });
+
+  it('never lets two variants of one group share a comparison identity', () => {
+    for (const group of library.groups) {
+      const identities = group.variants.map(variant =>
+        [
+          variant.definition.id,
+          variant.definition.loadSemantics,
+          variant.definition.loadEntryMode,
+        ].join('|')
+      );
+      expect(new Set(identities).size).toBe(identities.length);
+    }
+  });
+
+  it('ranks the family a query names above the rest', () => {
+    expect(library.searchGroups('bench press')[0]?.id).toBe('bench_press');
+    expect(library.searchGroups('pull up')[0]?.id).toBe('pull_up');
+    expect(library.searchGroups('')).toStrictEqual([]);
+  });
+
+  it('finds the low crossover that used to be missing', () => {
+    const groups = library.searchGroups('crossover');
+    const found = groups
+      .flatMap(group => group.variants)
+      .map(variant => variant.definition.id)
+      .filter(id => id.startsWith('cable_crossover'));
+    expect(found).toContain('cable_crossover_low');
+    expect(found).toContain('cable_crossover_high');
   });
 });
 

@@ -44,6 +44,10 @@ test.describe('technique demo', () => {
     const count = await results.count();
     await expect(picker.getByTestId('exercise-figure')).toHaveCount(count);
 
+    // A family tile carries its demo on the variant rows, so the one exercise that
+    // stands alone is where the tile itself offers it.
+    await page.getByTestId('exercise-search-input').fill('inverted row');
+
     // Scoped to the picker on purpose: the workout screen behind it carries the same
     // control for each of its own exercises.
     await picker.getByTestId('open-exercise-demo').first().click();

@@ -804,6 +804,23 @@ const BY_EXERCISE: Record<string, Partial<AnimationSpec>> = {
   chest_press_machine_plates: seatedPress(),
   pec_deck_machine: { apparatus: ['seat', 'machine_frame'], implement: 'machine_handle' },
   seated_chest_fly_cable: { apparatus: ['seat'], implement: 'handle' },
+  // The crossovers are the same sweep performed standing, and which way the hands
+  // travel is the whole difference between the two — so both poses are authored
+  // rather than inherited from the seated base.
+  cable_crossover_high: {
+    apparatus: ['cable_high'],
+    implement: 'handle',
+    start: { hip: [100, 112], torso: 90, hand: [170, 52], elbow: -1, foot: [112, 186], knee: 1 },
+    finish: { hip: [100, 112], torso: 84, hand: [124, 120], elbow: -1, foot: [112, 186], knee: 1 },
+    cue: 'Standing, pulleys high: sweep down and across, meet in front of the hips.',
+  },
+  cable_crossover_low: {
+    apparatus: ['cable_low'],
+    implement: 'handle',
+    start: { hip: [100, 112], torso: 90, hand: [176, 154], elbow: -1, foot: [112, 186], knee: 1 },
+    finish: { hip: [100, 112], torso: 94, hand: [122, 90], elbow: -1, foot: [112, 186], knee: 1 },
+    cue: 'Standing, pulleys low: sweep up and across, finish at collarbone height.',
+  },
   // A dumbbell fly is authored from the front like every other fly; the flat bench it is
   // performed on has no silhouette in that view, so the cue carries it instead.
   chest_fly_dumbbell: {

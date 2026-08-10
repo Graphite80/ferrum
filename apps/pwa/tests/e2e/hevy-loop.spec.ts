@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { pickExercise } from './pick-exercise.ts';
 
 async function startRoutine(page: Page): Promise<void> {
   await page.goto('/');
@@ -6,11 +7,14 @@ async function startRoutine(page: Page): Promise<void> {
   await expect(page.getByTestId('session-title')).toBeVisible();
 }
 
-async function addExerciseViaSearch(page: Page, query: string, name: string): Promise<void> {
+async function addExerciseViaSearch(
+  page: Page,
+  query: string,
+  groupName: string,
+  variantLabel?: string
+): Promise<void> {
   await page.getByTestId('add-exercise').click();
-  await page.getByTestId('exercise-search-input').fill(query);
-  await page.getByTestId('exercise-search-result').filter({ hasText: name }).first().click();
-  await expect(page.getByTestId('exercise-search')).toBeHidden();
+  await pickExercise(page, query, groupName, variantLabel);
 }
 
 test.describe('the mid-workout logging loop', () => {
@@ -87,7 +91,7 @@ test.describe('the mid-workout logging loop', () => {
     await startRoutine(page);
     await expect(page.getByTestId('exercise-section')).toHaveCount(4);
 
-    await addExerciseViaSearch(page, 'bench press barbell', 'Bench Press (Barbell)');
+    await addExerciseViaSearch(page, 'bench press', 'Bench Press', 'Barbell');
     await expect(page.getByTestId('exercise-section')).toHaveCount(5);
 
     const added = page.getByTestId('exercise-section').last();
