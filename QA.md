@@ -63,11 +63,15 @@ channel found in code but missing here.
   only failures, so this is a real channel and an empty log is evidence.
 - **Telegram bot reports** — N/A while the bot is unmounted; becomes a channel the moment
   `TELEGRAM_*` env appears.
-- **No in-app bug queue and no client-error telemetry exist.** `ErrorBoundary` writes to the
-  console and nowhere else, so a render crash on a real device leaves no trace anyone can read.
-  That is a deliberate posture for a local-first app, not an oversight to "fix" by adding an
-  ingest endpoint — but it does mean the monkey run and the Playwright suite are the ONLY
-  evidence of a client-side crash, so neither may be treated as optional.
+- **Client-error telemetry** (since d22a9bb, 2026-08-10) — the PWA reports unhandled errors,
+  rejections and resource failures to `POST /api/v1/client-errors`
+  (`apps/pwa/src/platform/client-telemetry.ts` → `services/api/src/routes/client-errors.ts`).
+  Reports are logged, never stored: read them as `src":"client_error` lines in the pod log,
+  grouped by `fingerprint` and split by `appVersion`. The endpoint is deliberately
+  unauthenticated (an error that breaks auth still has to be reportable) and bounded — 16 KB
+  body, 60 reports/min, silently accepted over the cap — so noise is possible and volume alone
+  is not a finding. Silence from an app that visibly throws in Browser QA = the beacon itself
+  is broken, which IS a finding. No in-app bug _queue_ exists — this channel is one-way.
 
 ## Invariants that bite
 
@@ -138,8 +142,16 @@ channel found in code but missing here.
   whole list to the fallback.
 - Static responses carry cache headers from the API, not from the edge: `/assets/*` (content
   hashed) is `public, max-age=31536000, immutable`, every other document — index.html, `sw.js`,
-  the manifest — is `no-cache`. Left unset, the edge applies a 4h default and a released shell
-  keeps naming the previous build's bundles.
+  the manifest — is the full
+  `no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0` string. **Bare `no-cache`
+  is not enough on this zone**: `life-as-code.com` runs cache level `aggressive` with a
+  Browser Cache TTL override of 14400, and Cloudflare then edge-caches any cacheable extension
+  (`.js`, `.png`) _despite_ origin `no-cache` and stamps `max-age=14400` over it — measured
+  2026-08-10, when `sw.js` sat behind a four-hour edge copy while the origin answered
+  `no-cache`. `no-store` is what the edge honours (`cf-cache-status: BYPASS`); it is also what
+  the hub serves on the same zone. The check per pass: `curl -sI .../sw.js` must show the
+  no-store string and `cf-cache-status: BYPASS`, never `MISS`/`EXPIRED` with a rewritten
+  max-age. Left unset entirely, the same 4h default applies to everything.
 - The Telegram bot is private-chat only by design — group chats would let any member read or
   write another member's log. Do not "fix" the chat-type guards away.
 - Bot env (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_WEBHOOK_SECRET`) is optional; the server must

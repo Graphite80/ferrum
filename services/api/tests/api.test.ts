@@ -621,7 +621,13 @@ describe('single-page fallback', () => {
     for (const path of ['/', '/history']) {
       const shell = await fetch(`${baseUrl}${path}`);
       expect(shell.status).toBe(200);
-      expect(shell.headers.get('cache-control')).toBe('no-cache');
+      // The whole string, because the edge only honours part of it: Cloudflare's
+      // aggressive level caches a bare no-cache on a cacheable extension and
+      // stamps the zone's four-hour browser TTL over it; no-store is what makes
+      // it actually stand aside (cf-cache-status: BYPASS).
+      expect(shell.headers.get('cache-control')).toBe(
+        'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0'
+      );
     }
   });
 

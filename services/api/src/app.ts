@@ -155,10 +155,20 @@ export function mountStaticFallback(app: Hono<AppEnv>, staticDir: string): void 
     // /assets/ filenames carry a content hash, so they are safe to pin
     // forever; everything else (index.html, the service worker, the manifest)
     // is a mutable entry point and must be revalidated every time.
+    //
+    // `no-store`, not `no-cache`: Cloudflare's aggressive cache level treats a
+    // bare no-cache on a cacheable extension as "cache at the edge, revalidate"
+    // and then the zone's Browser Cache TTL override stamps max-age=14400 over
+    // it — measured on this very zone, where sw.js sat behind a four-hour edge
+    // copy while the origin answered no-cache. no-store is the directive the
+    // edge actually honours (cf-cache-status: BYPASS), and it is what the hub
+    // serves on the same zone for the same reason.
     if (c.res.ok) {
       c.res.headers.set(
         'cache-control',
-        c.req.path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache'
+        c.req.path.startsWith('/assets/')
+          ? 'public, max-age=31536000, immutable'
+          : 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0'
       );
     }
   });
