@@ -14,23 +14,30 @@ const isBusy = (): boolean => window.location.pathname.startsWith('/workout/');
 // build is applied the moment it cannot interrupt anyone, and the page reloads into
 // it. registerType stays 'prompt' precisely so this file decides *when*.
 export function initServiceWorker(): void {
+  let armed = false;
   const applyUpdate = registerSW({
     immediate: true,
     onNeedRefresh() {
-      const applyIfIdle = (): boolean => {
-        if (isBusy()) return false;
-        void applyUpdate(true);
-        return true;
-      };
-      if (applyIfIdle()) return;
-      const retry = setInterval(() => {
-        if (applyIfIdle()) clearInterval(retry);
-      }, APPLY_RETRY_MS);
+      armApply();
     },
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return;
+      // onNeedRefresh only fires on the updatefound transition. A build that
+      // finished installing during a previous page life — while a workout was
+      // open, or simply before a reload — is already sitting in `waiting` when
+      // this tab starts, so no transition is left to observe and nothing would
+      // ever apply it. That is not a rare race: it pinned production on a build
+      // eight commits old with the new one installed and waiting.
+      if (registration.waiting !== null) armApply();
       const checkForUpdate = (): void => {
-        registration.update().catch(() => {});
+        registration.update().then(
+          () => {
+            if (registration.waiting !== null) armApply();
+          },
+          () => {
+            /* offline, or the server is down: the next check is 15 minutes away */
+          }
+        );
       };
       // A tab left open for days would otherwise never look. Poll, and also check
       // the moment the user comes back to it — that is when a stale build is both
@@ -41,4 +48,18 @@ export function initServiceWorker(): void {
       });
     },
   });
+
+  function armApply(): void {
+    if (armed) return;
+    armed = true;
+    const applyIfIdle = (): boolean => {
+      if (isBusy()) return false;
+      void applyUpdate(true);
+      return true;
+    };
+    if (applyIfIdle()) return;
+    const retry = setInterval(() => {
+      if (applyIfIdle()) clearInterval(retry);
+    }, APPLY_RETRY_MS);
+  }
 }
