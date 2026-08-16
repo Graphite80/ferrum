@@ -55,6 +55,20 @@ export async function dismissRestTimer(sessionId: string): Promise<void> {
   await db.restTimers.where('sessionId').equals(sessionId).modify({ status: 'dismissed' });
 }
 
+// +/- controls on the dial nudge the rest by a fixed step; endsAt is the source of
+// truth, so shifting it is all that is needed. Never below the current moment.
+export async function adjustRestTimer(
+  sessionId: string,
+  deltaSeconds: number,
+  nowMillis: number
+): Promise<void> {
+  const record = await db.restTimers.get(sessionId);
+  if (record == null || record.status !== 'running') return;
+  const nextEnds = Math.max(nowMillis, record.endsAtMillis + deltaSeconds * 1000);
+  // Keep durationSeconds unchanged so the progress ring stays proportional to the original timer scale.
+  await db.restTimers.put({ ...record, endsAtMillis: nextEnds });
+}
+
 export async function loadRestTimer(sessionId: string): Promise<RestTimerRecord | null> {
   const record = await db.restTimers.get(sessionId);
   return record?.status === 'running' ? record : null;

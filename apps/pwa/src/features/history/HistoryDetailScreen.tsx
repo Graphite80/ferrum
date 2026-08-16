@@ -57,7 +57,7 @@ export function HistoryDetailScreen({
     >
       <div
         className={mono({
-          className: 'flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-ash',
+          className: 'flex flex-wrap gap-x-4 gap-y-1 text-[14px] font-medium text-ash',
         })}
       >
         <span data-testid="detail-date">{session.localDate}</span>
@@ -67,7 +67,7 @@ export function HistoryDetailScreen({
 
       {projection.amendments.length > 0 && (
         <p className="text-xs text-ash" data-testid="detail-amendments">
-          <span className={mono({ className: 'font-medium' })}>{projection.amendments.length}</span>{' '}
+          <span className={mono({ className: 'text-[14px] font-medium text-chalk' })}>{projection.amendments.length}</span>{' '}
           {projection.amendments.length === 1 ? 'amendment' : 'amendments'}
         </p>
       )}
@@ -217,10 +217,10 @@ function DetailSetRow({
           Warmup
         </span>
       )}
-      <span className={mono({ className: 'font-medium' })} data-testid="detail-set-values">
+      <span className={mono({ className: 'text-[14px] font-medium text-chalk' })} data-testid="detail-set-values">
         {formatLoad(measurements.canonicalExternalLoadKg, { unit })} × {measurements.reps ?? '—'}
       </span>
-      <span className={mono({ className: 'text-xs font-medium text-ash' })}>
+      <span className={mono({ className: 'text-[14px] font-medium text-ash' })}>
         RIR {measurements.rirEntered == null ? '—' : String(measurements.rirEntered)}
       </span>
     </li>

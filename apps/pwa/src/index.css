@@ -1,29 +1,32 @@
 @import 'tailwindcss';
-@import '@fontsource/saira-condensed/600.css';
-@import '@fontsource/saira-condensed/700.css';
-@import '@fontsource/saira/400.css';
-@import '@fontsource/saira/500.css';
-@import '@fontsource/ibm-plex-mono/500.css';
-@import '@fontsource/ibm-plex-mono/700.css';
+@import '@fontsource/special-gothic-expanded-one/400.css';
+
+@font-face {
+  font-family: 'Arame Mono';
+  src: url('/fonts/ArameMono.otf') format('opentype');
+  font-weight: 400;
+  font-display: swap;
+}
 
 @theme {
-  --color-ingot: #101317;
-  --color-forged: #1a2027;
-  --color-seam: #2b333e;
-  --color-chalk: #e9e7e1;
-  --color-ash: #8c939d;
-  --color-plate-red: #d22c2c;
-  --color-plate-red-pressed: #b02525;
+  --color-ingot: #000000;
+  --color-forged: #1a1a1a;
+  --color-seam: #3a3a3a;
+  --color-chalk: #e6e6e6;
+  --color-ash: #8a8a89;
+  --color-dim: #666666;
+  --color-plate-red: #ff1c00;
+  --color-plate-red-pressed: #cc1600;
   --color-plate-green: #3f8a46;
-  --color-plate-amber: #d2762c;
+  --color-plate-amber: #ff7300;
   /* Technique diagrams: gym hardware sits behind the lifter, the far limb behind the near
      one. Three tones between seam and chalk is what keeps a stick figure readable. */
   --color-frame: #3b4552;
   --color-frame-lit: #5b6675;
   --color-limb-far: #5a6474;
-  --font-display: 'Saira Condensed', 'Arial Narrow', sans-serif;
-  --font-sans: 'Saira', system-ui, -apple-system, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-display: 'Special Gothic Expanded One', 'Arial Narrow', sans-serif;
+  --font-sans: 'Arame Mono', ui-monospace, monospace;
+  --font-mono: 'Arame Mono', ui-monospace, monospace;
 }
 
 html,
@@ -47,6 +50,24 @@ body {
 .tap-target {
   min-height: 56px;
   min-width: 56px;
+}
+
+/* Screen titles (WORKOUTS, HISTORY) are drawn as a red outline, not a fill.
+   Stroke is centered on the glyph path (default), 1px wide. */
+.title-outline {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--color-plate-red);
+  paint-order: stroke fill;
+}
+
+/* Remove browser default styling from workout value inputs. */
+input[data-testid^="set-"] {
+  background: transparent !important;
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  padding: 0;
+  color: inherit;
 }
 
 :focus-visible {

@@ -1,10 +1,13 @@
 import { useLiveData } from '../../components/live-data.ts';
-import { useState } from 'react';
-import { type WeightUnit, fromKilograms, kilograms, toKilograms } from '@ferrum/domain';
+import { useEffect, useRef, useState } from 'react';
+import { useIsScrolled } from '../../platform/use-scrolled.ts';
+import { type WeightUnit, displayLoad, kilograms, toKilograms } from '@ferrum/domain';
 import { type RoutineRecord, type RoutineSlotRecord } from '../../db/ferrum-db.ts';
 import { ExerciseSearchPanel } from '../workout/ExerciseSearchPanel.tsx';
-import { Stepper, clampReps, clampRir } from '../../components/Stepper.tsx';
-import { displayStep } from '../../data/settings-store.ts';
+import { ValueCell } from '../workout/set-cells.tsx';
+import { clampReps, clampRir } from '../../components/Stepper.tsx';
+import { ActionSheet } from '../../components/ActionSheet.tsx';
+import { DotsIcon } from '../../components/icons.tsx';
 import {
   deleteRoutine,
   getRoutine,
@@ -12,8 +15,7 @@ import {
   putRoutine,
   slotFromDefinition,
 } from '../../data/routine-store.ts';
-import { ScreenShell } from '../../components/ScreenShell.tsx';
-import { button, card, eyebrow } from '../../ui.ts';
+import { button, card } from '../../ui.ts';
 
 export function RoutineBuilderScreen({
   routineId,
@@ -61,6 +63,12 @@ function RoutineEditor({
   const [draft, setDraft] = useState(initial);
   const [searchOpen, setSearchOpen] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const scrolled = useIsScrolled();
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerH, setHeaderH] = useState(72);
+  useEffect(() => {
+    if (headerRef.current) setHeaderH(headerRef.current.offsetHeight);
+  }, [routineId]);
 
   const patchSlot = (index: number, patch: Partial<RoutineSlotRecord>) => {
     setDraft({
@@ -84,100 +92,83 @@ function RoutineEditor({
   };
 
   return (
-    <ScreenShell
-      title={routineId == null ? 'New routine' : 'Edit routine'}
-      testId="routine-builder"
-      action={
+    <main className="mx-auto flex min-h-full max-w-md flex-col" data-testid="routine-builder">
+      {/* Sticky header — orange outline title + SAVE, no bottom border */}
+      <header ref={headerRef} className="sticky top-0 z-10 flex items-center justify-between bg-ingot px-4 py-3">
+        <h1
+          className="font-display text-[44px] uppercase leading-none"
+          style={{ color: 'transparent', WebkitTextStroke: '1.5px #FF1C00' }}
+        >
+          {routineId == null ? 'New routine' : 'Edit routine'}
+        </h1>
         <button
           type="button"
-          className={button({ intent: 'quiet', className: 'px-4' })}
-          data-testid="builder-cancel"
-          onClick={onDone}
+          className="tap-target shrink-0 rounded-[20px] bg-plate-red px-5 font-display text-sm uppercase tracking-normal text-white active:bg-plate-red-pressed"
+          data-testid="builder-save"
+          onClick={save}
         >
-          Cancel
+          Save
         </button>
-      }
-    >
-      <label className="flex flex-col gap-1">
-        <span className={eyebrow()}>Name</span>
+      </header>
+
+      <div className="pointer-events-none sticky z-[9] overflow-visible" style={{ top: headerH, height: 0 }} aria-hidden>
+        <div className={`h-22 w-full bg-gradient-to-b from-black to-transparent transition-opacity duration-300 ${scrolled ? 'opacity-100' : 'opacity-0'}`} />
+      </div>
+
+      <div className="flex flex-col gap-10 px-4 pb-32 pt-4">
+        {/* Routine name input at the top of the scroll area */}
         <input
           type="text"
-          className={card({
-            className: 'tap-target px-4 text-base text-chalk outline-none placeholder:text-ash',
-          })}
+          className={card({ className: 'tap-target bg-ingot px-4 text-base text-chalk outline-none placeholder:text-ash' })}
           value={draft.name}
           placeholder="Routine name"
-          onChange={event => {
-            setDraft({ ...draft, name: event.target.value });
-          }}
+          onChange={event => { setDraft({ ...draft, name: event.target.value }); }}
           data-testid="routine-name-input"
         />
-      </label>
-
-      {draft.slots.map((slot, index) => (
-        <SlotEditor
-          key={`${slot.exerciseDefinitionId}-${String(index)}`}
-          slot={slot}
-          index={index}
-          unit={unit}
-          isFirst={index === 0}
-          isLast={index === draft.slots.length - 1}
-          onPatch={patch => {
-            patchSlot(index, patch);
-          }}
-          onMove={delta => {
-            moveSlot(index, delta);
-          }}
-          onRemove={() => {
-            setDraft({ ...draft, slots: draft.slots.filter((_, i) => i !== index) });
-          }}
-        />
-      ))}
-
-      <button
-        type="button"
-        className={button({ intent: 'secondary' })}
-        data-testid="builder-add-exercise"
-        onClick={() => {
-          setSearchOpen(true);
-        }}
-      >
-        + Add exercise
-      </button>
-
-      <button
-        type="button"
-        className={button({ size: 'lg', className: 'w-full' })}
-        data-testid="builder-save"
-        onClick={save}
-      >
-        Save routine
-      </button>
-
-      {routineId != null &&
-        (confirmingDelete ? (
-          <button
-            type="button"
-            className="tap-target rounded-md border border-plate-red text-base font-medium text-plate-red"
-            data-testid="builder-delete-confirm"
-            onClick={() => {
-              void deleteRoutine(routineId).then(onDone);
-            }}
-          >
-            Really delete this routine
-          </button>
-        ) : (
-          <button
-            type="button"
-            className={button({ intent: 'quiet' })}
-            data-testid="builder-delete"
-            onClick={() => {
-              setConfirmingDelete(true);
-            }}
-          >
-            Delete routine
-          </button>
+        {draft.slots.map((slot, index) => (
+          <SlotEditor
+            key={`${slot.exerciseDefinitionId}-${String(index)}`}
+            slot={slot}
+            index={index}
+            unit={unit}
+            isFirst={index === 0}
+            isLast={index === draft.slots.length - 1}
+            onPatch={patch => { patchSlot(index, patch); }}
+            onMove={delta => { moveSlot(index, delta); }}
+            onRemove={() => { setDraft({ ...draft, slots: draft.slots.filter((_, i) => i !== index) }); }}
+          />
         ))}
+
+        <button
+          type="button"
+          className="tap-target w-full rounded-[20px] border-2 border-plate-red font-display text-sm uppercase tracking-normal text-chalk"
+          data-testid="builder-add-exercise"
+          onClick={() => { setSearchOpen(true); }}
+        >
+          + Add exercise
+        </button>
+
+        {routineId != null &&
+          (confirmingDelete ? (
+            <button
+              type="button"
+              className={button({ intent: 'quiet', className: 'w-full' })}
+              data-testid="builder-delete-confirm"
+              onClick={() => { void deleteRoutine(routineId).then(onDone); }}
+            >
+              Really delete this routine
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={button({ intent: 'quiet', className: 'w-full' })}
+              data-testid="builder-delete"
+              onClick={() => { setConfirmingDelete(true); }}
+            >
+              Delete routine
+            </button>
+          ))}
+      </div>
 
       {searchOpen && (
         <ExerciseSearchPanel
@@ -185,12 +176,10 @@ function RoutineEditor({
             setDraft({ ...draft, slots: [...draft.slots, slotFromDefinition(definition)] });
             setSearchOpen(false);
           }}
-          onClose={() => {
-            setSearchOpen(false);
-          }}
+          onClose={() => { setSearchOpen(false); }}
         />
       )}
-    </ScreenShell>
+    </main>
   );
 }
 
@@ -213,142 +202,100 @@ function SlotEditor({
   onMove: (delta: -1 | 1) => void;
   onRemove: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const prefix = `slot-${String(index)}`;
-  const loadStep = displayStep(kilograms(slot.incrementKg), unit);
 
   return (
-    <section className={card({ className: 'flex flex-col gap-2 p-3' })} data-testid="builder-slot">
+    <section className="flex flex-col gap-3" data-testid="builder-slot">
       <header className="flex items-center justify-between gap-2">
-        <h2 className="min-w-0 font-display text-lg leading-tight font-semibold uppercase">
+        <h2 className="font-display text-[32px] leading-[28px] uppercase text-plate-red">
           {slot.name}
         </h2>
-        <div className="flex shrink-0 items-center">
-          <button
-            type="button"
-            className="tap-target rounded-md px-3 text-lg text-ash disabled:opacity-30"
-            aria-label={`Move ${slot.name} up`}
-            disabled={isFirst}
-            data-testid={`${prefix}-up`}
-            onClick={() => {
-              onMove(-1);
-            }}
-          >
-            &uarr;
-          </button>
-          <button
-            type="button"
-            className="tap-target rounded-md px-3 text-lg text-ash disabled:opacity-30"
-            aria-label={`Move ${slot.name} down`}
-            disabled={isLast}
-            data-testid={`${prefix}-down`}
-            onClick={() => {
-              onMove(1);
-            }}
-          >
-            &darr;
-          </button>
-          <button
-            type="button"
-            className="tap-target rounded-md px-3 text-lg text-ash"
-            aria-label={`Remove ${slot.name}`}
-            data-testid={`${prefix}-remove`}
-            onClick={onRemove}
-          >
-            &times;
-          </button>
-        </div>
-      </header>
-
-      <Stepper
-        label="Sets"
-        value={slot.sets}
-        step={1}
-        onChange={next => {
-          onPatch({ sets: Math.max(1, clampReps(next)) });
-        }}
-        testId={`${prefix}-sets`}
-      />
-      <Stepper
-        label="Rep −"
-        value={slot.targetRepMin}
-        step={1}
-        onChange={next => {
-          const min = Math.max(1, clampReps(next));
-          onPatch({ targetRepMin: min, targetRepMax: Math.max(min, slot.targetRepMax) });
-        }}
-        testId={`${prefix}-repmin`}
-      />
-      <Stepper
-        label="Rep +"
-        value={slot.targetRepMax}
-        step={1}
-        onChange={next => {
-          const max = Math.max(1, clampReps(next));
-          onPatch({ targetRepMax: max, targetRepMin: Math.min(max, slot.targetRepMin) });
-        }}
-        testId={`${prefix}-repmax`}
-      />
-      <Stepper
-        label="RIR −"
-        value={slot.targetRirMin}
-        step={1}
-        onChange={next => {
-          const min = clampRir(next);
-          onPatch({ targetRirMin: min, targetRirMax: Math.max(min, slot.targetRirMax) });
-        }}
-        testId={`${prefix}-rirmin`}
-      />
-      <Stepper
-        label="RIR +"
-        value={slot.targetRirMax}
-        step={1}
-        onChange={next => {
-          const max = clampRir(next);
-          onPatch({ targetRirMax: max, targetRirMin: Math.min(max, slot.targetRirMin) });
-        }}
-        testId={`${prefix}-rirmax`}
-      />
-
-      {slot.targetLoadKg == null ? (
         <button
           type="button"
-          className={button({ intent: 'quiet' })}
-          data-testid={`${prefix}-set-target`}
-          onClick={() => {
-            onPatch({ targetLoadKg: toKilograms(loadStep * 4, unit) });
-          }}
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] border-2 border-seam"
+          aria-label={`Options for ${slot.name}`}
+          data-testid={`${prefix}-menu`}
+          onClick={() => { setMenuOpen(true); }}
         >
-          Set target load
+          <DotsIcon />
         </button>
-      ) : (
-        <div className="flex items-stretch gap-2">
-          {/* min-w-0 lets the stepper shrink below the number input's intrinsic
-              width; without it the row overflows the 412px viewport and mobile
-              tap coordinates land on the wrong elements. */}
-          <div className="min-w-0 flex-1">
-            <Stepper
-              label={unit}
-              value={Number(fromKilograms(kilograms(slot.targetLoadKg), unit).toFixed(2))}
-              step={loadStep}
-              onChange={next => {
-                onPatch({ targetLoadKg: toKilograms(next, unit) });
-              }}
-              testId={`${prefix}-target`}
-            />
-          </div>
-          <button
-            type="button"
-            className="tap-target shrink-0 rounded-md border border-seam px-3 text-sm text-ash"
-            aria-label="Clear target load"
-            data-testid={`${prefix}-clear-target`}
-            onClick={() => {
-              onPatch({ targetLoadKg: null });
-            }}
-          >
-            Clear
-          </button>
-        </div>
+      </header>
+
+      {menuOpen && (
+        <ActionSheet
+          title={slot.name}
+          actions={[
+            ...(!isFirst ? [{ label: 'Move up', onClick: () => { onMove(-1); setMenuOpen(false); } }] : []),
+            ...(!isLast ? [{ label: 'Move down', onClick: () => { onMove(1); setMenuOpen(false); } }] : []),
+            { label: 'Remove', destructive: true, onClick: () => { onRemove(); } },
+          ]}
+          onClose={() => { setMenuOpen(false); }}
+        />
       )}
+
+      {/* Set rows — N rows matching active-workout layout, number badge instead of checkbox */}
+      <ul className="flex flex-col gap-2">
+        {Array.from({ length: slot.sets }).map((_, i) => (
+          <li key={i} className="flex items-center gap-3" data-testid={`${prefix}-set-${String(i)}`}>
+            <button
+              type="button"
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] border-2 border-seam font-display text-sm text-ash disabled:opacity-30"
+              disabled={slot.sets <= 1}
+              aria-label={`Remove set ${String(i + 1)}`}
+              data-testid={`${prefix}-set-${String(i)}-remove`}
+              onClick={() => { onPatch({ sets: slot.sets - 1 }); }}
+            >
+              {i + 1}
+            </button>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-end gap-3">
+                {slot.targetLoadKg != null && (
+                  <ValueCell
+                    value={displayLoad(kilograms(slot.targetLoadKg), unit)}
+                    unit={unit}
+                    inputMode="decimal"
+                    accent="text-chalk"
+                    onChange={next => { onPatch({ targetLoadKg: toKilograms(next, unit) }); }}
+                    testId={`${prefix}-set-${String(i)}-load`}
+                  />
+                )}
+                <ValueCell
+                  value={slot.targetRepMax}
+                  unit="reps"
+                  inputMode="numeric"
+                  accent="text-chalk"
+                  onChange={next => {
+                    const v = Math.max(1, clampReps(next));
+                    onPatch({ targetRepMax: v, targetRepMin: Math.min(v, slot.targetRepMin) });
+                  }}
+                  testId={`${prefix}-set-${String(i)}-reps`}
+                />
+                <ValueCell
+                  value={slot.targetRirMin}
+                  unit="rir"
+                  inputMode="numeric"
+                  accent="text-chalk"
+                  onChange={next => {
+                    const v = clampRir(next);
+                    onPatch({ targetRirMin: v, targetRirMax: Math.max(v, slot.targetRirMax) });
+                  }}
+                  testId={`${prefix}-set-${String(i)}-rir`}
+                />
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <button
+        type="button"
+        className="tap-target w-full rounded-[20px] border-2 border-seam font-display text-sm uppercase tracking-normal text-ash"
+        data-testid={`${prefix}-add-set`}
+        onClick={() => { onPatch({ sets: slot.sets + 1 }); }}
+      >
+        + Add set
+      </button>
     </section>
   );
 }

@@ -160,15 +160,15 @@ function SyncCardBody({
         </p>
       )}
       <p className="text-xs text-ash" data-testid="sync-status-line">
-        <span className={mono({ className: 'font-medium' })} data-testid="sync-pending">
+        <span className={mono({ className: 'text-[14px] font-medium' })} data-testid="sync-pending">
           {pending ?? status.pendingCount}
         </span>{' '}
         pending · cursor{' '}
-        <span className={mono({ className: 'font-medium' })} data-testid="sync-cursor">
+        <span className={mono({ className: 'text-[14px] font-medium' })} data-testid="sync-cursor">
           {status.cursor}
         </span>{' '}
         · last sync{' '}
-        <span className={mono({ className: 'font-medium' })} data-testid="sync-last-success">
+        <span className={mono({ className: 'text-[14px] font-medium' })} data-testid="sync-last-success">
           {status.lastSuccessAtMillis === null
             ? 'never'
             : new Date(status.lastSuccessAtMillis).toLocaleTimeString()}

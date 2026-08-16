@@ -37,7 +37,7 @@ export function Stepper(props: StepperProps) {
       <button
         type="button"
         aria-label={`Decrease ${props.label}`}
-        className="tap-target shrink-0 rounded border border-seam bg-ingot px-4 text-xl text-chalk"
+        className="tap-target shrink-0 rounded border border-seam bg-ingot px-4 text-[14px] font-display text-chalk"
         onClick={() => {
           emit(stepValue(props.value, props.step, -1));
         }}
@@ -50,7 +50,7 @@ export function Stepper(props: StepperProps) {
         inputMode="decimal"
         className={mono({
           className:
-            'tap-target min-w-16 flex-1 rounded border border-seam bg-ingot text-center text-xl font-medium text-chalk outline-none',
+            'tap-target min-w-16 flex-1 rounded border border-seam bg-ingot text-center text-[14px] font-medium text-chalk outline-none',
         })}
         value={draft ?? String(props.value)}
         onFocus={event => {
@@ -75,7 +75,7 @@ export function Stepper(props: StepperProps) {
       <button
         type="button"
         aria-label={`Increase ${props.label}`}
-        className="tap-target shrink-0 rounded border border-seam bg-ingot px-4 text-xl text-chalk"
+        className="tap-target shrink-0 rounded border border-seam bg-ingot px-4 text-[14px] font-display text-chalk"
         onClick={() => {
           emit(stepValue(props.value, props.step, 1));
         }}

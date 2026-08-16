@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { type SessionId, type WeightUnit } from '@ferrum/domain';
-import { listSessionIds, loadSession } from './db/event-store.ts';
+import { activeSession, listSessionIds, loadSession } from './db/event-store.ts';
 import { HistoryDetailScreen } from './features/history/HistoryDetailScreen.tsx';
 import { HistoryScreen } from './features/history/HistoryScreen.tsx';
 import { WorkoutSummaryScreen } from './features/history/WorkoutSummaryScreen.tsx';
@@ -12,6 +12,8 @@ import { loadUnit } from './data/settings-store.ts';
 import { SpikeA } from './features/spike/SpikeA.tsx';
 import { WorkoutScreen } from './features/workout/WorkoutScreen.tsx';
 import { initSync } from './sync/sync-client.ts';
+import { BottomNav, type Tab } from './components/BottomNav.tsx';
+import { useLiveData } from './components/live-data.ts';
 
 type Screen =
   | { name: 'home' }
@@ -164,6 +166,22 @@ export function App() {
   );
 }
 
+// Bottom padding so content is not hidden under the fixed nav bar.
+const TAB_SCREEN_NAMES: Screen['name'][] = ['home', 'history', 'settings'];
+void TAB_SCREEN_NAMES;
+
+function tabFor(screen: Screen): Tab | null {
+  if (screen.name === 'home') return 'home';
+  if (screen.name === 'history') return 'history';
+  if (screen.name === 'settings') return 'settings';
+  if (screen.name === 'workout') return 'workout';
+  // Secondary screens keep the nav visible, highlighting their parent tab.
+  if (screen.name === 'summary') return 'home';
+  if (screen.name === 'routineBuilder') return 'home';
+  if (screen.name === 'historyDetail') return 'history';
+  return null;
+}
+
 function CurrentScreen({
   screen,
   unit,
@@ -177,9 +195,26 @@ function CurrentScreen({
   onReplace: (screen: Screen) => void;
   onUnitChanged: (unit: WeightUnit) => void;
 }) {
+  const activeTab = tabFor(screen);
+  const running = useLiveData(activeSession);
+  const hasActiveWorkout = running?.session?.status === 'active' && running.session.deleted !== true;
+
+  const handleTabSelect = (tab: Tab) => {
+    if (tab === 'workout' && running?.session != null) {
+      onNavigate({ name: 'workout', sessionId: running.session.id });
+      return;
+    }
+    const target: Screen =
+      tab === 'home' ? { name: 'home' }
+      : tab === 'history' ? { name: 'history' }
+      : { name: 'settings' };
+    onNavigate(target);
+  };
+
+  let content: ReactNode;
   switch (screen.name) {
     case 'home':
-      return (
+      content = (
         <HomeScreen
           unit={unit}
           onWorkoutStarted={sessionId => {
@@ -202,40 +237,41 @@ function CurrentScreen({
           }}
         />
       );
+      break;
     case 'workout':
-      return (
+      // Workout screen shows BottomNav with 4th active-workout tab
+      content = (
         <WorkoutScreen
           sessionId={screen.sessionId}
           unit={unit}
           onFinished={() => {
             onNavigate({ name: 'summary', sessionId: screen.sessionId });
           }}
-          // A discarded workout has no summary worth showing, and back must not walk
-          // into the tombstoned session either: replace the workout entry instead of
-          // pushing Home on top of it.
           onDiscarded={() => {
             onReplace({ name: 'home' });
           }}
-          // Replace, not push: the workout is still running and Home offers to
-          // resume it, so pushing would build a stack of alternating entries
-          // that back walks through one at a time.
           onLeave={() => {
             onReplace({ name: 'home' });
           }}
         />
       );
+      break;
     case 'summary':
-      return (
+      content = (
         <WorkoutSummaryScreen
           sessionId={screen.sessionId}
           unit={unit}
           onHome={() => {
             onNavigate({ name: 'home' });
           }}
+          onSaveAsRoutine={routineId => {
+            onNavigate({ name: 'routineBuilder', routineId });
+          }}
         />
       );
+      break;
     case 'history':
-      return (
+      content = (
         <HistoryScreen
           onHome={() => {
             onNavigate({ name: 'home' });
@@ -245,8 +281,9 @@ function CurrentScreen({
           }}
         />
       );
+      break;
     case 'historyDetail':
-      return (
+      content = (
         <HistoryDetailScreen
           sessionId={screen.sessionId}
           unit={unit}
@@ -255,8 +292,9 @@ function CurrentScreen({
           }}
         />
       );
+      break;
     case 'routineBuilder':
-      return (
+      content = (
         <RoutineBuilderScreen
           routineId={screen.routineId}
           unit={unit}
@@ -265,8 +303,9 @@ function CurrentScreen({
           }}
         />
       );
+      break;
     case 'settings':
-      return (
+      content = (
         <SettingsScreen
           unit={unit}
           onUnitChanged={onUnitChanged}
@@ -275,7 +314,20 @@ function CurrentScreen({
           }}
         />
       );
+      break;
     case 'spike':
       return <SpikeA />;
+    default:
+      return null;
   }
+
+  // Tab screens + workout: render with bottom nav and bottom padding.
+  return (
+    <div className="pb-24">
+      {content}
+      {activeTab != null && (
+        <BottomNav active={activeTab} hasActiveWorkout={hasActiveWorkout} onSelect={handleTabSelect} />
+      )}
+    </div>
+  );
 }

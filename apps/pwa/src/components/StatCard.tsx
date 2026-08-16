@@ -20,7 +20,7 @@ export function StatCard(props: StatCardProps) {
       <span className={eyebrow()}>{props.label}</span>
       {props.value != null && (
         <span
-          className={mono({ className: 'text-lg leading-none font-bold text-chalk' })}
+          className={mono({ className: 'text-[14px] leading-none font-bold text-chalk' })}
           data-testid={props.valueTestId}
         >
           {props.value}

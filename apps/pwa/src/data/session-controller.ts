@@ -139,6 +139,23 @@ export async function addExercise(
   return sessionExerciseId;
 }
 
+export async function reorderExercises(
+  sessionId: SessionId,
+  orderedSessionExerciseIds: readonly SessionExerciseId[],
+  nowMillis: number
+): Promise<void> {
+  await appendEvents(
+    [
+      {
+        aggregateId: sessionId,
+        eventType: 'ExerciseReordered',
+        payload: { sessionId, orderedSessionExerciseIds },
+      },
+    ],
+    nowMillis
+  );
+}
+
 export async function removeExercise(
   sessionId: SessionId,
   sessionExerciseId: SessionExerciseId,

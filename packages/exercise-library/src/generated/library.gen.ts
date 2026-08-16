@@ -1777,7 +1777,6 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
     bodyweightFraction: 0,
     muscleRoles: [
       { muscleId: 'hamstrings', role: 'primary' },
-      { muscleId: 'gastrocnemius', role: 'secondary' },
       { muscleId: 'gluteus_maximus', role: 'stabilizer' },
     ],
     defaultRestSeconds: 120,
@@ -1800,10 +1799,7 @@ export const RAW_EXERCISES: readonly RawExercise[] = [
     rangeOfMotionVariant: 'full',
     tempoVariant: 'standard',
     bodyweightFraction: 0,
-    muscleRoles: [
-      { muscleId: 'hamstrings', role: 'primary' },
-      { muscleId: 'gastrocnemius', role: 'secondary' },
-    ],
+    muscleRoles: [{ muscleId: 'hamstrings', role: 'primary' }],
     defaultRestSeconds: 120,
     defaultIncrementKg: 5,
     userCreated: false,

@@ -20,7 +20,7 @@ function seedSlot(
     // No signature: this layer cannot see the library, and the one it used to
     // assemble by hand claimed machine_stack semantics for every slot including
     // a plate-loaded press. planExercise computes the real one.
-    sets: 3,
+    sets: 4,
     targetLoadKg,
     targetRepMin: 8,
     targetRepMax: 12,
@@ -79,6 +79,20 @@ export async function deleteRoutine(id: string): Promise<void> {
   await db.routines.delete(id);
 }
 
+export async function duplicateRoutine(id: string, nowMillis: number): Promise<string | null> {
+  const original = await db.routines.get(id);
+  if (original == null) return null;
+  const copy: RoutineRecord = {
+    ...original,
+    id: `rtn_${ulidFactory.next(nowMillis)}`,
+    name: `${original.name} (copy)`,
+    createdAtMillis: nowMillis,
+    updatedAtMillis: nowMillis,
+  };
+  await db.routines.add(copy);
+  return copy.id;
+}
+
 export function newRoutine(nowMillis: number): RoutineRecord {
   return {
     id: `rtn_${ulidFactory.next(nowMillis)}`,
@@ -94,7 +108,7 @@ export function slotFromDefinition(definition: ExerciseDefinition): RoutineSlotR
     exerciseDefinitionId: definition.id,
     name: definition.name,
     comparisonSignature: comparisonSignature(definition, null),
-    sets: 3,
+    sets: 4,
     targetLoadKg: null,
     targetRepMin: 8,
     targetRepMax: 12,

@@ -1960,8 +1960,6 @@ exercises:
     muscleRoles:
       - muscleId: hamstrings
         role: primary
-      - muscleId: gastrocnemius
-        role: secondary
       - muscleId: gluteus_maximus
         role: stabilizer
     defaultRestSeconds: 120
@@ -1988,8 +1986,6 @@ exercises:
     muscleRoles:
       - muscleId: hamstrings
         role: primary
-      - muscleId: gastrocnemius
-        role: secondary
     defaultRestSeconds: 120
     defaultIncrementKg: 5
     userCreated: false
