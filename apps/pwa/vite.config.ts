@@ -9,6 +9,9 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  // Project sites on GitHub Pages live below the repository name. Keep the
+  // local default at `/` so `npm run dev` and ordinary preview builds work.
+  base: process.env['PAGES_BASE_PATH'] ?? '/',
   plugins: [
     // tsconfig.json#paths at the repo root is the single source of the @ferrum/* and @/ aliases.
     tsconfigPaths({ projects: [path.resolve(here, '../../tsconfig.json')] }),
